@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnome-shell-extensions-color-picker">
+    <schema path="/org/gnome/shell/extensions/color-picker/" id="org.gnome.shell.extensions.color-picker">
+        <key type="b" name="enable-systray">
+            <default>true</default>
+            <summary>enabe system tray</summary>
+        </key>
+        <key type="b" name="enable-shortcut">
+            <default>false</default>
+            <summary>enable shortcut</summary>
+        </key>
+        <key type="b" name="enable-notify">
+            <default>true</default>
+            <summary>enable notify</summary>
+        </key>
+        <key type="b" name="persistent-mode">
+            <default>false</default>
+            <summary>persistent mode</summary>
+        </key>
+        <key type="as" name="shortcut">
+            <default><![CDATA[['<Control><Shift>1']]]></default>
+            <summary>shortcut to pick color</summary>
+        </key>
+        <key type="u" name="notify-style">
+            <default>0</default>
+            <summary>notify style: 0-MSG 1-OSD</summary>
+        </key>
+    </schema>
+</schemalist>

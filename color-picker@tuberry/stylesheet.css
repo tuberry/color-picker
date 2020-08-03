@@ -1,0 +1,7 @@
+/* Add your custom extension styling here */
+.color-picker {
+}
+
+.active .color-picker {
+    color: deepskyblue;
+}
