@@ -1,6 +1,6 @@
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
-const { Gio, St, Shell, GObject, Meta } = imports.gi;
+const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const gsettings = ExtensionUtils.getSettings();
@@ -13,7 +13,8 @@ const NOTIFY = { MSG: 0, OSD: 1 };
 
 const ColorArea = GObject.registerClass({
     Signals: {
-        'end-pick': {}
+        'end-pick': {},
+        'notify-color': { param_types: [GObject.TYPE_STRING] },
     },
 }, class ColorArea extends St.DrawingArea {
     _init() {
@@ -22,11 +23,9 @@ const ColorArea = GObject.registerClass({
     }
 
     _loadSettings() {
-        this._notifyStyle    = gsettings.get_uint(Fields.NOTIFYSTYLE);
         this._enableNotify   = gsettings.get_boolean(Fields.ENABLENOTIFY);
         this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
 
-        this._notifyStyleId = gsettings.connect(`changed::${Fields.NOTIFYSTYLE}`, () => { this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE); });
         this._enableNotifyId = gsettings.connect(`changed::${Fields.ENABLENOTIFY}`, () => { this._enableNotify = gsettings.get_boolean(Fields.ENABLENOTIFY); });
         this._persistentModeId = gsettings.connect(`changed::${Fields.PERSISTENTMODE}`, () => { this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE); });
 
@@ -49,8 +48,9 @@ const ColorArea = GObject.registerClass({
             try {
                 let [ok, color] = pick.pick_color_finish(res);
                 if(ok) {
-                    St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color.to_string());
-                    if(this._enableNotify) this._notify(color);
+                    let hexcolor = color.to_string().slice(0, 7);
+                    St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hexcolor);
+                    if(this._enableNotify) this.emit('notify-color', hexcolor);
                 } else {
                     Main.notifyError(Me.metadata.name, _('Failed to pick color.'));
                 }
@@ -62,21 +62,7 @@ const ColorArea = GObject.registerClass({
         });
     }
 
-    _notify(cl) {
-        if(this._notifyStyle == NOTIFY.MSG) {
-            Main.notify(Me.metadata.name, _('%s is picked.').format(cl.to_string()));
-        } else {
-            let rgba = 'rgba(%d, %d, %d, %f)'.format(cl.red, cl.green, cl.blue, cl.alpha);
-            let index = global.display.get_current_monitor();
-            let icon = new Gio.ThemedIcon({ name: 'media-playback-stop-symbolic' });
-            let osd = Main.osdWindowManager._osdWindows[index];
-            osd._icon.set_style(`color: ${rgba};`);
-            Main.osdWindowManager.show(index, icon, cl.to_string(), null, 2);
-        }
-    }
-
     destroy() {
-        if(this._notifyStyleId)    gsettings.disconnect(this._notifyStyleId), this._notifyStyleId = 0;
         if(this._enableNotifyId)   gsettings.disconnect(this._enableNotifyId), this._enableNotifyId = 0;
         if(this._persistentModeId) gsettings.disconnect(this._persistentModeId), this._persistentModeId = 0;
 
@@ -93,9 +79,11 @@ class ColorPicker extends GObject.Object {
 
     _loadSettings()  {
         this._area = null;
+        this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE);
         this._enableSystray = gsettings.get_boolean(Fields.ENABLESYSTRAY);
         this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT);
 
+        this._notifyStyleId = gsettings.connect(`changed::${Fields.NOTIFYSTYLE}`, () => { this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE); });
         this._enableSystrayId = gsettings.connect(`changed::${Fields.ENABLESYSTRAY}`, () => {
             this._enableSystray ? this._button.destroy() : this._addButton();
             this._enableSystray = !this._enableSystray;
@@ -132,6 +120,7 @@ class ColorPicker extends GObject.Object {
         this._area = new ColorArea();
         this._area.set_size(...global.display.get_size());
         this._area.endId = this._area.connect('end-pick', this._endPick.bind(this));
+        this._area.showId = this._area.connect('notify-color', this._notify.bind(this));
         Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
         Main.layoutManager.addChrome(this._area);
     }
@@ -141,10 +130,29 @@ class ColorPicker extends GObject.Object {
         global.display.set_cursor(Meta.Cursor['DEFAULT']);
         if(this._enableSystray) this._button.remove_style_class_name('active');
         if(this._area.endId) this._area.disconnect(this._area.endId), this._area.endId = 0;
+        if(this._area.showId) this._area.disconnect(this._area.showId), this._area.showId = 0;
         if(Main._findModal(this._area) != -1) Main.popModal(this._area);
         Main.layoutManager.removeChrome(this._area);
         this._area.destroy();
         this._area = null;
+    }
+
+    _notify(actor, color) {
+        if(this._notifyStyle == NOTIFY.MSG) {
+            Main.notify(Me.metadata.name, _('%s is picked.').format(color));
+        } else {
+            let index = global.display.get_current_monitor();
+            let icon = new Gio.ThemedIcon({ name: 'media-playback-stop-symbolic' });
+            let osd = Main.osdWindowManager._osdWindows[index];
+            osd._icon.set_style(`color: ${color};`);
+            Main.osdWindowManager.show(index, icon, color, null, 2);
+            let clearId = osd._label.connect('notify::text', () => {
+                if(this._area !== null) return;
+                osd._icon.set_style('color: none;');
+                osd._label.disconnect(clearId);
+                return Clutter.EVENT_STOP;
+            });
+        }
     }
 
     enable() {
@@ -157,6 +165,9 @@ class ColorPicker extends GObject.Object {
         this._endPick();
         if(this._enableSystray) this._button.destroy();
         if(this._enableShortcut) this._toggleKeybindings(false);
+        if(this._notifyStyleId)  gsettings.disconnect(this._notifyStyleId), this._notifyStyleId = 0;
+        if(this._enableSystrayId) gsettings.disconnect(this._enableSystrayId), this._enableSystrayId = 0;
+        if(this._enableShortcutId) gsettings.disconnect(this._enableShortcutId), this._enableShortcutId = 0;
     }
 });
 
