@@ -5,7 +5,7 @@ Simple color picker for gnome shell
 
 ## Installation
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
-a
+
 or manually:
 ```shell
 git clone https://github.com/tuberry/color-picker.git
