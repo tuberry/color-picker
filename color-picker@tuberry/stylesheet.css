@@ -5,3 +5,19 @@
 .active .color-picker {
     color: deepskyblue;
 }
+
+.color-picker-button:hover {
+    color: deepskyblue;
+}
+
+.color-picker-history:hover {
+    color: pink;
+}
+
+.color-picker-collection {
+    color: pink;
+}
+
+.color-picker-collection:hover {
+    color: deepskyblue;
+}

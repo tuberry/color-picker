@@ -21,9 +21,25 @@
             <default><![CDATA[['<Control><Shift>1']]]></default>
             <summary>shortcut to pick color</summary>
         </key>
+        <key type="as" name="color-history">
+            <default>[]</default>
+            <summary>picked color history</summary>
+        </key>
+        <key type="as" name="color-collection">
+            <default>[]</default>
+            <summary>picked color collection</summary>
+        </key>
         <key type="u" name="notify-style">
             <default>0</default>
             <summary>notify style: 0-MSG 1-OSD</summary>
+        </key>
+        <key type="u" name="menu-size">
+            <default>16</default>
+            <summary>menu item size</summary>
+        </key>
+        <key type="u" name="menu-style">
+            <default>0</default>
+            <summary>menu style: 0-history 1-collection</summary>
         </key>
     </schema>
 </schemalist>

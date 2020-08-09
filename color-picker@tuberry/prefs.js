@@ -10,12 +10,16 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const gsettings = ExtensionUtils.getSettings();
 
 var Fields = {
-    SHORTCUT:       'shortcut',
-    NOTIFYSTYLE:    'notify-style',
-    ENABLENOTIFY:   'enable-notify',
-    ENABLESYSTRAY:  'enable-systray',
-    ENABLESHORTCUT: 'enable-shortcut',
-    PERSISTENTMODE: 'persistent-mode',
+    SHORTCUT:        'shortcut',
+    MENUSIZE:        'menu-size',
+    MENUSTYLE:       'menu-style',
+    NOTIFYSTYLE:     'notify-style',
+    COLORHISTORY:    'color-history',
+    ENABLENOTIFY:    'enable-notify',
+    ENABLESYSTRAY:   'enable-systray',
+    ENABLESHORTCUT:  'enable-shortcut',
+    PERSISTENTMODE:  'persistent-mode',
+    COLORCOLLECTION: 'color-collection',
 };
 
 function buildPrefsWidget() {

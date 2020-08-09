@@ -1,5 +1,9 @@
+// vim:fdm=syntax
+// by tuberry
+//
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
+const PopupMenu = imports.ui.popupMenu;
 const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -8,13 +12,146 @@ const Me = ExtensionUtils.getCurrentExtension();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const Fields = Me.imports.prefs.Fields;
 
-const SYS_ICON_PATH = Me.dir.get_child('icon').get_child('dropper-symbolic.svg').get_path();
+const MENUSIZE = 16;
 const NOTIFY = { MSG: 0, OSD: 1 };
+const MENU = { HISTORY: 0, COLLECTION: 1 };
+const COLOR_PICK_ICON = Me.dir.get_child('icons').get_child('color-pick.svg').get_path();
+const DROPPER_ICON = Me.dir.get_child('icons').get_child('dropper-symbolic.svg').get_path();
+
+// js/ui/screenshot.js
+const RecolorEffect = GObject.registerClass({
+    Properties: {
+        color: GObject.ParamSpec.boxed(
+            'color', 'color', 'replacement color',
+            GObject.ParamFlags.WRITABLE,
+            Clutter.Color.$gtype),
+        chroma: GObject.ParamSpec.boxed(
+            'chroma', 'chroma', 'color to replace',
+            GObject.ParamFlags.WRITABLE,
+            Clutter.Color.$gtype),
+        threshold: GObject.ParamSpec.float(
+            'threshold', 'threshold', 'threshold',
+            GObject.ParamFlags.WRITABLE,
+            0.0, 1.0, 0.0),
+        smoothing: GObject.ParamSpec.float(
+            'smoothing', 'smoothing', 'smoothing',
+            GObject.ParamFlags.WRITABLE,
+            0.0, 1.0, 0.0),
+    },
+}, class RecolorEffect extends Shell.GLSLEffect {
+    _init(params) {
+        this._color = new Clutter.Color();
+        this._chroma = new Clutter.Color();
+        this._threshold = 0;
+        this._smoothing = 0;
+
+        this._colorLocation = null;
+        this._chromaLocation = null;
+        this._thresholdLocation = null;
+        this._smoothingLocation = null;
+
+        super._init(params);
+
+        this._colorLocation = this.get_uniform_location('recolor_color');
+        this._chromaLocation = this.get_uniform_location('chroma_color');
+        this._thresholdLocation = this.get_uniform_location('threshold');
+        this._smoothingLocation = this.get_uniform_location('smoothing');
+
+        this._updateColorUniform(this._colorLocation, this._color);
+        this._updateColorUniform(this._chromaLocation, this._chroma);
+        this._updateFloatUniform(this._thresholdLocation, this._threshold);
+        this._updateFloatUniform(this._smoothingLocation, this._smoothing);
+    }
+
+    _updateColorUniform(location, color) {
+        if (!location)
+            return;
+
+        this.set_uniform_float(location,
+            3, [color.red / 255, color.green / 255, color.blue / 255]);
+        this.queue_repaint();
+    }
+
+    _updateFloatUniform(location, value) {
+        if (!location)
+            return;
+
+        this.set_uniform_float(location, 1, [value]);
+        this.queue_repaint();
+    }
+
+    set color(c) {
+        if (this._color.equal(c))
+            return;
+
+        this._color = c;
+        this.notify('color');
+
+        this._updateColorUniform(this._colorLocation, this._color);
+    }
+
+    set chroma(c) {
+        if (this._chroma.equal(c))
+            return;
+
+        this._chroma = c;
+        this.notify('chroma');
+
+        this._updateColorUniform(this._chromaLocation, this._chroma);
+    }
+
+    set threshold(value) {
+        if (this._threshold === value)
+            return;
+
+        this._threshold = value;
+        this.notify('threshold');
+
+        this._updateFloatUniform(this._thresholdLocation, this._threshold);
+    }
+
+    set smoothing(value) {
+        if (this._smoothing === value)
+            return;
+
+        this._smoothing = value;
+        this.notify('smoothing');
+
+        this._updateFloatUniform(this._smoothingLocation, this._smoothing);
+    }
+
+    vfunc_build_pipeline() {
+        // Conversion parameters from https://en.wikipedia.org/wiki/YCbCr
+        const decl = `
+            vec3 rgb2yCrCb(vec3 c) {                                \n
+                float y = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;  \n
+                float cr = 0.7133 * (c.r - y);                      \n
+                float cb = 0.5643 * (c.b - y);                      \n
+                return vec3(y, cr, cb);                             \n
+            }                                                       \n
+                                                                    \n
+            uniform vec3 chroma_color;                              \n
+            uniform vec3 recolor_color;                             \n
+            uniform float threshold;                                \n
+            uniform float smoothing;                                \n`;
+        const src = `
+            vec3 mask = rgb2yCrCb(chroma_color.rgb);                \n
+            vec3 yCrCb = rgb2yCrCb(cogl_color_out.rgb);             \n
+            float blend =                                           \n
+              smoothstep(threshold,                                 \n
+                         threshold + smoothing,                     \n
+                         distance(yCrCb.gb, mask.gb));              \n
+            cogl_color_out.rgb =                                    \n
+              mix(recolor_color, cogl_color_out.rgb, blend);        \n`;
+
+        this.add_glsl_snippet(Shell.SnippetHook.FRAGMENT, decl, src, false);
+    }
+});
 
 const ColorArea = GObject.registerClass({
     Signals: {
         'end-pick': {},
-        'notify-color': { param_types: [GObject.TYPE_STRING] },
+        'notify-color': { param_types: [GObject.TYPE_STRING, GObject.TYPE_BOOLEAN] },
     },
 }, class ColorArea extends St.DrawingArea {
     _init() {
@@ -23,10 +160,25 @@ const ColorArea = GObject.registerClass({
     }
 
     _loadSettings() {
-        this._enableNotify   = gsettings.get_boolean(Fields.ENABLENOTIFY);
-        this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
+        this._effect = new RecolorEffect({
+            chroma: new Clutter.Color({
+                red: 80,
+                green: 219,
+                blue: 181,
+            }),
+            threshold: 0.03,
+            smoothing: 0.3,
+        });
 
-        this._enableNotifyId = gsettings.connect(`changed::${Fields.ENABLENOTIFY}`, () => { this._enableNotify = gsettings.get_boolean(Fields.ENABLENOTIFY); });
+        this._icon = new St.Icon({
+            gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(COLOR_PICK_ICON) }),
+            icon_size: Meta.prefs_get_cursor_size() * 1.5,
+            effect: this._effect,
+            visible: false,
+        });
+        Main.uiGroup.add_actor(this._icon);
+
+        this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
         this._persistentModeId = gsettings.connect(`changed::${Fields.PERSISTENTMODE}`, () => { this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE); });
 
         this._onKeyPressedId = this.connect('key-press-event', this._onKeyPressed.bind(this));
@@ -50,7 +202,12 @@ const ColorArea = GObject.registerClass({
                 if(ok) {
                     let hexcolor = color.to_string().slice(0, 7);
                     St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hexcolor);
-                    if(this._enableNotify) this.emit('notify-color', hexcolor);
+                    this.emit('notify-color', hexcolor, this._persistentMode);
+                    if(this._persistentMode) {
+                        this._icon.set_position(...pos);
+                        this._effect.color = color;
+                        this._icon.show();
+                    }
                 } else {
                     Main.notifyError(Me.metadata.name, _('Failed to pick color.'));
                 }
@@ -63,7 +220,8 @@ const ColorArea = GObject.registerClass({
     }
 
     destroy() {
-        if(this._enableNotifyId)   gsettings.disconnect(this._enableNotifyId), this._enableNotifyId = 0;
+        Main.uiGroup.remove_actor(this._icon);
+        this._icon.destroy();
         if(this._persistentModeId) gsettings.disconnect(this._persistentModeId), this._persistentModeId = 0;
 
         if(this._onKeyPressedId)    this.disconnect(this._onKeyPressedId), this._onKeyPressedId = 0;
@@ -71,19 +229,66 @@ const ColorArea = GObject.registerClass({
     }
 });
 
+const ColorButton = GObject.registerClass(
+class ColorButton extends PanelMenu.Button {
+    _init(params, func) {
+        super._init(params);
+        this._func = func;
+    }
+
+    vfunc_event(event) {
+        if (event.get_button() == 1) {
+            this._func();
+            return Clutter.EVENT_STOP;
+        }
+        if (this.menu &&
+            (event.type() == Clutter.EventType.TOUCH_BEGIN ||
+                event.type() == Clutter.EventType.BUTTON_PRESS))
+            this.menu.toggle();
+
+        return Clutter.EVENT_PROPAGATE;
+    };
+});
+
 const ColorPicker = GObject.registerClass(
 class ColorPicker extends GObject.Object {
     _init() {
         super._init();
+        this._colorHistory = [];
+        this._colorCollection = [];
+    }
+
+    _fetchSettings() {
+        this._menuStyle = gsettings.get_uint(Fields.MENUSTYLE);
+        this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE);
+        this._colorHistory = gsettings.get_strv(Fields.COLORHISTORY);
+        this._enableNotify = gsettings.get_boolean(Fields.ENABLENOTIFY);
+        this._enableSystray = gsettings.get_boolean(Fields.ENABLESYSTRAY);
+        this._colorCollection = gsettings.get_strv(Fields.COLORCOLLECTION);
+        this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT);
     }
 
     _loadSettings()  {
         this._area = null;
-        this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE);
-        this._enableSystray = gsettings.get_boolean(Fields.ENABLESYSTRAY);
-        this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT);
-
-        this._notifyStyleId = gsettings.connect(`changed::${Fields.NOTIFYSTYLE}`, () => { this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE); });
+        this._fetchSettings();
+        this._menuStyleId = gsettings.connect(`changed::${Fields.MENUSTYLE}`, () => {
+            this._menuStyle = gsettings.get_uint(Fields.MENUSTYLE);
+            this._updateMenu();
+        });
+        this._enableNotifyId = gsettings.connect(`changed::${Fields.ENABLENOTIFY}`, () => {
+            this._enableNotify = gsettings.get_boolean(Fields.ENABLENOTIFY);
+        });
+        this._colorHistoryId = gsettings.connect(`changed::${Fields.COLORHISTORY}`, () => {
+            this._colorHistory = gsettings.get_strv(Fields.COLORHISTORY);
+            if(this._menuStyle == MENU.HISTORY) this._updateMenu();
+        });
+        this._colorCollectionId = gsettings.connect(`changed::${Fields.COLORCOLLECTION}`, () => {
+            this._colorCollection = gsettings.get_strv(Fields.COLORCOLLECTION);
+            if(this._menuStyle == MENU.COLLECTION) this._updateMenu();
+        });
+        this._notifyStyleId = gsettings.connect(`changed::${Fields.NOTIFYSTYLE}`, () => {
+            this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE);
+        });
         this._enableSystrayId = gsettings.connect(`changed::${Fields.ENABLESYSTRAY}`, () => {
             this._enableSystray ? this._button.destroy() : this._addButton();
             this._enableSystray = !this._enableSystray;
@@ -92,6 +297,66 @@ class ColorPicker extends GObject.Object {
             this._toggleKeybindings(!this._enableShortcut);
             this._enableShortcut = !this._enableShortcut;
         });
+    }
+
+    _updateMenu() {
+        this._button.menu.removeAll();
+        if(this._menuStyle == MENU.HISTORY) {
+            this._colorHistory.forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
+        } else {
+            this._colorCollection.forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
+        }
+        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        this._button.menu.addMenuItem(this._settingItem());
+    }
+
+    _menuItemMaker(color) {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item' });
+        item.connect('activate', () => {
+            item._getTopMenu().close();
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
+        });
+        let label = new St.Label({ x_expand: true });
+        label.clutter_text.set_markup(`<span background="${color}">     </span>  ${color}`);
+        item.add_child(label);
+
+        let button = new St.Button({
+            style_class: this._menuStyle == MENU.HISTORY ? 'color-picker-history' : 'color-picker-collection',
+            child: new St.Icon({ icon_name: 'emblem-favorite-symbolic', style_class: 'popup-menu-icon', }),
+        });
+        button.connect('clicked', () => {
+            if(this._menuStyle == MENU.HISTORY) {
+                if(this._colorCollection.includes(color)) return;
+                this._colorCollection.unshift(color);
+                gsettings.set_strv(Fields.COLORCOLLECTION, this._colorCollection.slice(0, MENUSIZE));
+            } else {
+                let index = this._colorCollection.indexOf(color);
+                if(index != -1) this._colorCollection.splice(index, 1);
+                gsettings.set_strv(Fields.COLORCOLLECTION, this._colorCollection);
+            }
+        });
+        item.add_child(button);
+        return item;
+    }
+
+    _settingItem() {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item', hover: false });
+        let hbox = new St.BoxLayout({ x_align: St.Align.START, x_expand: true });
+        let addButtonItem = (icon, func) => {
+            let btn = new St.Button({
+                hover: true,
+                x_expand: true,
+                style_class: 'color-picker-button',
+                child: new St.Icon({ icon_name: icon, style_class: 'popup-menu-icon', }),
+            });
+            btn.connect('clicked', func);
+            hbox.add_child(btn);
+        }
+        addButtonItem('find-location-symbolic', () => { item._getTopMenu().close(); this._beginPick(); });
+        addButtonItem('face-cool-symbolic', () => { gsettings.set_uint(Fields.MENUSTYLE, 1 - this._menuStyle); });
+        addButtonItem('emblem-system-symbolic', () => { item._getTopMenu().close(); ExtensionUtils.openPrefs(); });
+        item.add_child(hbox);
+        return item;
     }
 
     _toggleKeybindings(tog) {
@@ -104,13 +369,20 @@ class ColorPicker extends GObject.Object {
     }
 
     _addButton() {
-        this._button = new PanelMenu.Button(0, Me.metadata.name, true);
+        this._button = new ColorButton(null, this._beginPic);
         this._button.add_actor(new St.Icon({
-            gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(SYS_ICON_PATH) }),
+            // icon_name: 'gtk-color-picker-symbolic', // NOTE: not symbolic
+            gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(DROPPER_ICON) }),
             style_class: 'color-picker system-status-icon' })
         );
-        this._button.connect('button-press-event', () => { this._beginPick(); });
+        this._button.connect('button-press-event', (actor, event) => {
+            if(event.get_button() == 1) {
+                this._beginPick();
+                return;
+            }
+        });
         Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
+        this._updateMenu();
     }
 
     _beginPick() {
@@ -137,7 +409,12 @@ class ColorPicker extends GObject.Object {
         this._area = null;
     }
 
-    _notify(actor, color) {
+    _notify(actor, color, persist) {
+        if(!this._colorHistory.includes(color)) {
+            this._colorHistory.unshift(color);
+            gsettings.set_strv(Fields.COLORHISTORY, this._colorHistory.slice(0, MENUSIZE));
+        }
+        if(persist || !this._enableNotify) return;
         if(this._notifyStyle == NOTIFY.MSG) {
             Main.notify(Me.metadata.name, _('%s is picked.').format(color));
         } else {
@@ -165,12 +442,12 @@ class ColorPicker extends GObject.Object {
         this._endPick();
         if(this._enableSystray) this._button.destroy();
         if(this._enableShortcut) this._toggleKeybindings(false);
-        if(this._notifyStyleId)  gsettings.disconnect(this._notifyStyleId), this._notifyStyleId = 0;
-        if(this._enableSystrayId) gsettings.disconnect(this._enableSystrayId), this._enableSystrayId = 0;
-        if(this._enableShortcutId) gsettings.disconnect(this._enableShortcutId), this._enableShortcutId = 0;
+        for(let x in this)
+            if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
     }
 });
 
 function init() {
+    ExtensionUtils.initTranslations();
     return new ColorPicker();
 }

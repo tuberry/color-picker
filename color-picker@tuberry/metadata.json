@@ -6,5 +6,7 @@
   "uuid": "color-picker@tuberry",
   "shell-version": [
     "3.36"
-  ]
+  ],
+  "url": "https://github.com/tuberry/color-picker",
+  "version": 1
 }
