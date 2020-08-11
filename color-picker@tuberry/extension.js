@@ -12,7 +12,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const Fields = Me.imports.prefs.Fields;
 
-const MENUSIZE = 16;
+const MENUSIZE = 8;
 const NOTIFY = { MSG: 0, OSD: 1 };
 const MENU = { HISTORY: 0, COLLECTION: 1 };
 const COLOR_PICK_ICON = Me.dir.get_child('icons').get_child('color-pick.svg').get_path();
@@ -78,6 +78,10 @@ const RecolorEffect = GObject.registerClass({
 
         this.set_uniform_float(location, 1, [value]);
         this.queue_repaint();
+    }
+
+    get color() {
+        return this._color;
     }
 
     set color(c) {
@@ -151,12 +155,30 @@ const RecolorEffect = GObject.registerClass({
 const ColorArea = GObject.registerClass({
     Signals: {
         'end-pick': {},
-        'notify-color': { param_types: [GObject.TYPE_STRING, GObject.TYPE_BOOLEAN] },
+        'notify-color': { param_types: [GObject.TYPE_STRING] },
     },
 }, class ColorArea extends St.DrawingArea {
     _init() {
         super._init({ reactive: true });
         this._loadSettings();
+    }
+
+    vfunc_motion_event(motionEvent) {
+        const { x, y } = motionEvent;
+        this._pick.pick_color(x, y, (pick, res) => {
+            try {
+                let [ok, color] = pick.pick_color_finish(res);
+                if(ok) {
+                    this._icon.set_position(x, y);
+                    this._effect.color = color;
+                    this._icon.show();
+                }
+            } catch(e) {
+                //
+            }
+        });
+
+        return Clutter.EVENT_PROPAGATE;
     }
 
     _loadSettings() {
@@ -170,6 +192,7 @@ const ColorArea = GObject.registerClass({
             smoothing: 0.3,
         });
 
+        this._pick = new Shell.Screenshot();
         this._icon = new St.Icon({
             gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(COLOR_PICK_ICON) }),
             icon_size: Meta.prefs_get_cursor_size() * 1.5,
@@ -194,29 +217,10 @@ const ColorArea = GObject.registerClass({
             this.emit('end-pick');
             return Clutter.EVENT_STOP;
         }
-        let pos = global.get_pointer().slice(0, 2);
-        let pick = new Shell.Screenshot();
-        pick.pick_color(...pos, (pick, res) => {
-            try {
-                let [ok, color] = pick.pick_color_finish(res);
-                if(ok) {
-                    let hexcolor = color.to_string().slice(0, 7);
-                    St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hexcolor);
-                    this.emit('notify-color', hexcolor, this._persistentMode);
-                    if(this._persistentMode) {
-                        this._icon.set_position(...pos);
-                        this._effect.color = color;
-                        this._icon.show();
-                    }
-                } else {
-                    Main.notifyError(Me.metadata.name, _('Failed to pick color.'));
-                }
-            } catch(e) {
-                Main.notifyError(Me.metadata.name, e.message);
-            } finally {
-                if(!this._persistentMode) this.emit('end-pick');
-            }
-        });
+        let hexcolor = this._effect.color.to_string().slice(0, 7);
+        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hexcolor);
+        this.emit('notify-color', hexcolor);
+        if(!this._persistentMode) this.emit('end-pick');
     }
 
     destroy() {
@@ -229,16 +233,18 @@ const ColorArea = GObject.registerClass({
     }
 });
 
-const ColorButton = GObject.registerClass(
-class ColorButton extends PanelMenu.Button {
-    _init(params, func) {
+const ColorButton = GObject.registerClass({
+    Signals: {
+        'left-click': {},
+    },
+}, class ColorButton extends PanelMenu.Button {
+    _init(params) {
         super._init(params);
-        this._func = func;
     }
 
     vfunc_event(event) {
         if (event.get_button() == 1) {
-            this._func();
+            this.emit('left-click');
             return Clutter.EVENT_STOP;
         }
         if (this.menu &&
@@ -369,17 +375,14 @@ class ColorPicker extends GObject.Object {
     }
 
     _addButton() {
-        this._button = new ColorButton(null, this._beginPic);
+        this._button = new ColorButton(null);
         this._button.add_actor(new St.Icon({
             // icon_name: 'gtk-color-picker-symbolic', // NOTE: not symbolic
             gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(DROPPER_ICON) }),
             style_class: 'color-picker system-status-icon' })
         );
-        this._button.connect('button-press-event', (actor, event) => {
-            if(event.get_button() == 1) {
+        this._button.connect('left-click', () => {
                 this._beginPick();
-                return;
-            }
         });
         Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         this._updateMenu();
@@ -387,7 +390,7 @@ class ColorPicker extends GObject.Object {
 
     _beginPick() {
         if(this._area !== null) return;
-        global.display.set_cursor(Meta.Cursor['CROSSHAIR']);
+        global.display.set_cursor(Meta.Cursor.CROSSHAIR); // NOTE: set NONE get 'Bail out' from Mutter
         if(this._enableSystray) this._button.add_style_class_name('active');
         this._area = new ColorArea();
         this._area.set_size(...global.display.get_size());
@@ -399,7 +402,7 @@ class ColorPicker extends GObject.Object {
 
     _endPick() {
         if(this._area === null) return;
-        global.display.set_cursor(Meta.Cursor['DEFAULT']);
+        global.display.set_cursor(Meta.Cursor.DEFAULT);
         if(this._enableSystray) this._button.remove_style_class_name('active');
         if(this._area.endId) this._area.disconnect(this._area.endId), this._area.endId = 0;
         if(this._area.showId) this._area.disconnect(this._area.showId), this._area.showId = 0;
@@ -409,12 +412,12 @@ class ColorPicker extends GObject.Object {
         this._area = null;
     }
 
-    _notify(actor, color, persist) {
+    _notify(actor, color) {
         if(!this._colorHistory.includes(color)) {
             this._colorHistory.unshift(color);
             gsettings.set_strv(Fields.COLORHISTORY, this._colorHistory.slice(0, MENUSIZE));
         }
-        if(persist || !this._enableNotify) return;
+        if(!this._enableNotify) return;
         if(this._notifyStyle == NOTIFY.MSG) {
             Main.notify(Me.metadata.name, _('%s is picked.').format(color));
         } else {
