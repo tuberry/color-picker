@@ -226,6 +226,7 @@ const ColorArea = GObject.registerClass({
     destroy() {
         Main.uiGroup.remove_actor(this._icon);
         this._icon.destroy();
+        this._pick.destroy();
         if(this._persistentModeId) gsettings.disconnect(this._persistentModeId), this._persistentModeId = 0;
 
         if(this._onKeyPressedId)    this.disconnect(this._onKeyPressedId), this._onKeyPressedId = 0;
