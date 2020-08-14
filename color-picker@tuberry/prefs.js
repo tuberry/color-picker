@@ -16,6 +16,7 @@ var Fields = {
     NOTIFYSTYLE:     'notify-style',
     COLORHISTORY:    'color-history',
     ENABLENOTIFY:    'enable-notify',
+    ENABLEPREVIEW:   'enable-preview',
     ENABLESYSTRAY:   'enable-systray',
     ENABLESHORTCUT:  'enable-shortcut',
     PERSISTENTMODE:  'persistent-mode',
@@ -50,20 +51,23 @@ class ColorPickerPrefs extends Gtk.Grid {
 
     _bulidWidget() {
         this._field_enable_notify   = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.ENABLENOTIFY) });
+        this._field_enable_preview  = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.ENABLEPREVIEW) });
         this._field_enable_systray  = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.ENABLESYSTRAY) });
         this._field_enable_shortcut = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.ENABLESHORTCUT) });
         this._field_persistent_mode = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.PERSISTENTMODE) });
 
+        this._field_menu_size    = this._spinMaker(5, 12, 1);
         this._field_shortcut     = this._shortCutMaker(Fields.SHORTCUT);
         this._field_notify_style = this._comboMaker([_('MSG'), _('OSD')]);
     }
 
     _bulidUI() {
         this._row = 0;
-        this._add(this._field_enable_systray,  _('Enable systray'));
+        this._add(this._field_enable_preview,  _('Enable preview cursor'));
         this._add(this._field_persistent_mode, _('Persistent mode (right click to exit)'));
         this._add(this._field_enable_shortcut, _('Shortcut to pick'),   this._field_shortcut);
         this._add(this._field_enable_notify,   _('Notification style'), this._field_notify_style);
+        this._add(this._field_enable_systray,  _('Enable systray'), this._field_menu_size);
     }
 
     _syncStatus() {
@@ -73,8 +77,12 @@ class ColorPickerPrefs extends Gtk.Grid {
         this._field_enable_notify.connect('notify::active', widget => {
             this._field_notify_style.set_sensitive(widget.active);
         });
+        this._field_enable_systray.connect('notify::active', widget => {
+            this._field_menu_size.set_sensitive(widget.active);
+        });
 
         this._field_shortcut.set_sensitive(this._field_enable_shortcut.active);
+        this._field_menu_size.set_sensitive(this._field_enable_systray.active);
         this._field_notify_style.set_sensitive(this._field_enable_notify.active);
     }
 
@@ -82,22 +90,17 @@ class ColorPickerPrefs extends Gtk.Grid {
         gsettings.bind(Fields.ENABLENOTIFY,   this._field_enable_notify,   'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.ENABLESHORTCUT, this._field_enable_shortcut, 'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.ENABLESYSTRAY,  this._field_enable_systray,  'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.ENABLEPREVIEW,  this._field_enable_preview,  'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.NOTIFYSTYLE,    this._field_notify_style,    'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.MENUSIZE,       this._field_menu_size,       'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PERSISTENTMODE, this._field_persistent_mode, 'active', Gio.SettingsBindFlags.DEFAULT);
     }
 
     _add(x, y, z) {
         const hbox = new Gtk.Box();
-        if(z) {
-            hbox.pack_start(x, false, false, 4);
-            hbox.pack_start(this._labelMaker(y), true, true, 0);
-            hbox.pack_start(z, false, false, 4);
-        } else if(y) {
-            hbox.pack_start(x, false, false, 4);
-            hbox.pack_start(this._labelMaker(y), true, true, 4);
-        } else {
-            hbox.pack_start(x, true, true, 4);
-        }
+        if(x) hbox.pack_start(x, false, false, 4);
+        if(y) hbox.pack_start(this._labelMaker(y), true, true, 4);
+        if(z) hbox.pack_start(z, false, false, 4);
         this.attach(hbox, 0, this._row++, 1, 1);
     }
 
@@ -118,6 +121,16 @@ class ColorPickerPrefs extends Gtk.Grid {
         c.pack_start(r, false);
         c.add_attribute(r, "text", 0);
         return c;
+    }
+
+    _spinMaker(l, u, s) {
+        return new Gtk.SpinButton({
+            adjustment: new Gtk.Adjustment({
+                lower: l,
+                upper: u,
+                step_increment: s,
+            }),
+        });
     }
 
     _shortCutMaker(hotkey) {

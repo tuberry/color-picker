@@ -4,7 +4,7 @@
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
-const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
+const { Gio, St, Shell, Gdk, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const gsettings = ExtensionUtils.getSettings();
@@ -164,6 +164,7 @@ const ColorArea = GObject.registerClass({
     }
 
     vfunc_motion_event(motionEvent) {
+        if(!this._enablePreview) return Clutter.EVENT_PROPAGATE;
         const { x, y } = motionEvent;
         this._pick.pick_color(x, y, (pick, res) => {
             try {
@@ -182,6 +183,26 @@ const ColorArea = GObject.registerClass({
     }
 
     _loadSettings() {
+        this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
+        this._persistentModeId = gsettings.connect(`changed::${Fields.PERSISTENTMODE}`, () => {
+            this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
+        });
+
+
+        this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
+        this._enablePreviewId = gsettings.connect(`changed::${Fields.ENABLEPREVIEW}`, () => {
+            this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
+            this._enablePreview ? this._addPreviewCursor() : this._removePreviewCursor();
+        });
+        if(this._enablePreview) this._addPreviewCursor();
+
+        this._pick = new Shell.Screenshot();
+
+        this._onKeyPressedId = this.connect('key-press-event', this._onKeyPressed.bind(this));
+        this._onButtonPressedId = this.connect('button-press-event', this._onButtonPressed.bind(this));
+    }
+
+    _addPreviewCursor() {
         this._effect = new RecolorEffect({
             chroma: new Clutter.Color({
                 red: 80,
@@ -192,7 +213,6 @@ const ColorArea = GObject.registerClass({
             smoothing: 0.3,
         });
 
-        this._pick = new Shell.Screenshot();
         this._icon = new St.Icon({
             gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(COLOR_PICK_ICON) }),
             icon_size: Meta.prefs_get_cursor_size() * 1.5,
@@ -200,16 +220,33 @@ const ColorArea = GObject.registerClass({
             visible: false,
         });
         Main.uiGroup.add_actor(this._icon);
-
-        this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
-        this._persistentModeId = gsettings.connect(`changed::${Fields.PERSISTENTMODE}`, () => { this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE); });
-
-        this._onKeyPressedId = this.connect('key-press-event', this._onKeyPressed.bind(this));
-        this._onButtonPressedId = this.connect('button-press-event', this._onButtonPressed.bind(this));
     }
 
-    _onKeyPressed() {
-        if(!this._persistentMode) this.emit('end-pick');
+    _onKeyPressed(actor, event) { // NOTE: not working on wayland
+        let [screen, X, Y] = Gdk.Display.get_default().get_pointer();
+        switch(event.get_key_symbol()) {
+        case Clutter.KEY_Left:
+            Gdk.Display.get_default().warp_pointer(screen, X-1, Y);
+            break;
+        case Clutter.KEY_Up:
+            Gdk.Display.get_default().warp_pointer(screen, X, Y-1);
+            break;
+        case Clutter.KEY_Right:
+            Gdk.Display.get_default().warp_pointer(screen, X+1, Y);
+            break;
+        case Clutter.KEY_Down:
+            Gdk.Display.get_default().warp_pointer(screen, X, Y+1);
+            break;
+        default:
+            if(!this._persistentMode) this.emit('end-pick');
+            break;
+        }
+    }
+
+    _removePreviewCursor() {
+        Main.uiGroup.remove_actor(this._icon);
+        this._icon.destroy();
+        this._icon = null;
     }
 
     _onButtonPressed(actor, event) {
@@ -224,10 +261,10 @@ const ColorArea = GObject.registerClass({
     }
 
     destroy() {
-        Main.uiGroup.remove_actor(this._icon);
-        this._icon.destroy();
-        this._pick.destroy();
+        this._pick = null;
+        if(this._enablePreview) this._removePreviewCursor();
         if(this._persistentModeId) gsettings.disconnect(this._persistentModeId), this._persistentModeId = 0;
+        if(this._enablePreviewId) gsettings.disconnect(this._enablePreviewId), this._enablePreviewId = 0;
 
         if(this._onKeyPressedId)    this.disconnect(this._onKeyPressedId), this._onKeyPressedId = 0;
         if(this._onButtonPressedId) this.disconnect(this._onButtonPressedId), this._onButtonPressedId = 0;
@@ -266,6 +303,7 @@ class ColorPicker extends GObject.Object {
     }
 
     _fetchSettings() {
+        this._menuSize = gsettings.get_uint(Fields.MENUSIZE);
         this._menuStyle = gsettings.get_uint(Fields.MENUSTYLE);
         this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE);
         this._colorHistory = gsettings.get_strv(Fields.COLORHISTORY);
@@ -278,6 +316,9 @@ class ColorPicker extends GObject.Object {
     _loadSettings()  {
         this._area = null;
         this._fetchSettings();
+        this._menuSizeId = gsettings.connect(`changed::$Fields.MENUSIZE`, () => {
+            this._menuSize = gsettings.get_uint(Fields.MENUSIZE);
+        });
         this._menuStyleId = gsettings.connect(`changed::${Fields.MENUSTYLE}`, () => {
             this._menuStyle = gsettings.get_uint(Fields.MENUSTYLE);
             this._updateMenu();

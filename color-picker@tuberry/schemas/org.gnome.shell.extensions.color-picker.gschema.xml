@@ -17,6 +17,10 @@
             <default>false</default>
             <summary>persistent mode</summary>
         </key>
+        <key type="b" name="enable-preview">
+            <default>true</default>
+            <summary>enable preview</summary>
+        </key>
         <key type="as" name="shortcut">
             <default><![CDATA[['<Control><Shift>1']]]></default>
             <summary>shortcut to pick color</summary>
@@ -34,7 +38,7 @@
             <summary>notify style: 0-MSG 1-OSD</summary>
         </key>
         <key type="u" name="menu-size">
-            <default>16</default>
+            <default>8</default>
             <summary>menu item size</summary>
         </key>
         <key type="u" name="menu-style">
