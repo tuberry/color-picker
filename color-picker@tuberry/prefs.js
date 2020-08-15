@@ -63,11 +63,11 @@ class ColorPickerPrefs extends Gtk.Grid {
 
     _bulidUI() {
         this._row = 0;
-        this._add(this._field_enable_preview,  _('Enable preview cursor'));
+        this._add(this._field_enable_preview,  _('Enable preview (middle click to open menu)'));
         this._add(this._field_persistent_mode, _('Persistent mode (right click to exit)'));
-        this._add(this._field_enable_shortcut, _('Shortcut to pick'),   this._field_shortcut);
+        this._add(this._field_enable_shortcut, _('Shortcut to pick (arrow keys to move by pixel)'),  this._field_shortcut);
+        this._add(this._field_enable_systray,  _('Enable systray (right click to open menu)'), this._field_menu_size);
         this._add(this._field_enable_notify,   _('Notification style'), this._field_notify_style);
-        this._add(this._field_enable_systray,  _('Enable systray'), this._field_menu_size);
     }
 
     _syncStatus() {

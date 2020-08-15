@@ -2,8 +2,10 @@
 // by tuberry
 //
 const Main = imports.ui.main;
+const Slider = imports.ui.slider;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
+const BoxPointer = imports.ui.boxpointer;
 const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -15,8 +17,20 @@ const Fields = Me.imports.prefs.Fields;
 const MENUSIZE = 8;
 const NOTIFY = { MSG: 0, OSD: 1 };
 const MENU = { HISTORY: 0, COLLECTION: 1 };
+const NOTATION = { HEX: 0, RGB: 1, HLS: 2 };
 const COLOR_PICK_ICON = Me.dir.get_child('icons').get_child('color-pick.svg').get_path();
 const DROPPER_ICON = Me.dir.get_child('icons').get_child('dropper-symbolic.svg').get_path();
+
+const convColor = (color, notation) => {
+    switch(notation) {
+    case NOTATION.RGB:
+        return '(%d, %d, %d)'.format(color.red, color.green, color.blue);
+    case NOTATION.HLS:
+        return '(%d, %.3f, %.3f)'.format(...color.to_hls());
+    default:
+        return color.to_string().slice(0, 7);
+    }
+}
 
 // js/ui/screenshot.js
 const RecolorEffect = GObject.registerClass({
@@ -152,6 +166,141 @@ const RecolorEffect = GObject.registerClass({
     }
 });
 
+const ColorMenu = GObject.registerClass({
+    Signals: {
+    },
+}, class ColorMenu extends GObject.Object {
+    _init(actor, area) {
+        super._init();
+        this._color = Clutter.Color.from_string('#ffffff');
+        this._menu = new PopupMenu.PopupMenu(actor, 0.25, St.Side.LEFT);
+        this._menuManager = new PopupMenu.PopupMenuManager(area);
+        this._menuManager.addMenu(this._menu);
+    }
+
+    _updateMenu() {
+        this._menu.removeAll();
+        this._addHEXSection();
+        this._addRGBSection();
+        this._addHLSSection();
+    }
+
+    get actor() {
+        return this._menu.actor;
+    }
+
+    open(color) {
+        if(this._menu.isOpen) this._menu.close();
+        this._color = color;
+        this._updateMenu(color);
+        this._menu.open(BoxPointer.PopupAnimation.NONE);
+        this._menuManager.ignoreRelease();
+    }
+
+    _addHEXSection() {
+        this._hex = this._colorLabelItem();
+        this._menu.addMenuItem(this._hex);
+    }
+
+    _addRGBSection() {
+        let section = new PopupMenu.PopupMenuSection();
+        let [r, g, b] = [this._color.red, this._color.green, this._color.blue];
+        this._rgb = this._separatorItem(section, 'RGB' + convColor(this._color, NOTATION.RGB));
+        this._rslider = this._sliderItem(section, 'R', r / 255, x => { this.rgbColor = Clutter.Color.new(x * 255, g, b, 255); });
+        this._gslider = this._sliderItem(section, 'G', g / 255, x => { this.rgbColor = Clutter.Color.new(r, x * 255, b, 255); });
+        this._bslider = this._sliderItem(section, 'B', b / 255, x => { this.rgbColor = Clutter.Color.new(r, g, x * 255, 255); });
+
+        this._menu.addMenuItem(this._rgb);
+        this._menu.addMenuItem(this._rslider);
+        this._menu.addMenuItem(this._gslider);
+        this._menu.addMenuItem(this._bslider);
+    }
+
+    _addHLSSection() {
+        let section = new PopupMenu.PopupMenuSection();
+        let [h, l, s] = this._color.to_hls();
+        this._hls = this._separatorItem(section, 'HLS' + convColor(this._color, NOTATION.HLS));
+        this._hslider = this._sliderItem(section, 'H', h / 360, x => { this.hlsColor = Clutter.Color.from_hls(x*360, l , s); });
+        this._lslider = this._sliderItem(section, 'L', l, x => { this.hlsColor = Clutter.Color.from_hls(h, x, s); });
+        this._sslider = this._sliderItem(section, 'S', s, x => { this.hlsColor = Clutter.Color.from_hls(h, l, x); });
+
+        this._menu.addMenuItem(this._hls);
+        this._menu.addMenuItem(this._hslider);
+        this._menu.addMenuItem(this._lslider);
+        this._menu.addMenuItem(this._sslider);
+    }
+
+    set hlsColor(color) {
+        this._color = color;
+        let [h, l, s] = color.to_hls()
+        let hex = convColor(color, NOTATION.HEX);
+        this._hex.label.clutter_text.set_markup(`<span background="${hex}">     </span>  ${hex}`);
+        this._rgb.label.set_text('RGB' + convColor(color, NOTATION.RGB));
+        this._hls.label.set_text('HLS' + convColor(color, NOTATION.HLS));
+        this._rslider.slider.value = color.red / 255;
+        this._gslider.slider.value = color.green / 255;
+        this._bslider.slider.value = color.blue / 255;
+    }
+
+    set rgbColor(color) {
+        this._color = color;
+        let [h, l, s] = color.to_hls();
+        let hex = convColor(color, NOTATION.HEX);
+        this._hex.label.clutter_text.set_markup(`<span background="${hex}">     </span>  ${hex}`);
+        this._rgb.label.set_text('RGB' + convColor(color, NOTATION.RGB));
+        this._hls.label.set_text('HLS' + convColor(color, NOTATION.HLS));
+        this._hslider.slider.value = h / 360;
+        this._lslider.slider.value = l;
+        this._sslider.slider.value = s;
+    }
+
+    _colorLabelItem() {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item' });
+        let hex = convColor(this._color, NOTATION.HEX);
+        item.connect('activate', () => {
+            item._getTopMenu().close();
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hex);
+        });
+        let label = new St.Label({ x_expand: true });
+        label.clutter_text.set_markup(`<span background="${hex}">     </span>  ${hex}`);
+        item.add_child(label);
+        item.label = label;
+
+        let rgb = new St.Button({ child: new St.Label({ text: 'RGB', }), style_class: 'color-picker-button' });
+        rgb.connect('clicked', () => {
+            item._getTopMenu().close();
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, convColor(this._color, NOTATION.RGB));
+        });
+        item.add_child(rgb);
+
+        let hls = new St.Button({ child: new St.Label({ text: 'HLS', }), style_class: 'color-picker-button' });
+        hls.connect('clicked', () => {
+            item._getTopMenu().close();
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, convColor(this._color, NOTATION.HLS));
+        });
+        item.add_child(hls);
+
+        return item;
+    }
+
+    _separatorItem(menu, text) {
+        return new PopupMenu.PopupSeparatorMenuItem(text, { style_class: 'color-picker-item' });
+    }
+
+    _sliderItem(menu, text, value, func) {
+        let item = new PopupMenu.PopupBaseMenuItem({ activate: false });
+        let label = new St.Label({ text: _("%s").format(text), style_class: 'color-picker-item', x_expand: false });
+        let slider = new Slider.Slider(value);
+
+        slider.connect('notify::value', () => { if(item.active) func(slider.value); });
+        item.add_child(label);
+        item.add_child(slider);
+        item.slider = slider;
+
+        return item;
+    }
+});
+
 const ColorArea = GObject.registerClass({
     Signals: {
         'end-pick': {},
@@ -183,21 +332,20 @@ const ColorArea = GObject.registerClass({
     }
 
     _loadSettings() {
+        this._pick = new Shell.Screenshot();
+        this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
+        this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
         this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
+
+        if(this._enablePreview) this._addPreviewCursor();
+
         this._persistentModeId = gsettings.connect(`changed::${Fields.PERSISTENTMODE}`, () => {
             this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
         });
-        this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
-
-        this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
         this._enablePreviewId = gsettings.connect(`changed::${Fields.ENABLEPREVIEW}`, () => {
             this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
             this._enablePreview ? this._addPreviewCursor() : this._removePreviewCursor();
         });
-        if(this._enablePreview) this._addPreviewCursor();
-
-        this._pick = new Shell.Screenshot();
-
         this._onKeyPressedId = this.connect('key-press-event', this._onKeyPressed.bind(this));
         this._onButtonPressedId = this.connect('button-press-event', this._onButtonPressed.bind(this));
     }
@@ -219,7 +367,17 @@ const ColorArea = GObject.registerClass({
             effect: this._effect,
             visible: false,
         });
+        this._menu = new ColorMenu(this._icon, this);
+        Main.layoutManager.addTopChrome(this._menu.actor);
         Main.layoutManager.addTopChrome(this._icon);
+    }
+
+    _removePreviewCursor() {
+        Main.layoutManager.removeChrome(this._menu.actor);
+        Main.layoutManager.removeChrome(this._icon);
+        this._icon.destroy();
+        this._icon = null;
+        this._menu = null;
     }
 
     _onKeyPressed(actor, event) {
@@ -235,7 +393,7 @@ const ColorArea = GObject.registerClass({
             this._pointer.notify_absolute_motion(global.get_current_time(), X+1, Y);
             break;
         case Clutter.KEY_Down:
-            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y-1);
+            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y+1);
             break;
         default:
             if(!this._persistentMode) this.emit('end-pick');
@@ -243,21 +401,27 @@ const ColorArea = GObject.registerClass({
         }
     }
 
-    _removePreviewCursor() {
-        Main.layoutManager.removeChrome(this._icon);
-        this._icon.destroy();
-        this._icon = null;
-    }
-
     _onButtonPressed(actor, event) {
-        if(this._persistentMode && event.get_button() == 3) {
-            this.emit('end-pick');
-            return Clutter.EVENT_STOP;
+        let hex = convColor(this._effect.color, NOTATION.HEX);
+        switch(event.get_button()) {
+        case 1:
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hex);
+            this.emit('notify-color', hex);
+            if(!this._persistentMode) this.emit('end-pick');
+            break;
+        case 2:
+            if(this._enablePreview)
+                this._menu.open(this._effect.color);
+            break;
+        case 3:
+            if(this._persistentMode) {
+                this.emit('end-pick');
+                return Clutter.EVENT_STOP;
+            }
+            break;
+        default:
+            break;
         }
-        let hexcolor = this._effect.color.to_string().slice(0, 7);
-        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hexcolor);
-        this.emit('notify-color', hexcolor);
-        if(!this._persistentMode) this.emit('end-pick');
     }
 
     destroy() {
