@@ -206,9 +206,9 @@ const ColorMenu = GObject.registerClass({
         let section = new PopupMenu.PopupMenuSection();
         let [r, g, b] = [this._color.red, this._color.green, this._color.blue];
         this._rgb = this._separatorItem(section, 'RGB' + convColor(this._color, NOTATION.RGB));
-        this._rslider = this._sliderItem(section, 'R', r / 255, x => { this.rgbColor = Clutter.Color.new(x * 255, g, b, 255); });
-        this._gslider = this._sliderItem(section, 'G', g / 255, x => { this.rgbColor = Clutter.Color.new(r, x * 255, b, 255); });
-        this._bslider = this._sliderItem(section, 'B', b / 255, x => { this.rgbColor = Clutter.Color.new(r, g, x * 255, 255); });
+        this._rslider = this._sliderItem(section, 'R', r / 255, x => { this.rgbColor = Clutter.Color.new(x * 255, this._color.green, this._color.blue, 255); });
+        this._gslider = this._sliderItem(section, 'G', g / 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, x * 255, this._color.blue, 255); });
+        this._bslider = this._sliderItem(section, 'B', b / 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, this._color.green, x * 255, 255); });
 
         this._menu.addMenuItem(this._rgb);
         this._menu.addMenuItem(this._rslider);
@@ -217,12 +217,12 @@ const ColorMenu = GObject.registerClass({
     }
 
     _addHLSSection() {
-        let section = new PopupMenu.PopupMenuSection();
         let [h, l, s] = this._color.to_hls();
+        let section = new PopupMenu.PopupMenuSection();
         this._hls = this._separatorItem(section, 'HLS' + convColor(this._color, NOTATION.HLS));
-        this._hslider = this._sliderItem(section, 'H', h / 360, x => { this.hlsColor = Clutter.Color.from_hls(x*360, l , s); });
-        this._lslider = this._sliderItem(section, 'L', l, x => { this.hlsColor = Clutter.Color.from_hls(h, x, s); });
-        this._sslider = this._sliderItem(section, 'S', s, x => { this.hlsColor = Clutter.Color.from_hls(h, l, x); });
+        this._hslider = this._sliderItem(section, 'H', h / 360, x => { this.hlsColor = Clutter.Color.from_hls(x*360, this._color.to_hls()[1] , this._color.to_hls()[2]); });
+        this._lslider = this._sliderItem(section, 'L', l, x => { this.hlsColor = Clutter.Color.from_hls(this._color.to_hls()[0], x, this._color.to_hls()[2]); });
+        this._sslider = this._sliderItem(section, 'S', s, x => { this.hlsColor = Clutter.Color.from_hls(this._color.to_hls()[0], this._color.to_hls()[1], x); });
 
         this._menu.addMenuItem(this._hls);
         this._menu.addMenuItem(this._hslider);
