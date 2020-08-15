@@ -4,7 +4,7 @@
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
-const { Gio, St, Shell, Gdk, GObject, Clutter, Meta } = imports.gi;
+const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const gsettings = ExtensionUtils.getSettings();
@@ -187,7 +187,7 @@ const ColorArea = GObject.registerClass({
         this._persistentModeId = gsettings.connect(`changed::${Fields.PERSISTENTMODE}`, () => {
             this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
         });
-
+        this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
 
         this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
         this._enablePreviewId = gsettings.connect(`changed::${Fields.ENABLEPREVIEW}`, () => {
@@ -219,23 +219,23 @@ const ColorArea = GObject.registerClass({
             effect: this._effect,
             visible: false,
         });
-        Main.uiGroup.add_actor(this._icon);
+        Main.layoutManager.addTopChrome(this._icon);
     }
 
-    _onKeyPressed(actor, event) { // NOTE: not working on wayland
-        let [screen, X, Y] = Gdk.Display.get_default().get_pointer();
+    _onKeyPressed(actor, event) {
+        let [X, Y] = global.get_pointer();
         switch(event.get_key_symbol()) {
         case Clutter.KEY_Left:
-            Gdk.Display.get_default().warp_pointer(screen, X-1, Y);
+            this._pointer.notify_absolute_motion(global.get_current_time(), X-1, Y);
             break;
         case Clutter.KEY_Up:
-            Gdk.Display.get_default().warp_pointer(screen, X, Y-1);
+            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y-1);
             break;
         case Clutter.KEY_Right:
-            Gdk.Display.get_default().warp_pointer(screen, X+1, Y);
+            this._pointer.notify_absolute_motion(global.get_current_time(), X+1, Y);
             break;
         case Clutter.KEY_Down:
-            Gdk.Display.get_default().warp_pointer(screen, X, Y+1);
+            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y-1);
             break;
         default:
             if(!this._persistentMode) this.emit('end-pick');
@@ -244,7 +244,7 @@ const ColorArea = GObject.registerClass({
     }
 
     _removePreviewCursor() {
-        Main.uiGroup.remove_actor(this._icon);
+        Main.layoutManager.removeChrome(this._icon);
         this._icon.destroy();
         this._icon = null;
     }
@@ -262,6 +262,7 @@ const ColorArea = GObject.registerClass({
 
     destroy() {
         this._pick = null;
+        this._pointer = null;
         if(this._enablePreview) this._removePreviewCursor();
         if(this._persistentModeId) gsettings.disconnect(this._persistentModeId), this._persistentModeId = 0;
         if(this._enablePreviewId) gsettings.disconnect(this._enablePreviewId), this._enablePreviewId = 0;
@@ -281,7 +282,8 @@ const ColorButton = GObject.registerClass({
     }
 
     vfunc_event(event) {
-        if (event.get_button() == 1) {
+        if (event.type() == Clutter.EventType.BUTTON_PRESS &&
+            event.get_button() == 1) {
             this.emit('left-click');
             return Clutter.EVENT_STOP;
         }
@@ -316,7 +318,7 @@ class ColorPicker extends GObject.Object {
     _loadSettings()  {
         this._area = null;
         this._fetchSettings();
-        this._menuSizeId = gsettings.connect(`changed::$Fields.MENUSIZE`, () => {
+        this._menuSizeId = gsettings.connect(`changed::${Fields.MENUSIZE}`, () => {
             this._menuSize = gsettings.get_uint(Fields.MENUSIZE);
         });
         this._menuStyleId = gsettings.connect(`changed::${Fields.MENUSTYLE}`, () => {
