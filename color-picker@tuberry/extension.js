@@ -206,9 +206,9 @@ const ColorMenu = GObject.registerClass({
         let section = new PopupMenu.PopupMenuSection();
         let [r, g, b] = [this._color.red, this._color.green, this._color.blue];
         this._rgb = this._separatorItem(section, 'RGB' + convColor(this._color, NOTATION.RGB));
-        this._rslider = this._sliderItem(section, 'R', r / 255, x => { this.rgbColor = Clutter.Color.new(x * 255, this._color.green, this._color.blue, 255); });
-        this._gslider = this._sliderItem(section, 'G', g / 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, x * 255, this._color.blue, 255); });
-        this._bslider = this._sliderItem(section, 'B', b / 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, this._color.green, x * 255, 255); });
+        this._rslider = this._sliderItem(section, 'R', r / 255, x => { this.rgbColor = Clutter.Color.new(Math.round(x * 255), this._color.green, this._color.blue, 255); });
+        this._gslider = this._sliderItem(section, 'G', g / 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, Math.round(x * 255), this._color.blue, 255); });
+        this._bslider = this._sliderItem(section, 'B', b / 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, this._color.green, Math.round(x * 255), 255); });
 
         this._menu.addMenuItem(this._rgb);
         this._menu.addMenuItem(this._rslider);
@@ -220,9 +220,17 @@ const ColorMenu = GObject.registerClass({
         let [h, l, s] = this._color.to_hls();
         let section = new PopupMenu.PopupMenuSection();
         this._hls = this._separatorItem(section, 'HLS' + convColor(this._color, NOTATION.HLS));
-        this._hslider = this._sliderItem(section, 'H', h / 360, x => { this.hlsColor = Clutter.Color.from_hls(x*360, this._color.to_hls()[1] , this._color.to_hls()[2]); });
-        this._lslider = this._sliderItem(section, 'L', l, x => { this.hlsColor = Clutter.Color.from_hls(this._color.to_hls()[0], x, this._color.to_hls()[2]); });
-        this._sslider = this._sliderItem(section, 'S', s, x => { this.hlsColor = Clutter.Color.from_hls(this._color.to_hls()[0], this._color.to_hls()[1], x); });
+        this._hslider = this._sliderItem(section, 'H', h / 360, x => { this.hlsColor = Clutter.Color.from_hls(Math.round(x * 360), this._color.to_hls()[1] , this._color.to_hls()[2]); });
+        this._lslider = this._sliderItem(section, 'L', l, x => {
+            this.hlsColor = Clutter.Color.from_hls(this._color.to_hls()[0], x, this._color.to_hls()[2]);
+            this._hslider.slider.value = this._color.to_hls()[0] / 360;
+            this._sslider.slider.value = this._color.to_hls()[2];
+        });
+        this._sslider = this._sliderItem(section, 'S', s, x => {
+            this.hlsColor = Clutter.Color.from_hls(this._color.to_hls()[0], this._color.to_hls()[1], x);
+            this._hslider.slider.value = this._color.to_hls()[0] / 360;
+            this._lslider.slider.value = this._color.to_hls()[1];
+        });
 
         this._menu.addMenuItem(this._hls);
         this._menu.addMenuItem(this._hslider);
@@ -368,6 +376,7 @@ const ColorArea = GObject.registerClass({
             visible: false,
         });
         this._menu = new ColorMenu(this._icon, this);
+        this._menu.actor.hide();
         Main.layoutManager.addTopChrome(this._menu.actor);
         Main.layoutManager.addTopChrome(this._icon);
     }
@@ -402,11 +411,27 @@ const ColorArea = GObject.registerClass({
     }
 
     _onButtonPressed(actor, event) {
-        let hex = convColor(this._effect.color, NOTATION.HEX);
         switch(event.get_button()) {
         case 1:
-            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hex);
-            this.emit('notify-color', hex);
+            if(this._enablePreview) {
+                let hex = convColor(this._effect.color, NOTATION.HEX);
+                St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hex);
+                this.emit('notify-color', hex);
+            } else {
+                let [x, y] = global.get_pointer();
+                this._pick.pick_color(x, y, (pick, res) => {
+                    try {
+                        let [ok, color] = pick.pick_color_finish(res);
+                        if(ok) {
+                            let hex = convColor(color, NOTATION.HEX);
+                            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hex);
+                            this.emit('notify-color', hex);
+                        }
+                    } catch(e) {
+                        //
+                    }
+                });
+            }
             if(!this._persistentMode) this.emit('end-pick');
             break;
         case 2:
@@ -414,10 +439,8 @@ const ColorArea = GObject.registerClass({
                 this._menu.open(this._effect.color);
             break;
         case 3:
-            if(this._persistentMode) {
+            if(this._persistentMode)
                 this.emit('end-pick');
-                return Clutter.EVENT_STOP;
-            }
             break;
         default:
             break;
