@@ -598,8 +598,7 @@ class ColorPicker extends GObject.Object {
 
     _toggleKeybindings(tog) {
         if(tog) {
-            let ModeType = Shell.hasOwnProperty('ActionMode') ? Shell.ActionMode : Shell.KeyBindingMode;
-            Main.wm.addKeybinding(Fields.SHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, ModeType.ALL, () => { this._beginPick(); });
+            Main.wm.addKeybinding(Fields.SHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
         } else {
             Main.wm.removeKeybinding(Fields.SHORTCUT);
         }
