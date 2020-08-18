@@ -598,9 +598,9 @@ class ColorPicker extends GObject.Object {
 
     _toggleKeybindings(tog) {
         if(tog) {
-            Main.wm.addKeybinding(Fields.SHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
+            Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
         } else {
-            Main.wm.removeKeybinding(Fields.SHORTCUT);
+            Main.wm.removeKeybinding(Fields.PICKSHORTCUT);
         }
     }
 
@@ -673,10 +673,10 @@ class ColorPicker extends GObject.Object {
 
     disable() {
         this._endPick();
-        if(this._enableSystray) this._button.destroy();
-        if(this._enableShortcut) this._toggleKeybindings(false);
         for(let x in this)
             if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
+        if(this._enableSystray) this._button.destroy();
+        if(this._enableShortcut) this._toggleKeybindings(false);
     }
 });
 

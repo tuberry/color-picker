@@ -10,12 +10,12 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const gsettings = ExtensionUtils.getSettings();
 
 var Fields = {
-    SHORTCUT:        'shortcut',
     MENUSIZE:        'menu-size',
     MENUSTYLE:       'menu-style',
     NOTIFYSTYLE:     'notify-style',
     COLORHISTORY:    'color-history',
     ENABLENOTIFY:    'enable-notify',
+    PICKSHORTCUT:    'pick-shortcut',
     ENABLEPREVIEW:   'enable-preview',
     ENABLESYSTRAY:   'enable-systray',
     ENABLESHORTCUT:  'enable-shortcut',
@@ -57,7 +57,7 @@ class ColorPickerPrefs extends Gtk.Grid {
         this._field_persistent_mode = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.PERSISTENTMODE) });
 
         this._field_menu_size    = this._spinMaker(5, 12, 1);
-        this._field_shortcut     = this._shortCutMaker(Fields.SHORTCUT);
+        this._field_shortcut     = this._shortCutMaker(Fields.PICKSHORTCUT);
         this._field_notify_style = this._comboMaker([_('MSG'), _('OSD')]);
     }
 

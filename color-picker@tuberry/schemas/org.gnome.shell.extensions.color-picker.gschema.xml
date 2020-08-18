@@ -21,7 +21,7 @@
             <default>true</default>
             <summary>enable preview</summary>
         </key>
-        <key type="as" name="shortcut">
+        <key type="as" name="pick-shortcut">
             <default><![CDATA[['<Control><Shift>1']]]></default>
             <summary>shortcut to pick color</summary>
         </key>
