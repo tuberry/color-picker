@@ -265,26 +265,26 @@ const ColorMenu = GObject.registerClass({
     _colorLabelItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item' });
         let hex = convColor(this._color, NOTATION.HEX);
-        item.connect('activate', () => {
-            item._getTopMenu().close();
-            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hex);
-        });
         let label = new St.Label({ x_expand: true });
         label.clutter_text.set_markup(`<span background="${hex}">     </span>  ${hex}`);
+        item.connect('activate', () => {
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, convColor(this._color, NOTATION.HEX));
+            item._getTopMenu().close();
+        });
         item.add_child(label);
         item.label = label;
 
         let rgb = new St.Button({ child: new St.Label({ text: 'RGB', }), style_class: 'color-picker-button' });
         rgb.connect('clicked', () => {
-            item._getTopMenu().close();
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, convColor(this._color, NOTATION.RGB));
+            item._getTopMenu().close();
         });
         item.add_child(rgb);
 
         let hls = new St.Button({ child: new St.Label({ text: 'HLS', }), style_class: 'color-picker-button' });
         hls.connect('clicked', () => {
-            item._getTopMenu().close();
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, convColor(this._color, NOTATION.HLS));
+            item._getTopMenu().close();
         });
         item.add_child(hls);
 
@@ -297,7 +297,7 @@ const ColorMenu = GObject.registerClass({
 
     _sliderItem(menu, text, value, func) {
         let item = new PopupMenu.PopupBaseMenuItem({ activate: false });
-        let label = new St.Label({ text: _("%s").format(text), style_class: 'color-picker-item', x_expand: false });
+        let label = new St.Label({ text: text, style_class: 'color-picker-item', x_expand: false });
         let slider = new Slider.Slider(value);
 
         slider.connect('notify::value', () => { if(item.active) func(slider.value); });
@@ -343,19 +343,28 @@ const ColorArea = GObject.registerClass({
         this._pick = new Shell.Screenshot();
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
-        this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
 
-        if(this._enablePreview) this._addPreviewCursor();
-
-        this._persistentModeId = gsettings.connect(`changed::${Fields.PERSISTENTMODE}`, () => {
-            this._persistentMode = gsettings.get_boolean(Fields.PERSISTENTMODE);
-        });
-        this._enablePreviewId = gsettings.connect(`changed::${Fields.ENABLEPREVIEW}`, () => {
-            this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
-            this._enablePreview ? this._addPreviewCursor() : this._removePreviewCursor();
-        });
+        this._enablePreviewId = gsettings.connect(`changed::${Fields.ENABLEPREVIEW}`, () => { this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW); });
         this._onKeyPressedId = this.connect('key-press-event', this._onKeyPressed.bind(this));
         this._onButtonPressedId = this.connect('button-press-event', this._onButtonPressed.bind(this));
+    }
+
+    get _enablePreview() {
+        return gsettings.get_boolean(Fields.ENABLEPREVIEW);
+    }
+
+    get _persistentMode() {
+        return gsettings.get_boolean(Fields.PERSISTENTMODE);
+    }
+
+    set _enablePreview(enable) {
+        if(enable) {
+            if(this._icon) return;
+            this._addPreviewCursor();
+        } else {
+            if(!this._icon) return;
+            this._removePreviewCursor();
+        }
     }
 
     _addPreviewCursor() {
@@ -450,8 +459,7 @@ const ColorArea = GObject.registerClass({
     destroy() {
         this._pick = null;
         this._pointer = null;
-        if(this._enablePreview) this._removePreviewCursor();
-        if(this._persistentModeId) gsettings.disconnect(this._persistentModeId), this._persistentModeId = 0;
+        this._enablePreview = false;
         if(this._enablePreviewId) gsettings.disconnect(this._enablePreviewId), this._enablePreviewId = 0;
 
         if(this._onKeyPressedId)    this.disconnect(this._onKeyPressedId), this._onKeyPressedId = 0;
@@ -491,49 +499,39 @@ class ColorPicker extends GObject.Object {
         this._colorCollection = [];
     }
 
-    _fetchSettings() {
-        this._menuSize = gsettings.get_uint(Fields.MENUSIZE);
-        this._menuStyle = gsettings.get_uint(Fields.MENUSTYLE);
-        this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE);
-        this._colorHistory = gsettings.get_strv(Fields.COLORHISTORY);
-        this._enableNotify = gsettings.get_boolean(Fields.ENABLENOTIFY);
-        this._enableSystray = gsettings.get_boolean(Fields.ENABLESYSTRAY);
-        this._colorCollection = gsettings.get_strv(Fields.COLORCOLLECTION);
-        this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT);
+    get _menuSize() {
+        return gsettings.get_uint(Fields.MENUSIZE);
     }
 
-    _loadSettings()  {
-        this._area = null;
-        this._fetchSettings();
-        this._menuSizeId = gsettings.connect(`changed::${Fields.MENUSIZE}`, () => {
-            this._menuSize = gsettings.get_uint(Fields.MENUSIZE);
-        });
-        this._menuStyleId = gsettings.connect(`changed::${Fields.MENUSTYLE}`, () => {
-            this._menuStyle = gsettings.get_uint(Fields.MENUSTYLE);
-            this._updateMenu();
-        });
-        this._enableNotifyId = gsettings.connect(`changed::${Fields.ENABLENOTIFY}`, () => {
-            this._enableNotify = gsettings.get_boolean(Fields.ENABLENOTIFY);
-        });
-        this._colorHistoryId = gsettings.connect(`changed::${Fields.COLORHISTORY}`, () => {
-            this._colorHistory = gsettings.get_strv(Fields.COLORHISTORY);
-            if(this._menuStyle == MENU.HISTORY) this._updateMenu();
-        });
-        this._colorCollectionId = gsettings.connect(`changed::${Fields.COLORCOLLECTION}`, () => {
-            this._colorCollection = gsettings.get_strv(Fields.COLORCOLLECTION);
-            if(this._menuStyle == MENU.COLLECTION) this._updateMenu();
-        });
-        this._notifyStyleId = gsettings.connect(`changed::${Fields.NOTIFYSTYLE}`, () => {
-            this._notifyStyle = gsettings.get_uint(Fields.NOTIFYSTYLE);
-        });
-        this._enableSystrayId = gsettings.connect(`changed::${Fields.ENABLESYSTRAY}`, () => {
-            this._enableSystray ? this._button.destroy() : this._addButton();
-            this._enableSystray = !this._enableSystray;
-        });
-        this._enableShortcutId = gsettings.connect(`changed::${Fields.ENABLESHORTCUT}`, () => {
-            this._toggleKeybindings(!this._enableShortcut);
-            this._enableShortcut = !this._enableShortcut;
-        });
+    get _enableNotify() {
+        return gsettings.get_boolean(Fields.ENABLENOTIFY);
+    }
+
+    get _notifyStyle() {
+        return gsettings.get_uint(Fields.NOTIFYSTYLE);
+    }
+
+    set _enableShortcut(enable) {
+        if(enable) {
+            Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
+        } else {
+            Main.wm.removeKeybinding(Fields.PICKSHORTCUT);
+        }
+    }
+
+    set _enableSystray(enable) {
+        if(enable) {
+            if(this._button) return;
+            this._addButton();
+        } else {
+            if(!this._button) return;
+            this._button.destroy();
+            this._button = null;
+        }
+    }
+
+    get _enableSystray() {
+        return gsettings.get_boolean(Fields.ENABLESYSTRAY);
     }
 
     _updateMenu() {
@@ -594,14 +592,6 @@ class ColorPicker extends GObject.Object {
         addButtonItem('emblem-system-symbolic', () => { item._getTopMenu().close(); ExtensionUtils.openPrefs(); });
         item.add_child(hbox);
         return item;
-    }
-
-    _toggleKeybindings(tog) {
-        if(tog) {
-            Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
-        } else {
-            Main.wm.removeKeybinding(Fields.PICKSHORTCUT);
-        }
     }
 
     _addButton() {
@@ -665,18 +655,39 @@ class ColorPicker extends GObject.Object {
         }
     }
 
+    _fetchSettings() {
+        this._menuStyle = gsettings.get_uint(Fields.MENUSTYLE);
+        this._colorHistory = gsettings.get_strv(Fields.COLORHISTORY);
+        this._enableSystray = gsettings.get_boolean(Fields.ENABLESYSTRAY);
+        this._colorCollection = gsettings.get_strv(Fields.COLORCOLLECTION);
+        this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT);
+    }
+
     enable() {
-        this._loadSettings();
-        if(this._enableSystray) this._addButton();
-        if(this._enableShortcut) this._toggleKeybindings(true);
+        this._area = null;
+        this._fetchSettings();
+        this._menuStyleId = gsettings.connect(`changed::${Fields.MENUSTYLE}`, () => {
+            this._menuStyle = gsettings.get_uint(Fields.MENUSTYLE);
+            this._updateMenu();
+        });
+        this._colorHistoryId = gsettings.connect(`changed::${Fields.COLORHISTORY}`, () => {
+            this._colorHistory = gsettings.get_strv(Fields.COLORHISTORY);
+            if(this._menuStyle == MENU.HISTORY) this._updateMenu();
+        });
+        this._colorCollectionId = gsettings.connect(`changed::${Fields.COLORCOLLECTION}`, () => {
+            this._colorCollection = gsettings.get_strv(Fields.COLORCOLLECTION);
+            if(this._menuStyle == MENU.COLLECTION) this._updateMenu();
+        });
+        this._enableSystrayId = gsettings.connect(`changed::${Fields.ENABLESYSTRAY}`, () => { this._enableSystray = gsettings.get_boolean(Fields.ENABLESYSTRAY); });
+        this._enableShortcutId = gsettings.connect(`changed::${Fields.ENABLESHORTCUT}`, () => { this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT); });
     }
 
     disable() {
         this._endPick();
         for(let x in this)
             if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
-        if(this._enableSystray) this._button.destroy();
-        if(this._enableShortcut) this._toggleKeybindings(false);
+        this._enableSystray = false;
+        this._enableShortcut = false;
     }
 });
 

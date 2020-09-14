@@ -1,0 +1,50 @@
+# Chinese translations for PACKAGE package.
+# Copyright (C) 2020 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# tuberry <tuberry@example.com>, 2020.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-09-08 10:19+0800\n"
+"PO-Revision-Date: 2020-09-08 10:19+0800\n"
+"Last-Translator: tuberry <tuberry@example.com>\n"
+"Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: extension.js:642
+#, javascript-format
+msgid "%s is picked."
+msgstr "已拾取 %s"
+
+#: prefs.js:61
+msgid "MSG"
+msgstr "系统通知"
+
+#: prefs.js:61
+msgid "OSD"
+msgstr "屏内提示"
+
+#: prefs.js:66
+msgid "Enable preview (middle click to open menu)"
+msgstr "启用预览（中键打开菜单）"
+
+#: prefs.js:67
+msgid "Persistent mode (right click to exit)"
+msgstr "持续模式（右键退出）"
+
+#: prefs.js:68
+msgid "Shortcut to pick (arrow keys to move by pixel)"
+msgstr "快捷键（方向键按像素移动）"
+
+#: prefs.js:69
+msgid "Enable systray (right click to open menu)"
+msgstr "启用托盘图标"
+
+#: prefs.js:70
+msgid "Notification style"
+msgstr "通知方式"
