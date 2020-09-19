@@ -315,9 +315,10 @@ const ColorArea = GObject.registerClass({
         'notify-color': { param_types: [GObject.TYPE_STRING] },
     },
 }, class ColorArea extends St.DrawingArea {
-    _init() {
+    _init(params) {
         super._init({ reactive: true });
         this._loadSettings();
+        this.ignorePersistentMode = params && params.ignorePersistentMode || false;
     }
 
     vfunc_motion_event(motionEvent) {
@@ -354,7 +355,7 @@ const ColorArea = GObject.registerClass({
     }
 
     get _persistentMode() {
-        return gsettings.get_boolean(Fields.PERSISTENTMODE);
+        return gsettings.get_boolean(Fields.PERSISTENTMODE) && !this.ignorePersistentMode;
     }
 
     set _enablePreview(enable) {
@@ -661,6 +662,31 @@ class ColorPicker extends GObject.Object {
         this._enableSystray = gsettings.get_boolean(Fields.ENABLESYSTRAY);
         this._colorCollection = gsettings.get_strv(Fields.COLORCOLLECTION);
         this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT);
+    }
+
+    // API
+    // test: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
+    pickAsync() {
+        return new Promise((resolve, reject) => {
+            try {
+                if(this._area !== null) { reject(new Error('Cannot start picking')); return; }
+                global.display.set_cursor(Meta.Cursor.CROSSHAIR); // NOTE: set NONE get 'Bail out' from Mutter
+                if(this._enableSystray) this._button.add_style_class_name('active');
+                this._area = new ColorArea({ ignorePersistentMode: true });
+                this._area.set_size(...global.display.get_size());
+                this._area.endId = this._area.connect('end-pick', () => {
+                    this._endPick();
+                    reject(new Error('Cancelled'));
+                });
+                this._area.showId = this._area.connect('notify-color', (actor, color) => {
+                    resolve(color);
+                });
+                Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
+                Main.layoutManager.addTopChrome(this._area);
+            } catch(e) {
+                reject(e);
+            }
+        });
     }
 
     enable() {
