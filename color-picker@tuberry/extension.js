@@ -32,6 +32,18 @@ const convColor = (color, notation) => {
     }
 }
 
+const convColorToCSS = (color, notation) => {
+    switch(notation) {
+    case NOTATION.RGB:
+        return 'rgb(%d, %d, %d)'.format(color.red, color.green, color.blue);
+    case NOTATION.HLS:
+        let [h, l, s] = color.to_hls();
+        return 'hsl(%d, %f%%, %f%%)'.format(h, Number(s * 100).toFixed(1), Number(l * 100).toFixed(1));
+    default:
+        return color.to_string().slice(0, 7);
+    }
+}
+
 // js/ui/screenshot.js
 const RecolorEffect = GObject.registerClass({
     Properties: {
@@ -168,6 +180,7 @@ const RecolorEffect = GObject.registerClass({
 
 const ColorMenu = GObject.registerClass({
     Signals: {
+        'color-selected': { param_types: [GObject.TYPE_STRING] },
     },
 }, class ColorMenu extends GObject.Object {
     _init(actor, area) {
@@ -270,6 +283,7 @@ const ColorMenu = GObject.registerClass({
         item.connect('activate', () => {
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, convColor(this._color, NOTATION.HEX));
             item._getTopMenu().close();
+            this.emit('color-selected', convColorToCSS(this._color, NOTATION.HEX));
         });
         item.add_child(label);
         item.label = label;
@@ -278,6 +292,7 @@ const ColorMenu = GObject.registerClass({
         rgb.connect('clicked', () => {
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, convColor(this._color, NOTATION.RGB));
             item._getTopMenu().close();
+            this.emit('color-selected', convColorToCSS(this._color, NOTATION.RGB));
         });
         item.add_child(rgb);
 
@@ -285,6 +300,7 @@ const ColorMenu = GObject.registerClass({
         hls.connect('clicked', () => {
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, convColor(this._color, NOTATION.HLS));
             item._getTopMenu().close();
+            this.emit('color-selected', convColorToCSS(this._color, NOTATION.HLS));
         });
         item.add_child(hls);
 
@@ -313,6 +329,7 @@ const ColorArea = GObject.registerClass({
     Signals: {
         'end-pick': {},
         'notify-color': { param_types: [GObject.TYPE_STRING] },
+        'notify-menu-color': { param_types: [GObject.TYPE_STRING] },
     },
 }, class ColorArea extends St.DrawingArea {
     _init(params) {
@@ -389,9 +406,13 @@ const ColorArea = GObject.registerClass({
         this._menu.actor.hide();
         Main.layoutManager.addTopChrome(this._menu.actor);
         Main.layoutManager.addTopChrome(this._icon);
+        this._onMenuColorSelectedId = this._menu.connect('color-selected', (menu, color) => {
+            this.emit('notify-menu-color', color);
+        });
     }
 
     _removePreviewCursor() {
+        if(this._onMenuColorSelectedId) this._menu.disconnect(this._onMenuColorSelectedId), this._onMenuColorSelectedId = 0;
         Main.layoutManager.removeChrome(this._menu.actor);
         Main.layoutManager.removeChrome(this._icon);
         this._icon.destroy();
@@ -465,6 +486,7 @@ const ColorArea = GObject.registerClass({
 
         if(this._onKeyPressedId)    this.disconnect(this._onKeyPressedId), this._onKeyPressedId = 0;
         if(this._onButtonPressedId) this.disconnect(this._onButtonPressedId), this._onButtonPressedId = 0;
+        if(this._menu && this._onMenuColorSelectedId) this._menu.disconnect(this._onMenuColorSelectedId), this._onMenuColorSelectedId = 0;
     }
 });
 
@@ -679,6 +701,10 @@ class ColorPicker extends GObject.Object {
                     reject(new Error('Cancelled'));
                 });
                 this._area.showId = this._area.connect('notify-color', (actor, color) => {
+                    resolve(color);
+                });
+                this._area.showId = this._area.connect('notify-menu-color', (actor, color) => {
+                    this._endPick();
                     resolve(color);
                 });
                 Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
