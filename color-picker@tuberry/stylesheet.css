@@ -1,5 +1,6 @@
 /* Add your custom extension styling here */
-.color-picker {
+.color-picker-menu {
+    width: 240px;
 }
 
 .active .color-picker {
