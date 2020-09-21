@@ -324,7 +324,7 @@ const ColorMenu = GObject.registerClass({
     }
 
     destroy() {
-        this.actor.destroy();
+        this._menu.destroy();
         this._menu = null;
         this._menuManager = null;
     }
@@ -421,10 +421,10 @@ const ColorArea = GObject.registerClass({
         if(this._onMenuColorSelectedId) this._menu.disconnect(this._onMenuColorSelectedId), this._onMenuColorSelectedId = 0;
         Main.layoutManager.removeChrome(this._menu.actor);
         Main.layoutManager.removeChrome(this._icon);
-        this._icon.destroy();
         this._menu.destroy();
-        this._icon = null;
+        this._icon.destroy();
         this._menu = null;
+        this._icon = null;
     }
 
     _onKeyPressed(actor, event) {
@@ -496,6 +496,8 @@ const ColorArea = GObject.registerClass({
         this._pick = null;
         this._pointer = null;
         this._enablePreview = false;
+
+        super.destroy();
     }
 });
 
