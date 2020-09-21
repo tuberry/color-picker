@@ -366,10 +366,7 @@ const ColorArea = GObject.registerClass({
         this._pick = new Shell.Screenshot();
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
-
         this._enablePreviewId = gsettings.connect(`changed::${Fields.ENABLEPREVIEW}`, () => { this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW); });
-        this._onKeyPressedId = this.connect('key-press-event', this._onKeyPressed.bind(this));
-        this._onButtonPressedId = this.connect('button-press-event', this._onButtonPressed.bind(this));
     }
 
     get _enablePreview() {
@@ -419,17 +416,15 @@ const ColorArea = GObject.registerClass({
 
     _removePreviewCursor() {
         if(this._onMenuColorSelectedId) this._menu.disconnect(this._onMenuColorSelectedId), this._onMenuColorSelectedId = 0;
-        Main.layoutManager.removeChrome(this._menu.actor);
-        Main.layoutManager.removeChrome(this._icon);
         this._menu.destroy();
         this._icon.destroy();
         this._menu = null;
         this._icon = null;
     }
 
-    _onKeyPressed(actor, event) {
+    vfunc_key_press_event(event) {
         let [X, Y] = global.get_pointer();
-        switch(event.get_key_symbol()) {
+        switch(event.keyval) {
         case Clutter.KEY_Left:
             this._pointer.notify_absolute_motion(global.get_current_time(), X-1, Y);
             break;
@@ -454,8 +449,8 @@ const ColorArea = GObject.registerClass({
         }
     }
 
-    _onButtonPressed(actor, event) {
-        switch(event.get_button()) {
+    vfunc_button_press_event(event) {
+        switch(event.button) {
         case 1:
             if(this._enablePreview) {
                 let hex = convColorToCSS(this._effect.color, NOTATION.HEX);
@@ -490,8 +485,6 @@ const ColorArea = GObject.registerClass({
 
     destroy() {
         if(this._enablePreviewId) gsettings.disconnect(this._enablePreviewId), this._enablePreviewId = 0;
-        if(this._onKeyPressedId)    this.disconnect(this._onKeyPressedId), this._onKeyPressedId = 0;
-        if(this._onButtonPressedId) this.disconnect(this._onButtonPressedId), this._onButtonPressedId = 0;
 
         this._pick = null;
         this._pointer = null;
@@ -661,7 +654,6 @@ class ColorPicker extends GObject.Object {
         if(this._area.showId) this._area.disconnect(this._area.showId), this._area.showId = 0;
         if(this._area.showMenuId) this._area.disconnect(this._area.showMenuId), this._area.showMenuId = 0;
         if(Main._findModal(this._area) != -1) Main.popModal(this._area);
-        Main.layoutManager.removeChrome(this._area);
         this._area.destroy();
         this._area = null;
     }
