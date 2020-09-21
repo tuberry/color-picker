@@ -188,7 +188,7 @@ const ColorMenu = GObject.registerClass({
         this._color = Clutter.Color.from_string('#ffffff')[1];
         this._menu = new PopupMenu.PopupMenu(actor, 0.25, St.Side.LEFT);
         this._menu.connect('open-state-changed', (menu, open) => global.display.set_cursor(Meta.Cursor[open ? 'DEFAULT' : 'CROSSHAIR']));
-        this.actor.style_class = 'color-picker-menu popup-menu';
+        this.actor.add_style_class_name('color-picker-menu');
         this._menuManager = new PopupMenu.PopupMenuManager(area);
         this._menuManager.addMenu(this._menu);
     }
