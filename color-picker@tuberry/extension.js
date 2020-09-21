@@ -713,7 +713,6 @@ class ColorPicker extends GObject.Object {
                     resolve(color);
                 });
                 this._area.showMenuId = this._area.connect('notify-menu-color', (actor, color) => {
-                    this._endPick();
                     resolve(color);
                 });
                 Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
