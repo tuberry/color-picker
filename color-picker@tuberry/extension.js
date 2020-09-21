@@ -445,6 +445,9 @@ const ColorArea = GObject.registerClass({
         case Clutter.KEY_Escape:
             this.emit('end-pick');
             break;
+        case Clutter.KEY_Menu:
+            if(this._enablePreview) this._menu.open(this._effect.color);
+            break;
         default:
             if(!this._persistentMode) this.emit('end-pick');
             break;
