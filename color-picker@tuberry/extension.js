@@ -34,7 +34,7 @@ const convColorToCSS = (color, notation) => {
 
 const convColorToHex = string => {
     if(string.includes('hsl')) {
-        let [h, s, l] = string.slice(4, -1).split(',').map((v, i, a) => parseFloat(v) / (i == 0 ? 1 : 100))
+        let [h, s, l] = string.slice(4, -1).split(',').map((v, i, a) => parseFloat(v) / (i == 0 ? 1 : 100));
         return Clutter.Color.from_hls(h, l, s).to_string().slice(0, 7);
     } else if(string.includes('rgb')) {
         let rgb = Clutter.Color.from_string(string)[1];
@@ -334,7 +334,6 @@ const ColorArea = GObject.registerClass({
     Signals: {
         'end-pick': {},
         'notify-color': { param_types: [GObject.TYPE_STRING] },
-        'notify-menu-color': { param_types: [GObject.TYPE_STRING] },
     },
 }, class ColorArea extends St.DrawingArea {
     _init(params) {
@@ -346,20 +345,21 @@ const ColorArea = GObject.registerClass({
     vfunc_motion_event(motionEvent) {
         if(!this._enablePreview) return Clutter.EVENT_PROPAGATE;
         const { x, y } = motionEvent;
+        this._pickAt(x, y);
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    _pickAt(x, y) {
         this._pick.pick_color(x, y, (pick, res) => {
             try {
-                let [ok, color] = pick.pick_color_finish(res);
-                if(ok) {
-                    this._icon.set_position(x, y);
-                    this._effect.color = color;
-                    this._icon.show();
-                }
+                let [, color] = pick.pick_color_finish(res);
+                this._icon.set_position(x, y);
+                this._effect.color = color;
+                this._icon.show();
             } catch(e) {
                 //
             }
         });
-
-        return Clutter.EVENT_PROPAGATE;
     }
 
     _loadSettings() {
@@ -404,12 +404,15 @@ const ColorArea = GObject.registerClass({
             effect: this._effect,
             visible: false,
         });
+        let [x, y] = global.get_pointer();
+        this._pickAt(x, y);
+
         this._menu = new ColorMenu(this._icon, this);
         this._menu.actor.hide();
         Main.layoutManager.addTopChrome(this._menu.actor);
         Main.layoutManager.addTopChrome(this._icon);
         this._onMenuColorSelectedId = this._menu.connect('color-selected', (menu, color) => {
-            this.emit('notify-menu-color', color);
+            this.emit('notify-color', color);
             if(!this._persistentMode) this.emit('end-pick');
         });
     }
@@ -447,6 +450,8 @@ const ColorArea = GObject.registerClass({
             if(!this._persistentMode) this.emit('end-pick');
             break;
         }
+
+        return Clutter.EVENT_PROPAGATE;
     }
 
     vfunc_button_press_event(event) {
@@ -454,7 +459,6 @@ const ColorArea = GObject.registerClass({
         case 1:
             if(this._enablePreview) {
                 let hex = convColorToCSS(this._effect.color, NOTATION.HEX);
-                St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hex);
                 this.emit('notify-color', hex);
             } else {
                 let [x, y] = global.get_pointer();
@@ -463,7 +467,6 @@ const ColorArea = GObject.registerClass({
                         let [ok, color] = pick.pick_color_finish(res);
                         if(ok) {
                             let hex = convColorToCSS(color, NOTATION.HEX);
-                            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, hex);
                             this.emit('notify-color', hex);
                         }
                     } catch(e) {
@@ -481,6 +484,8 @@ const ColorArea = GObject.registerClass({
             this.emit('end-pick');
             break;
         }
+
+        return Clutter.EVENT_PROPAGATE;
     }
 
     destroy() {
@@ -641,7 +646,6 @@ class ColorPicker extends GObject.Object {
         this._area.set_size(...global.display.get_size());
         this._area.endId = this._area.connect('end-pick', this._endPick.bind(this));
         this._area.showId = this._area.connect('notify-color', this._notify.bind(this));
-        this._area.showMenuId = this._area.connect('notify-menu-color', this._notify.bind(this));
         Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
         Main.layoutManager.addChrome(this._area);
     }
@@ -652,13 +656,13 @@ class ColorPicker extends GObject.Object {
         if(this._enableSystray) this._button.remove_style_class_name('active');
         if(this._area.endId) this._area.disconnect(this._area.endId), this._area.endId = 0;
         if(this._area.showId) this._area.disconnect(this._area.showId), this._area.showId = 0;
-        if(this._area.showMenuId) this._area.disconnect(this._area.showMenuId), this._area.showMenuId = 0;
         if(Main._findModal(this._area) != -1) Main.popModal(this._area);
         this._area.destroy();
         this._area = null;
     }
 
     _notify(actor, color) {
+        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
         if(!this._colorHistory.includes(color)) {
             this._colorHistory.unshift(color);
             gsettings.set_strv(Fields.COLORHISTORY, this._colorHistory.slice(0, this._menuSize));
@@ -704,9 +708,6 @@ class ColorPicker extends GObject.Object {
                     reject(new Error('Cancelled'));
                 });
                 this._area.showId = this._area.connect('notify-color', (actor, color) => {
-                    resolve(color);
-                });
-                this._area.showMenuId = this._area.connect('notify-menu-color', (actor, color) => {
                     resolve(color);
                 });
                 Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
