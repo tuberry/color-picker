@@ -12,7 +12,7 @@ Simple color picker for gnome shell.
 or manually:
 ```shell
 git clone https://github.com/tuberry/color-picker.git
-cp -r ./color-picker/color-picker@tuberry ~/.local/share/gnome-shell/extensions/
+cd color-picker && make install
 ```
 
 ## Usage
