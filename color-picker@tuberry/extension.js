@@ -257,7 +257,7 @@ const ColorMenu = GObject.registerClass({
         this._color = color;
         let [h, l, s] = color.to_hls()
         let hex = convColorToCSS(color, NOTATION.HEX);
-        this._hex.label.clutter_text.set_markup(`<span background="${hex}">     </span>  ${hex}`);
+        this._hex.label.clutter_text.set_markup('<span background="%s">     </span>  %s'.format(hex, hex));
         this._rgb.label.set_text(convColorToCSS(color, NOTATION.RGB).toUpperCase());
         this._hsl.label.set_text(convColorToCSS(color, NOTATION.HSL).toUpperCase());
         this._rslider.slider.value = color.red / 255;
@@ -269,7 +269,7 @@ const ColorMenu = GObject.registerClass({
         this._color = color;
         let [h, l, s] = color.to_hls();
         let hex = convColorToCSS(color, NOTATION.HEX);
-        this._hex.label.clutter_text.set_markup(`<span background="${hex}">     </span>  ${hex}`);
+        this._hex.label.clutter_text.set_markup('<span background="%s">     </span>  %s'.format(hex, hex));
         this._rgb.label.set_text(convColorToCSS(color, NOTATION.RGB).toUpperCase());
         this._hsl.label.set_text(convColorToCSS(color, NOTATION.HSL).toUpperCase());
         this._hslider.slider.value = h / 360;
@@ -281,7 +281,7 @@ const ColorMenu = GObject.registerClass({
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item' });
         let hex = convColorToCSS(this._color, NOTATION.HEX);
         let label = new St.Label({ x_expand: true });
-        label.clutter_text.set_markup(`<span background="${hex}">     </span>  ${hex}`);
+        label.clutter_text.set_markup('<span background="%s">     </span>  %s'.format(hex, hex));
         item.connect('activate', () => {
             item._getTopMenu().close();
             this.emit('color-selected', convColorToCSS(this._color, NOTATION.HEX));
@@ -366,7 +366,7 @@ const ColorArea = GObject.registerClass({
         this._pick = new Shell.Screenshot();
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
-        this._enablePreviewId = gsettings.connect(`changed::${Fields.ENABLEPREVIEW}`, () => { this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW); });
+        this._enablePreviewId = gsettings.connect('changed::' + Fields.ENABLEPREVIEW, () => { this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW); });
     }
 
     get _enablePreview() {
@@ -584,7 +584,7 @@ class ColorPicker extends GObject.Object {
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
         });
         let label = new St.Label({ x_expand: true });
-        label.clutter_text.set_markup(`<span background="${convColorToHex(color)}">     </span>  ${color}`);
+        label.clutter_text.set_markup('<span background="%s">     </span>  %s'.format(convColorToHex(color), color));
         item.add_child(label);
 
         let button = new St.Button({
@@ -674,7 +674,7 @@ class ColorPicker extends GObject.Object {
             let index = global.display.get_current_monitor();
             let icon = new Gio.ThemedIcon({ name: 'media-playback-stop-symbolic' });
             let osd = Main.osdWindowManager._osdWindows[index];
-            osd._icon.set_style(`color: ${convColorToHex(color)};`);
+            osd._icon.set_style('color: %s;'.format(convColorToHex(color)));
             Main.osdWindowManager.show(index, icon, color, null, 2);
             let clearId = osd._label.connect('notify::text', () => {
                 if(this._area !== null) return;
@@ -721,26 +721,26 @@ class ColorPicker extends GObject.Object {
     enable() {
         this._area = null;
         this._fetchSettings();
-        this._menuStyleId = gsettings.connect(`changed::${Fields.MENUSTYLE}`, () => {
+        this._menuStyleId = gsettings.connect('changed::' + Fields.MENUSTYLE, () => {
             this._menuStyle = gsettings.get_uint(Fields.MENUSTYLE);
             this._updateMenu();
         });
-        this._colorHistoryId = gsettings.connect(`changed::${Fields.COLORHISTORY}`, () => {
+        this._colorHistoryId = gsettings.connect('changed::' + Fields.COLORHISTORY, () => {
             this._colorHistory = gsettings.get_strv(Fields.COLORHISTORY);
             if(this._menuStyle == MENU.HISTORY) this._updateMenu();
         });
-        this._colorCollectionId = gsettings.connect(`changed::${Fields.COLORCOLLECTION}`, () => {
+        this._colorCollectionId = gsettings.connect('changed::' + Fields.COLORCOLLECTION, () => {
             this._colorCollection = gsettings.get_strv(Fields.COLORCOLLECTION);
             if(this._menuStyle == MENU.COLLECTION) this._updateMenu();
         });
-        this._enableSystrayId = gsettings.connect(`changed::${Fields.ENABLESYSTRAY}`, () => { this._enableSystray = gsettings.get_boolean(Fields.ENABLESYSTRAY); });
-        this._enableShortcutId = gsettings.connect(`changed::${Fields.ENABLESHORTCUT}`, () => { this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT); });
+        this._enableSystrayId = gsettings.connect('changed::' + Fields.ENABLESYSTRAY, () => { this._enableSystray = gsettings.get_boolean(Fields.ENABLESYSTRAY); });
+        this._enableShortcutId = gsettings.connect('changed::' + Fields.ENABLESHORTCUT, () => { this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT); });
     }
 
     disable() {
         this._endPick();
         for(let x in this)
-            if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
+            if(RegExp(/^_.+Id$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
         this._enableSystray = false;
         this._enableShortcut = false;
     }
