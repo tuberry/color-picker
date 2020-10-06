@@ -6,6 +6,7 @@ const Slider = imports.ui.slider;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const BoxPointer = imports.ui.boxpointer;
+const Screenshot = imports.ui.screenshot;
 const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -17,7 +18,6 @@ const Fields = Me.imports.prefs.Fields;
 const NOTIFY = { MSG: 0, OSD: 1 };
 const MENU = { HISTORY: 0, COLLECTION: 1 };
 const NOTATION = { HEX: 0, RGB: 1, HSL: 2 };
-const COLOR_PICK_ICON = Me.dir.get_child('icons').get_child('color-pick.svg').get_path();
 const DROPPER_ICON = Me.dir.get_child('icons').get_child('dropper-symbolic.svg').get_path();
 
 const convColorToCSS = (color, notation) => {
@@ -44,137 +44,43 @@ const convColorToHex = string => {
     }
 }
 
-// js/ui/screenshot.js
-const RecolorEffect = GObject.registerClass({
+const ColorSlider = GObject.registerClass({
     Properties: {
-        color: GObject.ParamSpec.boxed(
-            'color', 'color', 'replacement color',
-            GObject.ParamFlags.WRITABLE,
-            Clutter.Color.$gtype),
-        chroma: GObject.ParamSpec.boxed(
-            'chroma', 'chroma', 'color to replace',
-            GObject.ParamFlags.WRITABLE,
-            Clutter.Color.$gtype),
-        threshold: GObject.ParamSpec.float(
-            'threshold', 'threshold', 'threshold',
-            GObject.ParamFlags.WRITABLE,
-            0.0, 1.0, 0.0),
-        smoothing: GObject.ParamSpec.float(
-            'smoothing', 'smoothing', 'smoothing',
-            GObject.ParamFlags.WRITABLE,
-            0.0, 1.0, 0.0),
+        'base': GObject.ParamSpec.uint(
+            'base', 'base', 'base',
+            GObject.ParamFlags.WRITABLE | GObject.ParamFlags.CONSTRUCT,
+            1, 1000, 100
+        ),
     },
-}, class RecolorEffect extends Shell.GLSLEffect {
+}, class ColorSlider extends Slider.Slider {
     _init(params) {
-        this._color = new Clutter.Color();
-        this._chroma = new Clutter.Color();
-        this._threshold = 0;
-        this._smoothing = 0;
-
-        this._colorLocation = null;
-        this._chromaLocation = null;
-        this._thresholdLocation = null;
-        this._smoothingLocation = null;
-
-        super._init(params);
-
-        this._colorLocation = this.get_uniform_location('recolor_color');
-        this._chromaLocation = this.get_uniform_location('chroma_color');
-        this._thresholdLocation = this.get_uniform_location('threshold');
-        this._smoothingLocation = this.get_uniform_location('smoothing');
-
-        this._updateColorUniform(this._colorLocation, this._color);
-        this._updateColorUniform(this._chromaLocation, this._chroma);
-        this._updateFloatUniform(this._thresholdLocation, this._threshold);
-        this._updateFloatUniform(this._smoothingLocation, this._smoothing);
+        super._init(params.value);
+        this.base = params.base;
     }
 
-    _updateColorUniform(location, color) {
-        if (!location)
-            return;
-
-        this.set_uniform_float(location,
-            3, [color.red / 255, color.green / 255, color.blue / 255]);
-        this.queue_repaint();
+    set base(value) {
+        this.step = 1 / value;
     }
 
-    _updateFloatUniform(location, value) {
-        if (!location)
-            return;
+    scroll(event) {
+        let direction = event.get_scroll_direction();
+        let delta;
 
-        this.set_uniform_float(location, 1, [value]);
-        this.queue_repaint();
-    }
+        if (event.is_pointer_emulated())
+            return Clutter.EVENT_PROPAGATE;
 
-    get color() {
-        return this._color;
-    }
+        if (direction == Clutter.ScrollDirection.DOWN) {
+            delta = -this.step;
+        } else if (direction == Clutter.ScrollDirection.UP) {
+            delta = this.step;
+        } else if (direction == Clutter.ScrollDirection.SMOOTH) {
+            let [, dy] = event.get_scroll_delta();
+            delta = -dy * this.step;
+        }
 
-    set color(c) {
-        if (this._color.equal(c))
-            return;
+        this.value = Math.min(Math.max(0, this._value + delta), this._maxValue);
 
-        this._color = c;
-        this.notify('color');
-
-        this._updateColorUniform(this._colorLocation, this._color);
-    }
-
-    set chroma(c) {
-        if (this._chroma.equal(c))
-            return;
-
-        this._chroma = c;
-        this.notify('chroma');
-
-        this._updateColorUniform(this._chromaLocation, this._chroma);
-    }
-
-    set threshold(value) {
-        if (this._threshold === value)
-            return;
-
-        this._threshold = value;
-        this.notify('threshold');
-
-        this._updateFloatUniform(this._thresholdLocation, this._threshold);
-    }
-
-    set smoothing(value) {
-        if (this._smoothing === value)
-            return;
-
-        this._smoothing = value;
-        this.notify('smoothing');
-
-        this._updateFloatUniform(this._smoothingLocation, this._smoothing);
-    }
-
-    vfunc_build_pipeline() {
-        // Conversion parameters from https://en.wikipedia.org/wiki/YCbCr
-        const decl = `
-            vec3 rgb2yCrCb(vec3 c) {                                \n
-                float y = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;  \n
-                float cr = 0.7133 * (c.r - y);                      \n
-                float cb = 0.5643 * (c.b - y);                      \n
-                return vec3(y, cr, cb);                             \n
-            }                                                       \n
-                                                                    \n
-            uniform vec3 chroma_color;                              \n
-            uniform vec3 recolor_color;                             \n
-            uniform float threshold;                                \n
-            uniform float smoothing;                                \n`;
-        const src = `
-            vec3 mask = rgb2yCrCb(chroma_color.rgb);                \n
-            vec3 yCrCb = rgb2yCrCb(cogl_color_out.rgb);             \n
-            float blend =                                           \n
-              smoothstep(threshold,                                 \n
-                         threshold + smoothing,                     \n
-                         distance(yCrCb.gb, mask.gb));              \n
-            cogl_color_out.rgb =                                    \n
-              mix(recolor_color, cogl_color_out.rgb, blend);        \n`;
-
-        this.add_glsl_snippet(Shell.SnippetHook.FRAGMENT, decl, src, false);
+        return Clutter.EVENT_STOP;
     }
 });
 
@@ -187,7 +93,7 @@ const ColorMenu = GObject.registerClass({
         super._init();
         this._color = Clutter.Color.from_string('#ffffff')[1];
         this._menu = new PopupMenu.PopupMenu(actor, 0.25, St.Side.LEFT);
-        this._menu.connect('open-state-changed', (menu, open) => global.display.set_cursor(Meta.Cursor[open ? 'DEFAULT' : 'CROSSHAIR']));
+        this._menu.connect('open-state-changed', (menu, open) => global.display.set_cursor(Meta.Cursor[open ? 'DEFAULT' : 'BLANK']));
         this.actor.add_style_class_name('color-picker-menu');
         this._menuManager = new PopupMenu.PopupMenuManager(area);
         this._menuManager.addMenu(this._menu);
@@ -220,10 +126,10 @@ const ColorMenu = GObject.registerClass({
     _addRGBSection() {
         let section = new PopupMenu.PopupMenuSection();
         let [r, g, b] = [this._color.red, this._color.green, this._color.blue];
-        this._rgb = this._separatorItem(section, convColorToCSS(this._color, NOTATION.RGB).toUpperCase());
-        this._rslider = this._sliderItem(section, 'R', r / 255, x => { this.rgbColor = Clutter.Color.new(Math.round(x * 255), this._color.green, this._color.blue, 255); });
-        this._gslider = this._sliderItem(section, 'G', g / 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, Math.round(x * 255), this._color.blue, 255); });
-        this._bslider = this._sliderItem(section, 'B', b / 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, this._color.green, Math.round(x * 255), 255); });
+        this._rgb = this._separatorItem(convColorToCSS(this._color, NOTATION.RGB).toUpperCase());
+        this._rslider = this._sliderItem('R', r, 255, x => { this.rgbColor = Clutter.Color.new(Math.round(x * 255), this._color.green, this._color.blue, 255); });
+        this._gslider = this._sliderItem('G', g, 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, Math.round(x * 255), this._color.blue, 255); });
+        this._bslider = this._sliderItem('B', b, 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, this._color.green, Math.round(x * 255), 255); });
 
         this._menu.addMenuItem(this._rgb);
         this._menu.addMenuItem(this._rslider);
@@ -234,14 +140,14 @@ const ColorMenu = GObject.registerClass({
     _addHSLSection() {
         let [h, l, s] = this._color.to_hls();
         let section = new PopupMenu.PopupMenuSection();
-        this._hsl = this._separatorItem(section, convColorToCSS(this._color, NOTATION.HSL).toUpperCase());
-        this._hslider = this._sliderItem(section, 'H', h / 360, x => { this.hslColor = Clutter.Color.from_hls(Math.round(x * 360), this._color.to_hls()[1] , this._color.to_hls()[2]); });
-        this._sslider = this._sliderItem(section, 'S', s, x => {
+        this._hsl = this._separatorItem(convColorToCSS(this._color, NOTATION.HSL).toUpperCase());
+        this._hslider = this._sliderItem('H', h, 360, x => { this.hslColor = Clutter.Color.from_hls(Math.round(x * 360), this._color.to_hls()[1] , this._color.to_hls()[2]); });
+        this._sslider = this._sliderItem('S', s, 100, x => {
             this.hslColor = Clutter.Color.from_hls(this._color.to_hls()[0], this._color.to_hls()[1], x);
             this._hslider.slider.value = this._color.to_hls()[0] / 360;
             this._lslider.slider.value = this._color.to_hls()[1];
         });
-        this._lslider = this._sliderItem(section, 'L', l, x => {
+        this._lslider = this._sliderItem('L', l, 100, x => {
             this.hslColor = Clutter.Color.from_hls(this._color.to_hls()[0], x, this._color.to_hls()[2]);
             this._hslider.slider.value = this._color.to_hls()[0] / 360;
             this._sslider.slider.value = this._color.to_hls()[2];
@@ -306,14 +212,14 @@ const ColorMenu = GObject.registerClass({
         return item;
     }
 
-    _separatorItem(menu, text) {
-        return new PopupMenu.PopupSeparatorMenuItem(text, { style_class: 'color-picker-item' });
+    _separatorItem(text) {
+        return new PopupMenu.PopupSeparatorMenuItem(text, { style_class: 'color-picker-item', x_expand: true });
     }
 
-    _sliderItem(menu, text, value, func) {
+    _sliderItem(text, value, base, func) {
         let item = new PopupMenu.PopupBaseMenuItem({ activate: false });
         let label = new St.Label({ text: text, style_class: 'color-picker-item', x_expand: false });
-        let slider = new Slider.Slider(value);
+        let slider = new ColorSlider({ value: value > 1 ? value / base : value, base: base });
 
         slider.connect('notify::value', () => { if(item.active) func(slider.value); });
         item.add_child(label);
@@ -388,7 +294,7 @@ const ColorArea = GObject.registerClass({
     }
 
     _addPreviewCursor() {
-        this._effect = new RecolorEffect({
+        this._effect = new Screenshot.RecolorEffect({
             chroma: new Clutter.Color({
                 red: 80,
                 green: 219,
@@ -399,7 +305,7 @@ const ColorArea = GObject.registerClass({
         });
 
         this._icon = new St.Icon({
-            gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(COLOR_PICK_ICON) }),
+            icon_name: 'color-pick',
             icon_size: Meta.prefs_get_cursor_size() * 1.5,
             effect: this._effect,
             visible: false,
@@ -444,7 +350,7 @@ const ColorArea = GObject.registerClass({
             this.emit('end-pick');
             break;
         case Clutter.KEY_Menu:
-            if(this._enablePreview) this._menu.open(this._effect.color);
+            if(this._enablePreview) this._menu.open(this._effect._color);
             break;
         default:
             if(!this._persistentMode) this.emit('end-pick');
@@ -458,7 +364,7 @@ const ColorArea = GObject.registerClass({
         switch(event.button) {
         case 1:
             if(this._enablePreview) {
-                let hex = convColorToCSS(this._effect.color, NOTATION.HEX);
+                let hex = convColorToCSS(this._effect._color, NOTATION.HEX);
                 this.emit('notify-color', hex);
             } else {
                 let [x, y] = global.get_pointer();
@@ -478,7 +384,7 @@ const ColorArea = GObject.registerClass({
             break;
         case 2:
             if(this._enablePreview)
-                this._menu.open(this._effect.color);
+                this._menu.open(this._effect._color);
             break;
         default:
             this.emit('end-pick');
@@ -514,12 +420,8 @@ const ColorButton = GObject.registerClass({
             this.emit('left-click');
             return Clutter.EVENT_STOP;
         }
-        if (this.menu &&
-            (event.type() == Clutter.EventType.TOUCH_BEGIN ||
-                event.type() == Clutter.EventType.BUTTON_PRESS))
-            this.menu.toggle();
 
-        return Clutter.EVENT_PROPAGATE;
+        return super.vfunc_event(event);
     };
 });
 
@@ -589,7 +491,7 @@ class ColorPicker extends GObject.Object {
 
         let button = new St.Button({
             style_class: this._menuStyle == MENU.HISTORY ? 'color-picker-history' : 'color-picker-collection',
-            child: new St.Icon({ icon_name: 'emblem-favorite-symbolic', style_class: 'popup-menu-icon', }),
+            child: new St.Icon({ icon_name: 'emblem-favorite-symbolic', style_class: 'color-picker-icon', }),
         });
         button.connect('clicked', () => {
             if(this._menuStyle == MENU.HISTORY) {
@@ -614,7 +516,7 @@ class ColorPicker extends GObject.Object {
                 hover: true,
                 x_expand: true,
                 style_class: 'color-picker-button',
-                child: new St.Icon({ icon_name: icon, style_class: 'popup-menu-icon', }),
+                child: new St.Icon({ icon_name: icon, style_class: 'color-picker-icon', }),
             });
             btn.connect('clicked', func);
             hbox.add_child(btn);
@@ -640,7 +542,7 @@ class ColorPicker extends GObject.Object {
 
     _beginPick() {
         if(this._area !== null) return;
-        global.display.set_cursor(Meta.Cursor.CROSSHAIR); // NOTE: set NONE get 'Bail out' from Mutter
+        global.display.set_cursor(Meta.Cursor.BLANK);
         if(this._enableSystray) this._button.add_style_class_name('active');
         this._area = new ColorArea();
         this._area.set_size(...global.display.get_size());
@@ -693,13 +595,12 @@ class ColorPicker extends GObject.Object {
         this._enableShortcut = gsettings.get_boolean(Fields.ENABLESHORTCUT);
     }
 
-    // API
-    // test: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
+    // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
     pickAsync() {
         return new Promise((resolve, reject) => {
             try {
                 if(this._area !== null) { reject(new Error('Cannot start picking')); return; }
-                global.display.set_cursor(Meta.Cursor.CROSSHAIR); // NOTE: set NONE get 'Bail out' from Mutter
+                global.display.set_cursor(Meta.Cursor.BLANK);
                 if(this._enableSystray) this._button.add_style_class_name('active');
                 this._area = new ColorArea({ ignorePersistentMode: true });
                 this._area.set_size(...global.display.get_size());

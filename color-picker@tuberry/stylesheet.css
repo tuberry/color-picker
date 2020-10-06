@@ -1,6 +1,6 @@
 /* Add your custom extension styling here */
 .color-picker-menu {
-    width: 240px;
+    min-width: 240px;
 }
 
 .active .color-picker {
@@ -9,6 +9,10 @@
 
 .color-picker-button:hover {
     color: deepskyblue;
+}
+
+.color-picker-icon {
+    icon-size: 16px;
 }
 
 .color-picker-history:hover {
