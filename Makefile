@@ -29,6 +29,18 @@ ifndef VERSION
 	VERSION = $(shell curl -s $(EGOURL) 2>&1 | grep data-svm | sed -e 's/.*: //; s/}}"//' | xargs -I{} expr {} + 1)
 endif
 
+# for translators: `make mergepo` or `make LANGUAGE=YOUR_LANG mergepo`
+# The command line passed variable LANGUAGE is used to localize pot file.
+# If no LANGUAGE passed, $LANG is used.
+#
+ifndef LANGUAGE
+	LANGUAGE = $(shell echo $(LANG) | sed -e 's/\..*//')
+endif
+MSGPOT = locale/$(NAME).pot
+MSGDIR = locale/$(LANGUAGE)/LC_MESSAGES
+MSGSRC = $(MSGDIR)/$(NAME).po
+MSGAIM = $(MSGDIR)/$(NAME).mo
+
 all: _build
 
 clean:
@@ -67,18 +79,6 @@ ifeq ($(INSTALLTYPE),system)
 	cp -r ./_build/schemas/*gschema.* $(SHARE_PREFIX)/glib-2.0/schemas
 	cp -r ./_build/locale/* $(SHARE_PREFIX)/locale
 endif
-
-# for translators: `make mergepo` or `make LANGUAGE=YOUR_LANG mergepo`
-# The command line passed variable LANGUAGE is used to localize pot file.
-# If no LANGUAGE passed, $LANG is used.
-#
-ifndef LANGUAGE
-	LANGUAGE = $(shell echo $(LANG) | sed -e 's/\..*//')
-endif
-MSGPOT = locale/$(NAME).pot
-MSGDIR = locale/$(LANGUAGE)/LC_MESSAGES
-MSGSRC = $(MSGDIR)/$(NAME).po
-MSGAIM = $(MSGDIR)/$(NAME).mo
 
 $(UUID)/$(MSGSRC):
 	cd $(UUID); \
