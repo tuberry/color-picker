@@ -58,6 +58,16 @@ const ColorSlider = GObject.registerClass({
         this.base = params.base;
     }
 
+    vfunc_key_press_event(keyPressEvent) {
+        let key = keyPressEvent.keyval;
+        if (key == Clutter.KEY_Right || key == Clutter.KEY_Left) {
+            let delta = key == Clutter.KEY_Right ? this.step : -this.step;
+            this.value = Math.max(0, Math.min(this._value + delta, this._maxValue));
+            return Clutter.EVENT_STOP;
+        }
+        return super.vfunc_key_press_event(keyPressEvent);
+    }
+
     set base(value) {
         this.step = 1 / value;
     }
@@ -225,6 +235,9 @@ const ColorMenu = GObject.registerClass({
         item.add_child(label);
         item.add_child(slider);
         item.slider = slider;
+        item.connect('button-press-event', (actor, event) => { return actor.slider.startDragging(event); });
+        item.connect('key-press-event', (actor, event) => { return actor.slider.emit('key-press-event', event); });
+        item.connect('scroll-event', (actor, event) => { return actor.slider.emit('scroll-event', event); });
 
         return item;
     }
@@ -248,10 +261,11 @@ const ColorArea = GObject.registerClass({
         this.ignorePersistentMode = params && params.ignorePersistentMode || false;
     }
 
-    vfunc_motion_event(motionEvent) {
-        if(!this._enablePreview) return Clutter.EVENT_PROPAGATE;
-        const { x, y } = motionEvent;
-        this._pickAt(x, y);
+    vfunc_motion_event(event) {
+        if(!this._enablePreview)
+            return Clutter.EVENT_PROPAGATE;
+        this._pickAt(event.x, event.y);
+
         return Clutter.EVENT_PROPAGATE;
     }
 
@@ -273,6 +287,7 @@ const ColorArea = GObject.registerClass({
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW);
         this._enablePreviewId = gsettings.connect('changed::' + Fields.ENABLEPREVIEW, () => { this._enablePreview = gsettings.get_boolean(Fields.ENABLEPREVIEW); });
+        this.connect('popup-menu', () => { if(this._enablePreview) this._menu.open(this._effect._color); });
     }
 
     get _enablePreview() {
@@ -348,16 +363,12 @@ const ColorArea = GObject.registerClass({
             break;
         case Clutter.KEY_Escape:
             this.emit('end-pick');
-            break;
-        case Clutter.KEY_Menu:
-            if(this._enablePreview) this._menu.open(this._effect._color);
-            break;
+            return Clutter.EVENT_PROPAGATE;
         default:
-            if(!this._persistentMode) this.emit('end-pick');
             break;
         }
 
-        return Clutter.EVENT_PROPAGATE;
+        return super.vfunc_key_press_event(event);
     }
 
     vfunc_button_press_event(event) {
@@ -541,7 +552,7 @@ class ColorPicker extends GObject.Object {
     }
 
     _beginPick() {
-        if(this._area !== null) return;
+        if(this._area) return;
         global.display.set_cursor(Meta.Cursor.BLANK);
         if(this._enableSystray) this._button.add_style_class_name('active');
         this._area = new ColorArea();
@@ -553,7 +564,7 @@ class ColorPicker extends GObject.Object {
     }
 
     _endPick() {
-        if(this._area === null) return;
+        if(!this._area) return;
         global.display.set_cursor(Meta.Cursor.DEFAULT);
         if(this._enableSystray) this._button.remove_style_class_name('active');
         if(this._area.endId) this._area.disconnect(this._area.endId), this._area.endId = 0;
