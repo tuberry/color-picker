@@ -452,6 +452,10 @@ class ColorPicker extends GObject.Object {
         return gsettings.get_boolean(Fields.ENABLENOTIFY);
     }
 
+    get _enablePreview() {
+        return gsettings.get_boolean(Fields.ENABLEPREVIEW);
+    }
+
     get _notifyStyle() {
         return gsettings.get_uint(Fields.NOTIFYSTYLE);
     }
@@ -553,7 +557,7 @@ class ColorPicker extends GObject.Object {
 
     _beginPick() {
         if(this._area) return;
-        global.display.set_cursor(Meta.Cursor.BLANK);
+        global.display.set_cursor(Meta.Cursor[this._enablePreview ? 'BLANK' : 'CROSSHAIR']);
         if(this._enableSystray) this._button.add_style_class_name('active');
         this._area = new ColorArea();
         this._area.set_size(...global.display.get_size());
@@ -589,10 +593,10 @@ class ColorPicker extends GObject.Object {
             let osd = Main.osdWindowManager._osdWindows[index];
             osd._icon.set_style('color: %s;'.format(convColorToHex(color)));
             Main.osdWindowManager.show(index, icon, color, null, 2);
-            let clearId = osd._label.connect('notify::text', () => {
-                if(this._area !== null) return;
+            let clearId = osd._box.connect('notify::mapped', box => {
+                if(box.mapped) return Clutter.EVENT_STOP;
                 osd._icon.set_style('color: none;');
-                osd._label.disconnect(clearId);
+                osd._box.disconnect(clearId);
                 return Clutter.EVENT_STOP;
             });
         }
@@ -611,7 +615,7 @@ class ColorPicker extends GObject.Object {
         return new Promise((resolve, reject) => {
             try {
                 if(this._area !== null) { reject(new Error('Cannot start picking')); return; }
-                global.display.set_cursor(Meta.Cursor.BLANK);
+                global.display.set_cursor(Meta.Cursor[this._enablePreview ? 'BLANK' : 'CROSSHAIR']);
                 if(this._enableSystray) this._button.add_style_class_name('active');
                 this._area = new ColorArea({ ignorePersistentMode: true });
                 this._area.set_size(...global.display.get_size());

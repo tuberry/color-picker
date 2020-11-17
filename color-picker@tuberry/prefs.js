@@ -35,7 +35,7 @@ const ColorPickerPrefs = GObject.registerClass(
 class ColorPickerPrefs extends Gtk.Grid {
     _init() {
         super._init({
-            margin: 20,
+            margin: 30,
             row_spacing: 12,
             column_spacing: 18,
             row_homogeneous: false,
