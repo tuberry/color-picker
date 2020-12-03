@@ -23,7 +23,7 @@ endif
 
 # The command line passed variable VERSION is used to set the version string
 # in the metadata and in the generated zip-file. If no VERSION is passed, the
-# max verion on E.G.O plus 1 is used. (It could take some time to visit)
+# max version on E.G.O plus 1 is used. (It could take some time to visit)
 #
 ifndef VERSION
 	VERSION = $(shell curl -s $(EGOURL) 2>&1 | grep data-svm | sed -e 's/.*: //; s/}}"//' | xargs -I{} expr {} + 1)

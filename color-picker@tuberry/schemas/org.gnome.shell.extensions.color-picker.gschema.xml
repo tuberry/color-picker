@@ -21,27 +21,30 @@
             <default>true</default>
             <summary>enable preview</summary>
         </key>
-        <key type="as" name="pick-shortcut">
+        <key type="as" name="color-picker-shortcut">
             <default><![CDATA[['<Control><Shift>0']]]></default>
             <summary>shortcut to pick color</summary>
         </key>
-        <key type="as" name="color-history">
-            <default>[]</default>
-            <summary>picked color history</summary>
+        <key type="s" name="colors-history">
+            <default>""</default>
+            <summary>picked colors history</summary>
         </key>
-        <key type="as" name="color-collection">
-            <default>[]</default>
-            <summary>picked color collection</summary>
+        <key type="s" name="colors-collection">
+            <default>""</default>
+            <summary>picked colors collection</summary>
         </key>
         <key type="u" name="notify-style">
+            <range min="0" max="1"/>
             <default>0</default>
             <summary>notify style: 0-MSG 1-OSD</summary>
         </key>
         <key type="u" name="menu-size">
+            <range min="1" max="16"/>
             <default>8</default>
             <summary>menu item size</summary>
         </key>
         <key type="u" name="menu-style">
+            <range min="0" max="1"/>
             <default>0</default>
             <summary>menu style: 0-history 1-collection</summary>
         </key>

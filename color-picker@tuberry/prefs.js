@@ -10,17 +10,17 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const gsettings = ExtensionUtils.getSettings();
 
 var Fields = {
-    MENUSIZE:        'menu-size',
-    MENUSTYLE:       'menu-style',
-    NOTIFYSTYLE:     'notify-style',
-    COLORHISTORY:    'color-history',
-    ENABLENOTIFY:    'enable-notify',
-    PICKSHORTCUT:    'pick-shortcut',
-    ENABLEPREVIEW:   'enable-preview',
-    ENABLESYSTRAY:   'enable-systray',
-    ENABLESHORTCUT:  'enable-shortcut',
-    PERSISTENTMODE:  'persistent-mode',
-    COLORCOLLECTION: 'color-collection',
+    MENUSIZE:       'menu-size',
+    MENUSTYLE:      'menu-style',
+    NOTIFYSTYLE:    'notify-style',
+    ENABLENOTIFY:   'enable-notify',
+    COLORSHISTORY:  'colors-history',
+    ENABLEPREVIEW:  'enable-preview',
+    ENABLESYSTRAY:  'enable-systray',
+    ENABLESHORTCUT: 'enable-shortcut',
+    PERSISTENTMODE: 'persistent-mode',
+    COLORSCOLLECT:  'colors-collection',
+    PICKSHORTCUT:   'color-picker-shortcut',
 };
 
 function buildPrefsWidget() {
@@ -32,14 +32,10 @@ function init() {
 }
 
 const ColorPickerPrefs = GObject.registerClass(
-class ColorPickerPrefs extends Gtk.Grid {
+class ColorPickerPrefs extends Gtk.ScrolledWindow {
     _init() {
         super._init({
-            margin: 30,
-            row_spacing: 12,
-            column_spacing: 18,
-            row_homogeneous: false,
-            column_homogeneous: false,
+            hscrollbar_policy: Gtk.PolicyType.NEVER,
         });
 
         this._bulidWidget();
@@ -50,24 +46,30 @@ class ColorPickerPrefs extends Gtk.Grid {
     }
 
     _bulidWidget() {
-        this._field_enable_notify   = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.ENABLENOTIFY) });
-        this._field_enable_preview  = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.ENABLEPREVIEW) });
-        this._field_enable_systray  = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.ENABLESYSTRAY) });
-        this._field_enable_shortcut = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.ENABLESHORTCUT) });
-        this._field_persistent_mode = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.PERSISTENTMODE) });
+        this._field_enable_preview  = this._checkMaker(_('Enable preview (middle click to open menu)'));
+        this._field_persistent_mode = this._checkMaker(_('Persistent mode (right click to exit)'));
+        this._field_enable_shortcut = this._checkMaker(_('Shortcut to pick (arrow keys to move by pixel)'));
+        this._field_enable_systray  = this._checkMaker(_('Enable systray (right click to open menu)'));
+        this._field_enable_notify   = this._checkMaker(_('Notification style'));
 
-        this._field_menu_size    = this._spinMaker(5, 12, 1);
+        this._field_menu_size    = this._spinMaker(1, 16, 1);
         this._field_shortcut     = this._shortCutMaker(Fields.PICKSHORTCUT);
         this._field_notify_style = this._comboMaker([_('MSG'), _('OSD')]);
     }
 
     _bulidUI() {
-        this._row = 0;
-        this._add(this._field_enable_preview,  _('Enable preview (middle click to open menu)'));
-        this._add(this._field_persistent_mode, _('Persistent mode (right click to exit)'));
-        this._add(this._field_enable_shortcut, _('Shortcut to pick (arrow keys to move by pixel)'),  this._field_shortcut);
-        this._add(this._field_enable_systray,  _('Enable systray (right click to open menu)'), this._field_menu_size);
-        this._add(this._field_enable_notify,   _('Notification style'), this._field_notify_style);
+        this._box = new Gtk.Box({
+            margin: 30,
+            orientation: Gtk.Orientation.VERTICAL,
+        });
+        this.add(this._box);
+
+        let frame = this._listFrameMaker();
+        frame._add(this._field_enable_preview);
+        frame._add(this._field_persistent_mode);
+        frame._add(this._field_enable_shortcut,  this._field_shortcut);
+        frame._add(this._field_enable_systray, this._field_menu_size);
+        frame._add(this._field_enable_notify, this._field_notify_style);
     }
 
     _syncStatus() {
@@ -96,16 +98,34 @@ class ColorPickerPrefs extends Gtk.Grid {
         gsettings.bind(Fields.PERSISTENTMODE, this._field_persistent_mode, 'active', Gio.SettingsBindFlags.DEFAULT);
     }
 
-    _add(x, y, z) {
-        const hbox = new Gtk.Box();
-        if(x) hbox.pack_start(x, false, false, 4);
-        if(y) hbox.pack_start(this._labelMaker(y), true, true, 4);
-        if(z) hbox.pack_start(z, false, false, 4);
-        this.attach(hbox, 0, this._row++, 1, 1);
+    _listFrameMaker() {
+        let frame = new Gtk.Frame({
+            label_yalign: 1,
+        });
+        this._box.add(frame);
+
+        frame.grid = new Gtk.Grid({
+            margin: 10,
+            hexpand: true,
+            row_spacing: 12,
+            column_spacing: 18,
+            row_homogeneous: false,
+            column_homogeneous: false,
+        });
+
+        frame.grid._row = 0;
+        frame.add(frame.grid);
+        frame._add = (x, y) => {
+            const hbox = new Gtk.Box();
+            hbox.pack_start(x, true, true, 4);
+            if(y) hbox.pack_start(y, false, false, 4);
+            frame.grid.attach(hbox, 0, frame.grid._row++, 1, 1);
+        }
+        return frame;
     }
 
-    _labelMaker(x) {
-        return new Gtk.Label({
+    _checkMaker(x) {
+        return new Gtk.CheckButton({
             label: x,
             hexpand: true,
             halign: Gtk.Align.START,
@@ -115,8 +135,8 @@ class ColorPickerPrefs extends Gtk.Grid {
     _comboMaker(ops) {
         let l = new Gtk.ListStore();
         l.set_column_types([GObject.TYPE_STRING]);
-        ops.map(name => ({name})).forEach((p,i) => l.set(l.append(),[0],[p.name]));
-        let c = new Gtk.ComboBox({model: l});
+        ops.forEach(op => l.set(l.append(), [0], [op]));
+        let c = new Gtk.ComboBox({ model: l });
         let r = new Gtk.CellRendererText();
         c.pack_start(r, false);
         c.add_attribute(r, "text", 0);
