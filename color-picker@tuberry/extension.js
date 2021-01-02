@@ -322,7 +322,6 @@ const ColorArea = GObject.registerClass({
             if(!this._icon) return;
             if(this.selectId)
                 this._menu.disconnect(this.selectId), this.selectId = 0;
-            this._effect.run_dispose();
             this._menu.destroy();
             this._icon.destroy();
             delete this._effect;
@@ -387,8 +386,6 @@ const ColorArea = GObject.registerClass({
 
     destroy() {
         this.preview = false;
-        this._picker.run_dispose();
-        this._pointer.run_dispose();
         delete this._pointer;
         delete this._picker;
 
@@ -625,7 +622,6 @@ const ColorPicker = GObject.registerClass({
         this._endPick();
         this.systray = false;
         this.shortcut = false;
-        this.run_dispose();
     }
 });
 
