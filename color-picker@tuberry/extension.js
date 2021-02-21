@@ -367,10 +367,13 @@ const ColorArea = GObject.registerClass({
         case 1:
             if(this._icon) {
                 this.emit('notify-color', convToCSS(this._effect._color, NOTATION.HEX));
+                if(!this._persist) this.emit('end-pick');
             } else {
-                this._pick().then(scc => { this.emit('notify-color', convToCSS(scc.color, NOTATION.HEX)); });
+                this._pick().then(scc => {
+                    this.emit('notify-color', convToCSS(scc.color, NOTATION.HEX));
+                    if(!this._persist) this.emit('end-pick');
+                });
             }
-            if(!this._persist) this.emit('end-pick');
             break;
         case 2:
             if(this._icon)
@@ -417,6 +420,7 @@ const ColorPicker = GObject.registerClass({
     Properties: {
         'collect':      GObject.param_spec_string('collect', 'collect', 'collect', '', GObject.ParamFlags.WRITABLE),
         'history':      GObject.param_spec_string('history', 'history', 'history', '', GObject.ParamFlags.WRITABLE),
+        'iconName':     GObject.param_spec_string('iconName', 'iconName', 'icon name', '', GObject.ParamFlags.WRITABLE),
         'systray':      GObject.param_spec_boolean('systray', 'systray', 'systray', false, GObject.ParamFlags.WRITABLE),
         'preview':      GObject.param_spec_boolean('preview', 'preview', 'preview', false, GObject.ParamFlags.READWRITE),
         'shortcut':     GObject.param_spec_boolean('shortcut', 'shortcut', 'shortcut', false, GObject.ParamFlags.WRITABLE),
@@ -432,6 +436,7 @@ const ColorPicker = GObject.registerClass({
     }
 
     _bindSettings() { // NOTE: the order of binds matters
+        gsettings.bind(Fields.SYSTRAYICON,    this, 'iconName',     Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.ENABLESYSTRAY,  this, 'systray',      Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.COLORSHISTORY,  this, 'history',      Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.COLORSCOLLECT,  this, 'collect',      Gio.SettingsBindFlags.GET);
@@ -446,6 +451,18 @@ const ColorPicker = GObject.registerClass({
     set menuStyle(style) {
         this._menuStyle = style;
         this._updateMenu();
+    }
+
+    set iconName(path) {
+        let icon = Gio.file_new_for_path(path);
+        if(this._icon) {
+            this._icon.gicon = new Gio.FileIcon({ file: path.endsWith('svg') && icon.query_exists(null) ? icon : Gio.file_new_for_path(DROPPER_ICON) });
+        } else {
+            this._icon = new St.Icon({
+                style_class: 'color-picker system-status-icon',
+                gicon: new Gio.FileIcon({ file: path.endsWith('svg') && icon.query_exists(null) ? icon : Gio.file_new_for_path(DROPPER_ICON) }),
+            });
+        }
     }
 
     set history(history) {
@@ -470,13 +487,14 @@ const ColorPicker = GObject.registerClass({
         if(systray) {
             if(this._button) return;
             this._button = new ColorButton(null);
-            this._button.add_actor(new St.Icon({
-                gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(DROPPER_ICON) }),
-                style_class: 'color-picker system-status-icon',
-            }));
+            this._button.add_actor(this._icon);
             this._button.connect('left-click', this._beginPick.bind(this));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         } else {
+            if(this._icon) {
+                this._icon.destroy();
+                delete this._icon;
+            }
             if(!this._button) return;
             this._button.destroy();
             delete this._button;

@@ -29,13 +29,10 @@ ifndef VERSION
 	VERSION = $(shell curl -s $(EGOURL) 2>&1 | grep data-svm | sed -e 's/.*: //; s/}}"//' | xargs -I{} expr {} + 1)
 endif
 
-# for translators: `make mergepo` or `make LANGUAGE=YOUR_LANG mergepo`
-# The command line passed variable LANGUAGE is used to localize pot file.
-# If no LANGUAGE passed, $LANG is used.
+# for translators: `make mergepo` or `make LANG=YOUR_LANG mergepo`
+# The command line passed variable LANG is used to localize pot file.
 #
-ifndef LANGUAGE
-	LANGUAGE = $(shell echo $(LANG) | sed -e 's/\..*//')
-endif
+LANGUAGE = $(shell echo $(LANG) | sed -e 's/\..*//')
 MSGPOT = locale/$(NAME).pot
 MSGDIR = locale/$(LANGUAGE)/LC_MESSAGES
 MSGSRC = $(MSGDIR)/$(NAME).po
@@ -57,18 +54,17 @@ $(SCMCPL): $(SCMXML)
 	msgfmt $< -o $@
 
 _build: $(SCMCPL) $(MSGPOS:.po=.mo)
+	-rm -fR _build
 	mkdir -p _build
 	cp -r $(UUID)/* _build
 	sed -i 's/"version": [[:digit:]]\+/"version": $(VERSION)/' _build/metadata.json;
-
-install: install-local
 
 zip: _build
 	cd _build ; \
 		zip -qr "$(NAME)_v$(shell cat _build/metadata.json | grep \"version\" | sed -e 's/[^0-9]*//').zip" .
 	mv _build/*.zip ./
 
-install-local: _build
+install: _build
 	rm -rf $(INSTALLBASE)/$(UUID)
 	mkdir -p $(INSTALLBASE)/$(UUID)
 	cp -r ./_build/* $(INSTALLBASE)/$(UUID)/
@@ -76,8 +72,9 @@ ifeq ($(INSTALLTYPE),system)
 	# system-wide settings and locale files
 	rm -r $(INSTALLBASE)/$(UUID)/schemas $(INSTALLBASE)/$(UUID)/locale
 	mkdir -p $(SHARE_PREFIX)/glib-2.0/schemas $(SHARE_PREFIX)/locale
-	cp -r ./_build/schemas/*gschema.* $(SHARE_PREFIX)/glib-2.0/schemas
-	cp -r ./_build/locale/* $(SHARE_PREFIX)/locale
+	cp -r ./_build/schemas/*gschema.xml $(SHARE_PREFIX)/glib-2.0/schemas
+	cd _build/locale ; \
+		cp --parents */LC_MESSAGES/*.mo $(SHARE_PREFIX)/locale
 endif
 
 $(UUID)/$(MSGSRC):
@@ -87,7 +84,7 @@ $(UUID)/$(MSGSRC):
 
 potfile: # always gen new pot from source
 	cd $(UUID); \
-		xgettext -k --keyword=_ --from-code=utf-8 --package-name "$(PACK)" --add-comments='Translators:' -o ./$(MSGPOT) *js
+		xgettext -k --keyword=_ --from-code=utf-8 --package-name="$(PACK)" --package-version=$(VERSION) --add-comments='Translators:' --output ./$(MSGPOT) *js
 
 pofile: $(UUID)/$(MSGSRC)
 

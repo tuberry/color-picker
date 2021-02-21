@@ -22,7 +22,7 @@
             <summary>enable preview</summary>
         </key>
         <key type="as" name="color-picker-shortcut">
-            <default><![CDATA[['<Control><Shift>0']]]></default>
+            <default><![CDATA[['<Super>0']]]></default>
             <summary>shortcut to pick color</summary>
         </key>
         <key type="s" name="colors-history">
@@ -32,6 +32,10 @@
         <key type="s" name="colors-collection">
             <default>""</default>
             <summary>picked colors collection</summary>
+        </key>
+        <key type="s" name="systray-dropper-icon">
+            <default>""</default>
+            <summary>systray dropper icon</summary>
         </key>
         <key type="u" name="notify-style">
             <range min="0" max="1"/>

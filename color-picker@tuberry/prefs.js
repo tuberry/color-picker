@@ -20,6 +20,7 @@ var Fields = {
     ENABLESHORTCUT: 'enable-shortcut',
     PERSISTENTMODE: 'persistent-mode',
     COLORSCOLLECT:  'colors-collection',
+    SYSTRAYICON:    'systray-dropper-icon',
     PICKSHORTCUT:   'color-picker-shortcut',
 };
 
@@ -46,11 +47,13 @@ class ColorPickerPrefs extends Gtk.ScrolledWindow {
     }
 
     _bulidWidget() {
-        this._field_enable_preview  = this._checkMaker(_('Enable preview (middle click to open menu)'));
-        this._field_persistent_mode = this._checkMaker(_('Persistent mode (right click to exit)'));
-        this._field_enable_shortcut = this._checkMaker(_('Shortcut to pick (arrow keys to move by pixel)'));
-        this._field_enable_systray  = this._checkMaker(_('Enable systray (right click to open menu)'));
         this._field_enable_notify   = this._checkMaker(_('Notification style'));
+        this._field_persistent_mode = this._checkMaker(_('Persistent mode (right click to exit)'));
+        this._field_systray_icon    = this._fileChooser(_('Choose a symbolic icon'), 'image/svg+xml');
+        this._field_enable_systray  = this._checkMaker(_('Enable systray (right click to open menu)'));
+        this._field_enable_preview  = this._checkMaker(_('Enable preview (middle click to open menu)'));
+        this._field_enable_shortcut = this._checkMaker(_('Shortcut to pick (arrow keys to move by pixel)'));
+
 
         this._field_menu_size    = this._spinMaker(1, 16, 1);
         this._field_shortcut     = this._shortCutMaker(Fields.PICKSHORTCUT);
@@ -68,11 +71,15 @@ class ColorPickerPrefs extends Gtk.ScrolledWindow {
         frame._add(this._field_enable_preview);
         frame._add(this._field_persistent_mode);
         frame._add(this._field_enable_shortcut,  this._field_shortcut);
-        frame._add(this._field_enable_systray, this._field_menu_size);
         frame._add(this._field_enable_notify, this._field_notify_style);
+        frame._add(this._field_enable_systray, this._field_systray_icon, this._field_menu_size);
     }
 
     _syncStatus() {
+        this._field_systray_icon.set_filename(gsettings.get_string(Fields.SYSTRAYICON));
+        this._field_systray_icon.connect('file-set', widget => {
+            gsettings.set_string(Fields.SYSTRAYICON, widget.get_filename());
+        });
         this._field_enable_shortcut.connect('notify::active', widget => {
             this._field_shortcut.set_sensitive(widget.active);
         });
@@ -81,10 +88,12 @@ class ColorPickerPrefs extends Gtk.ScrolledWindow {
         });
         this._field_enable_systray.connect('notify::active', widget => {
             this._field_menu_size.set_sensitive(widget.active);
+            this._field_systray_icon.set_sensitive(widget.active);
         });
 
         this._field_shortcut.set_sensitive(this._field_enable_shortcut.active);
         this._field_menu_size.set_sensitive(this._field_enable_systray.active);
+        this._field_systray_icon.set_sensitive(this._field_enable_systray.active);
         this._field_notify_style.set_sensitive(this._field_enable_notify.active);
     }
 
@@ -115,10 +124,11 @@ class ColorPickerPrefs extends Gtk.ScrolledWindow {
 
         frame.grid._row = 0;
         frame.add(frame.grid);
-        frame._add = (x, y) => {
+        frame._add = (x, y, z) => {
             const hbox = new Gtk.Box();
             hbox.pack_start(x, true, true, 4);
             if(y) hbox.pack_start(y, false, false, 4);
+            if(z) hbox.pack_start(z, false, false, 4)
             frame.grid.attach(hbox, 0, frame.grid._row++, 1, 1);
         }
         return frame;
@@ -184,6 +194,15 @@ class ColorPickerPrefs extends Gtk.ScrolledWindow {
         treeView.append_column(column);
 
         return treeView;
+    }
+
+    _fileChooser(title, mime) {
+        let button = Gtk.FileChooserButton.new(title, Gtk.FileChooserAction.OPEN);
+        if(!mime) return button;
+        let filter = new Gtk.FileFilter();
+        filter.add_mime_type(mime);
+        button.add_filter(filter);
+        return button;
     }
 });
 
