@@ -1,22 +1,24 @@
 # Chinese translations for Color Picker package.
 # Copyright (C) 2020 THE Color Picker'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the Color Picker package.
-# tuberry <tuberry@example.com>, 2020.
+# tuberry <orzun@foxmail.com>, 2020-2021.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Color Picker 1\n"
+"Project-Id-Version: Color Picker 18\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-02-21 21:06+0800\n"
-"PO-Revision-Date: 2020-09-08 10:19+0800\n"
-"Last-Translator: tuberry <tuberry@example.com>\n"
-"Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
-"Language: zh_CN\n"
+"POT-Creation-Date: 2021-02-22 09:57+0800\n"
+"PO-Revision-Date: 2021-02-22 09:54+0800\n"
+"Last-Translator: tuberry <orzun@foxmail.com>\n"
+"Language-Team: Chinese (Simplified) <orzun@foxmail.com>\n"
+"Language: zh_CHS\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0\n"
+"X-Generator: Gtranslator 3.38.0\n"
 
-#: extension.js:588
+#: extension.js:591
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取 %s"
@@ -26,29 +28,45 @@ msgid "Notification style"
 msgstr "通知方式"
 
 #: prefs.js:51
-msgid "Persistent mode (right click to exit)"
-msgstr "持续模式（右键退出）"
-
-#: prefs.js:52
-msgid "Choose a symbolic icon"
-msgstr "选取符号图标"
-
-#: prefs.js:53
-msgid "Enable systray (right click to open menu)"
+msgid "Enable systray"
 msgstr "托盘图标"
 
+#: prefs.js:51
+msgid "right click to open menu"
+msgstr "右键打开菜单"
+
+#: prefs.js:52
+msgid "Shortcut to pick"
+msgstr "快捷键"
+
+#: prefs.js:52
+msgid "arrow keys to move by pixel"
+msgstr "方向键按像素移动"
+
+#: prefs.js:53
+msgid "Persistent mode"
+msgstr "持续模式"
+
+#: prefs.js:53
+msgid "right click or Escape key to exit"
+msgstr "右键或Esc键退出"
+
 #: prefs.js:54
-msgid "Enable preview (middle click to open menu)"
-msgstr "启用预览（中键打开菜单）"
+msgid "Enable preview"
+msgstr "启用预览"
 
-#: prefs.js:55
-msgid "Shortcut to pick (arrow keys to move by pixel)"
-msgstr "快捷键（方向键按像素移动）"
+#: prefs.js:54
+msgid "middle click or MENU key to open menu"
+msgstr "中键或菜单键打开菜单"
 
-#: prefs.js:60
+#: prefs.js:58
 msgid "MSG"
 msgstr "系统通知"
 
-#: prefs.js:60
+#: prefs.js:58
 msgid "OSD"
 msgstr "屏内提示"
+
+#: prefs.js:60
+msgid "Choose a symbolic icon"
+msgstr "选取符号图标"

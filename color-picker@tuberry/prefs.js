@@ -48,16 +48,16 @@ class ColorPickerPrefs extends Gtk.ScrolledWindow {
 
     _bulidWidget() {
         this._field_enable_notify   = this._checkMaker(_('Notification style'));
-        this._field_persistent_mode = this._checkMaker(_('Persistent mode (right click to exit)'));
-        this._field_systray_icon    = this._fileChooser(_('Choose a symbolic icon'), 'image/svg+xml');
-        this._field_enable_systray  = this._checkMaker(_('Enable systray (right click to open menu)'));
-        this._field_enable_preview  = this._checkMaker(_('Enable preview (middle click to open menu)'));
-        this._field_enable_shortcut = this._checkMaker(_('Shortcut to pick (arrow keys to move by pixel)'));
+        this._field_enable_systray  = this._checkMaker(_('Enable systray'), _('right click to open menu'));
+        this._field_enable_shortcut = this._checkMaker(_('Shortcut to pick'), _('arrow keys to move by pixel'));
+        this._field_persistent_mode = this._checkMaker(_('Persistent mode'), _('right click or Escape key to exit'));
+        this._field_enable_preview  = this._checkMaker(_('Enable preview'), _('middle click or MENU key to open menu'));
 
 
         this._field_menu_size    = this._spinMaker(1, 16, 1);
-        this._field_shortcut     = this._shortCutMaker(Fields.PICKSHORTCUT);
         this._field_notify_style = this._comboMaker([_('MSG'), _('OSD')]);
+        this._field_shortcut     = this._shortCutMaker(Fields.PICKSHORTCUT);
+        this._field_systray_icon = this._fileChooser(_('Choose a symbolic icon'), 'image/svg+xml');
     }
 
     _bulidUI() {
@@ -134,11 +134,12 @@ class ColorPickerPrefs extends Gtk.ScrolledWindow {
         return frame;
     }
 
-    _checkMaker(x) {
+    _checkMaker(x, y) {
         return new Gtk.CheckButton({
             label: x,
             hexpand: true,
             halign: Gtk.Align.START,
+            tooltip_text: y ? y : '',
         });
     }
 
