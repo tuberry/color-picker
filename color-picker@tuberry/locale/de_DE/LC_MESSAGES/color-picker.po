@@ -1,52 +1,75 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-# Onno Giesmann <nutzer3105@gmail.com>, 2020.
+# Onno Giesmann <nutzer3105@gmail.com>, 2020-2021.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-09-08 10:19+0800\n"
-"PO-Revision-Date: 2020-09-30 10:18+0200\n"
+"POT-Creation-Date: 2021-02-22 10:07+0800\n"
+"PO-Revision-Date: 2021-02-26 21:54+0100\n"
+"Last-Translator: Onno Giesmann <nutzer3105@gmail.com>\n"
 "Language-Team: \n"
+"Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 2.4.1\n"
-"Last-Translator: Onno Giesmann <nutzer3105@gmail.com>\n"
+"X-Generator: Poedit 2.4.2\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"Language: de\n"
 
-#: extension.js:642
+#: extension.js:591
 #, javascript-format
 msgid "%s is picked."
 msgstr "%s wurde ausgewählt."
 
-#: prefs.js:61
+#: prefs.js:50
+msgid "Notification style"
+msgstr "Art der Benachrichtigung"
+
+#: prefs.js:51
+msgid "Enable systray"
+msgstr "Im Infobereich anzeigen"
+
+#: prefs.js:51
+msgid "right click to open menu"
+msgstr "Rechtsklick, um das Menü zu öffnen"
+
+#: prefs.js:52
+msgid "Shortcut to pick"
+msgstr "Tastenkürzel zum Auswählen"
+
+#: prefs.js:52
+msgid "arrow keys to move by pixel"
+msgstr "Pfeiltasten für pixelgenaue Bewegung"
+
+#: prefs.js:53
+msgid "Persistent mode"
+msgstr "Dauerhafter Modus"
+
+#: prefs.js:53
+msgid "right click or Escape key to exit"
+msgstr "Zum Beenden Rechtsklick oder ESC-Taste drücken"
+
+#: prefs.js:54
+msgid "Enable preview"
+msgstr "Vorschau anzeigen"
+
+#: prefs.js:54
+msgid "middle click or MENU key to open menu"
+msgstr "Mittelklick oder MENÜ-Taste, um das Menü zu öffnen"
+
+#: prefs.js:58
 msgid "MSG"
 msgstr "MSG"
 
-#: prefs.js:61
+#: prefs.js:58
 msgid "OSD"
 msgstr "OSD"
 
-#: prefs.js:66
-msgid "Enable preview (middle click to open menu)"
-msgstr "Vorschau aktivieren (Mittelklick für Menü)"
+#: prefs.js:60
+msgid "Choose a symbolic icon"
+msgstr "Wählen Sie ein Symbol aus"
 
-#: prefs.js:67
-msgid "Persistent mode (right click to exit)"
-msgstr "Dauerhafte Auswahl (Rechtsklick zum Beenden)"
-
-#: prefs.js:68
-msgid "Shortcut to pick (arrow keys to move by pixel)"
-msgstr "Kürzel zum Auswählen (Pfeiltasten für pixelgenaue Bewegung)"
-
-#: prefs.js:69
-msgid "Enable systray (right click to open menu)"
-msgstr "Symbol im Infobereich anzeigen (Rechtsklick für Menü)"
-
-#: prefs.js:70
-msgid "Notification style"
-msgstr "Art der Benachrichtigung"
+#~ msgid "Persistent mode (right click to exit)"
+#~ msgstr "Dauerhafte Auswahl (Rechtsklick zum Beenden)"
