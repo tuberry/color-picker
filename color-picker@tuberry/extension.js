@@ -32,16 +32,22 @@ const convToCSS = (color, notation) => {
     }
 }
 
-const convToHex = string => {
-    if(string.includes('hsl')) {
-        let [h, s, l] = string.slice(4, -1).split(',').map((v, i, a) => parseFloat(v) / (i == 0 ? 1 : 100));
+const convToHex = color => {
+    if(color.includes('hsl')) {
+        let [h, s, l] = color.slice(4, -1).split(',').map((v, i, a) => parseFloat(v) / (i == 0 ? 1 : 100));
         return Clutter.Color.from_hls(h, l, s).to_string().slice(0, 7);
-    } else if(string.includes('rgb')) {
-        let rgb = Clutter.Color.from_string(string)[1];
+    } else if(color.includes('rgb')) {
+        let rgb = Clutter.Color.from_string(color)[1];
         return rgb.to_string().slice(0, 7);
     } else {
-        return string;
+        return color;
     }
+}
+
+const convToText = color => {
+    let hex = convToHex(color);
+    let [h, l, s] = Clutter.Color.from_string(hex)[1].to_hls();
+    return ' <span fgcolor="%s" bgcolor="%s">%s</span>'.format(Math.round(l) ? '#000' : '#fff', hex, color);
 }
 
 const ColorSlider = GObject.registerClass({
@@ -93,6 +99,7 @@ const ColorSlider = GObject.registerClass({
 const ColorMenu = GObject.registerClass({
     Signals: {
         'color-selected': { param_types: [GObject.TYPE_STRING] },
+        'menu-closed': { },
     },
 }, class ColorMenu extends GObject.Object {
     _init(actor, area) {
@@ -100,7 +107,8 @@ const ColorMenu = GObject.registerClass({
         this._color = Clutter.Color.from_string('#ffffff')[1];
         this._menu = new PopupMenu.PopupMenu(actor, 0.25, St.Side.LEFT);
         this._menu.connect('open-state-changed', (menu, open) => global.display.set_cursor(Meta.Cursor[open ? 'DEFAULT' : 'BLANK']));
-        this.actor.add_style_class_name('color-picker-menu');
+        this._menu.connect('menu-closed', () => { this.emit('menu-closed'); })
+        this.actor.add_style_class_name('color-picker-menu popup-menu');
         this._menuManager = new PopupMenu.PopupMenuManager(area);
         this._menuManager.addMenu(this._menu);
     }
@@ -169,7 +177,7 @@ const ColorMenu = GObject.registerClass({
         this._color = color;
         let [h, l, s] = color.to_hls()
         let hex = convToCSS(color, NOTATION.HEX);
-        this._hex.label.clutter_text.set_markup('<span background="%s">     </span>  %s'.format(hex, hex));
+        this._hex.label.clutter_text.set_markup(convToText(hex));
         this._rgb.label.set_text(convToCSS(color, NOTATION.RGB).toUpperCase());
         this._hsl.label.set_text(convToCSS(color, NOTATION.HSL).toUpperCase());
         this._rslider.slider.value = color.red / 255;
@@ -181,7 +189,7 @@ const ColorMenu = GObject.registerClass({
         this._color = color;
         let [h, l, s] = color.to_hls();
         let hex = convToCSS(color, NOTATION.HEX);
-        this._hex.label.clutter_text.set_markup('<span background="%s">     </span>  %s'.format(hex, hex));
+        this._hex.label.clutter_text.set_markup(convToText(hex));
         this._rgb.label.set_text(convToCSS(color, NOTATION.RGB).toUpperCase());
         this._hsl.label.set_text(convToCSS(color, NOTATION.HSL).toUpperCase());
         this._hslider.slider.value = h / 360;
@@ -190,27 +198,30 @@ const ColorMenu = GObject.registerClass({
     }
 
     _colorLabelItem() {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item' });
-        let hex = convToCSS(this._color, NOTATION.HEX);
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item', hover: false });
+        let color = convToCSS(this._color, NOTATION.HEX);
         let label = new St.Label({ x_expand: true });
-        label.clutter_text.set_markup('<span background="%s">     </span>  %s'.format(hex, hex));
-        item.connect('activate', () => {
-            item._getTopMenu().close();
-            this.emit('color-selected', convToCSS(this._color, NOTATION.HEX));
-        });
+        label.clutter_text.set_markup(convToText(color));
         item.add_child(label);
         item.label = label;
 
-        let rgb = new St.Button({ child: new St.Label({ text: 'RGB', }), style_class: 'color-picker-button' });
+        let hex = new St.Button({ label: 'HEX', style_class: 'color-picker-label-button button' });
+        hex.connect('clicked', () => {
+            item._getTopMenu().itemActivated();
+            this.emit('color-selected', convToCSS(this._color, NOTATION.HEX));
+        });
+        item.add_child(hex);
+
+        let rgb = new St.Button({ label: 'RGB', style_class: 'color-picker-label-button button' });
         rgb.connect('clicked', () => {
-            item._getTopMenu().close();
+            item._getTopMenu().itemActivated();
             this.emit('color-selected', convToCSS(this._color, NOTATION.RGB));
         });
         item.add_child(rgb);
 
-        let hsl = new St.Button({ child: new St.Label({ text: 'HSL', }), style_class: 'color-picker-button' });
+        let hsl = new St.Button({ label: 'HSL', style_class: 'color-picker-label-button button' });
         hsl.connect('clicked', () => {
-            item._getTopMenu().close();
+            item._getTopMenu().itemActivated();
             this.emit('color-selected', convToCSS(this._color, NOTATION.HSL));
         });
         item.add_child(hsl);
@@ -219,12 +230,12 @@ const ColorMenu = GObject.registerClass({
     }
 
     _separatorItem(text) {
-        return new PopupMenu.PopupSeparatorMenuItem(text, { style_class: 'color-picker-item', x_expand: true });
+        return new PopupMenu.PopupSeparatorMenuItem(text, { style_class: 'color-picker-item popup-menu-item' });
     }
 
     _sliderItem(text, value, base, func) {
         let item = new PopupMenu.PopupBaseMenuItem({ activate: false });
-        let label = new St.Label({ text: text, style_class: 'color-picker-item', x_expand: false });
+        let label = new St.Label({ text: text, style_class: 'color-picker-item popup-menu-item', x_expand: false });
         let slider = new ColorSlider({ value: value > 1 ? value / base : value, base: base });
         slider.connect('notify::value', () => { if(item.active) func(slider.value); });
         item.connect('button-press-event', (actor, event) => { return actor.slider.startDragging(event); });
@@ -314,14 +325,15 @@ const ColorArea = GObject.registerClass({
             this._menu.actor.hide();
             Main.layoutManager.addTopChrome(this._menu.actor);
             Main.layoutManager.addTopChrome(this._icon);
-            this.selectId = this._menu.connect('color-selected', (menu, color) => {
+            this._menu.connect('menu-closed', () => {
+                this._pick().then(this._updateColor.bind(this));
+            });
+            this._menu.connect('color-selected', (menu, color) => {
                 this.emit('notify-color', color);
                 if(!this._persist) this.emit('end-pick');
             });
         } else {
             if(!this._icon) return;
-            if(this.selectId)
-                this._menu.disconnect(this.selectId), this.selectId = 0;
             this._menu.destroy();
             this._icon.destroy();
             delete this._effect;
@@ -513,13 +525,13 @@ const ColorPicker = GObject.registerClass({
     }
 
     _menuItemMaker(color) {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item' });
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item popup-menu-item' });
         item.connect('activate', () => {
-            item._getTopMenu().close();
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
         });
-        let label = new St.Label({ x_expand: true });
-        label.clutter_text.set_markup('<span background="%s">     </span>  %s'.format(convToHex(color), color));
+        let label = new St.Label({ x_expand: true, });
+        //NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
+        label.clutter_text.set_markup(convToText(color));
         item.add_child(label);
 
         let button = new St.Button({
@@ -541,14 +553,14 @@ const ColorPicker = GObject.registerClass({
     }
 
     _settingItem() {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item', hover: false });
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item popup-menu-item', hover: false });
         let hbox = new St.BoxLayout({ x_align: St.Align.START, x_expand: true });
         let addButtonItem = (icon, func) => {
             let btn = new St.Button({
                 hover: true,
                 x_expand: true,
-                style_class: 'color-picker-button',
-                child: new St.Icon({ icon_name: icon, style_class: 'color-picker-icon', }),
+                style_class: 'color-picker-setting-button color-picker-button',
+                child: new St.Icon({ icon_name: icon, style_class: 'color-picker-icon popup-menu-icon', }),
             });
             btn.connect('clicked', func);
             hbox.add_child(btn);

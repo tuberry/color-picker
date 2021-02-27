@@ -5,7 +5,7 @@ Simple color picker for gnome shell.
 [![license]](/LICENSE)
 </br>
 
-![picker](https://user-images.githubusercontent.com/17917040/108626169-caff4280-7489-11eb-9074-c688a7892c04.png)
+![picker](https://user-images.githubusercontent.com/17917040/109381547-08dee980-7916-11eb-8b7f-10f1cf090e8e.png)
 
 ## Installation
 
@@ -20,7 +20,7 @@ cd color-picker && make install
 
 ## Features
 
-![cpprefs](https://user-images.githubusercontent.com/17917040/108626130-94292c80-7489-11eb-8558-f9a3ef980e65.png)
+![cppref](https://user-images.githubusercontent.com/17917040/109381645-873b8b80-7916-11eb-8451-b50f8d1d5545.png)
 
 [license]:https://img.shields.io/badge/license-GPLv3-green.svg
 [EGO]:https://extensions.gnome.org/extension/3396/color-picker/
