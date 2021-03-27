@@ -4,7 +4,7 @@
 }
 
 .color-picker-label-button {
-    padding: 0 0.8em;
+    padding: 0 0.2em;
     min-height: 1em;
 }
 
@@ -14,7 +14,7 @@
 
 .color-picker-history:hover,
 .color-picker-collection {
-    color: hotpink;
+    color: pink;
 }
 
 .active .color-picker,
