@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Color Picker 20\n"
+"Project-Id-Version: Color Picker 21\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-03-27 14:58+0800\n"
+"POT-Creation-Date: 2021-04-03 10:23+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -22,46 +22,50 @@ msgstr ""
 msgid "%s is picked."
 msgstr ""
 
-#: prefs.js:49
+#: prefs.js:32
 msgid "MSG"
 msgstr ""
 
-#: prefs.js:49
+#: prefs.js:32
 msgid "OSD"
 msgstr ""
 
-#: prefs.js:50
+#: prefs.js:33
 msgid "Notification style"
 msgstr ""
 
-#: prefs.js:52
+#: prefs.js:36
+msgid "history size"
+msgstr ""
+
+#: prefs.js:37
 msgid "Enable systray"
 msgstr ""
 
-#: prefs.js:52
+#: prefs.js:37
 msgid "right click to open menu"
 msgstr ""
 
-#: prefs.js:53
+#: prefs.js:38
 msgid "Shortcut to pick"
 msgstr ""
 
-#: prefs.js:53
+#: prefs.js:38
 msgid "arrow keys to move by pixel"
 msgstr ""
 
-#: prefs.js:54
+#: prefs.js:39
 msgid "Persistent mode"
 msgstr ""
 
-#: prefs.js:54
+#: prefs.js:39
 msgid "right click or Escape key to exit"
 msgstr ""
 
-#: prefs.js:55
+#: prefs.js:40
 msgid "Enable preview"
 msgstr ""
 
-#: prefs.js:55
+#: prefs.js:40
 msgid "middle click or MENU key to open menu"
 msgstr ""

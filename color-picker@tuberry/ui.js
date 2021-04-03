@@ -3,93 +3,121 @@
 'use strict';
 
 const { Pango, GLib, Gtk, Gdk, GObject, Gio } = imports.gi;
-const _GTK = imports.gettext.domain('gtk30').gettext;
+const _GTK = imports.gettext.domain('gtk40').gettext;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Uuid = Me.metadata.uuid.replace(/[^a-zA-Z]/g, '_');
 
 var FileButton = GObject.registerClass({
-    GTypeName: 'Gjs_%s_UI_Fileutton'.format(Uuid),
+    GTypeName: 'Gjs_%s_UI_FileButton'.format(Uuid),
     Properties: {
-        'file': GObject.param_spec_string('file', 'file', 'file', '', GObject.ParamFlags.READWRITE),
+        'file': GObject.ParamSpec.string('file', 'file', 'file', GObject.ParamFlags.READWRITE, ''),
     },
     Signals: {
         'changed': { param_types: [GObject.TYPE_STRING] },
     },
 }, class FileButton extends Gtk.Button {
     _init(path, params) {
-        super._init({
-            label: _GTK('(None)'),
-            always_show_image: true,
-            image: new Gtk.Image({ icon_name: 'document-open-symbolic' }),
-        });
-        this.set_file(path);
-        this.params = params;
+        super._init(); // no 'always-show-image'
+        this._icon = new Gtk.Image({ icon_name:  'document-open-symbolic' });
+        this._label = new Gtk.Label({ label: _GTK('(None)') });
+        this.set_child(new Box().appends([this._icon, this._label]));
 
+        this._buildChooser(params);
+    }
+
+    _buildChooser(params) {
         this.chooser = new Gtk.FileChooserNative({
             modal: Gtk.DialogFlags.MODAL,
-            title: this.params?.title ?? _GTK('File'),
-            action: this.params?.action ?? Gtk.FileChooserAction.OPEN,
+            title: params?.title ?? _GTK('File'),
+            action: params?.action ?? Gtk.FileChooserAction.OPEN,
             accept_label: _GTK('_Select'),
         });
         this.chooser.connect('response', (widget, response) => {
             if(response !== Gtk.ResponseType.ACCEPT) return;
-            this.set_file(widget.get_file().get_path());
+            this.file = widget.get_file().get_path();
             this.emit('changed', this.file);
         });
-        let [ok, file] = this.check_file();
-        if(ok) this.chooser.set_file(file);
-        if(this.params?.filter) this.chooser.add_filter(this.get_filter());
+        if(!params?.filter) return;
+        let filter = new Gtk.FileFilter();
+        let ft = params.filter;
+        ft.includes('/') ? filter.add_mime_type(ft) : filter.add_pattern(ft);
+        this.chooser.add_filter(filter);
     }
 
     vfunc_clicked() {
-        this.chooser.set_transient_for(this.get_toplevel());
+        this.chooser.set_transient_for(this.get_root());
         this.chooser.show();
     }
 
-    check_file() {
-        if(!this.file) return [false, null];
-        let file = Gio.File.new_for_path(this.file);
-        return [file.query_exists(null), file];
+    get file() {
+        return this?._file ?? '';
     }
 
-    get_filter() {
-        let filter = new Gtk.FileFilter();
-        let ft = this.params.filter;
-        ft.includes('/') ? filter.add_mime_type(ft) : filter.add_pattern(ft);
-        return filter;
-    }
-
-    set_file(path) {
+    set file(path) {
         let file;
         if(path) file = Gio.File.new_for_path(path);
         if(!file || !file.query_exists(null)) return;
         let info = file.query_info('standard::icon,standard::display-name', Gio.FileQueryInfoFlags.NONE, null);
-        this.set_image(Gtk.Image.new_from_gicon(info.get_icon(), Gtk.IconSize.BUTTON));
-        this.set_label(info.get_display_name());
-        this.file = path;
+        this._icon.set_from_gicon(info.get_icon());
+        this._label.set_label(info.get_display_name());
+        if(!this.file) this.chooser.set_file(file);
+        this._file = path;
+        this.notify('file');
     }
 });
 
-var ColorButton = GObject.registerClass({
-    GTypeName: 'Gjs_%s_UI_ColorButton'.format(Uuid),
+var ColourButton = GObject.registerClass({
+    GTypeName: 'Gjs_%s_UI_ColourButton'.format(Uuid),
     Properties: {
-        'colour': GObject.param_spec_string('colour', 'colour', 'colour', '', GObject.ParamFlags.READWRITE),
+        'colour': GObject.ParamSpec.string('colour', 'colour', 'colour', GObject.ParamFlags.READWRITE, ''),
     },
-}, class ColorButton extends Gtk.ColorButton {
-    _init(colour, params) {
+}, class ColourButton extends Gtk.ColorButton {
+    _init(params) {
         super._init(params);
-        this.connect('notify::color', widget => { this.colour = this.get_colour(); });
-        this.set_colour(colour);
+        this.connect('notify::color', () => { this.notify('colour'); });
     }
 
-    get_colour() {
+    get colour() {
         return this.get_rgba().to_string();
     }
 
-    set_colour(value) {
+    set colour(value) {
         let color = new Gdk.RGBA();
         if(color.parse(value)) this.set_rgba(color);
+    }
+});
+
+var Shortcut = GObject.registerClass({
+    GTypeName: 'Gjs_%s_UI_Shortcut'.format(Uuid),
+    Properties: {
+        'shortcut': GObject.ParamSpec.jsobject('shortcut', 'shortcut', 'shortcut', GObject.ParamFlags.READWRITE, []),
+    },
+    Signals: {
+        'changed': { param_types: [GObject.TYPE_STRING] },
+    },
+}, class Shortcut extends Gtk.Box {
+    _init(shortcut) {
+        super._init();
+        let model = new Gtk.ListStore();
+        model.set_column_types([GObject.TYPE_STRING]);
+        let [ok, key, mods] = Gtk.accelerator_parse(shortcut[0]);
+        model.set(model.insert(0), [0], [Gtk.accelerator_get_label(key, mods)]);
+        let tree = new Gtk.TreeView({ model: model, headers_visible: false });
+        let acc = new Gtk.CellRendererAccel({ editable: true, accel_mode: Gtk.CellRendererAccelMode.GTK });
+        let column = new Gtk.TreeViewColumn();
+        column.pack_start(acc, false);
+        column.add_attribute(acc, 'text', 0);
+        tree.append_column(column);
+        acc.connect('accel-edited', (acce, iter, key, mods) => {
+            if(!key) return;
+            let name = Gtk.accelerator_name(key, mods);
+            let [, iterator] = model.get_iter_from_string(iter);
+            model.set(iterator, [0], [Gtk.accelerator_get_label(key, mods)]);
+            this.shortcut = [name];
+            this.emit('changed', name);
+        });
+        this.append(tree);
     }
 });
 
@@ -110,26 +138,22 @@ var ListGrid = GObject.registerClass({
     }
 
     _add(x, y, z) {
-        let hbox = new Gtk.Box();
-        hbox.pack_start(x, true, true, 0);
-        if(y) hbox.pack_start(y, false, false, 0)
-        if(z) hbox.pack_start(z, false, false, 0);
-        this.attach(hbox, 0, this._count++, 2, 1);
+        this.attach(new Box().appends([x, y, z]), 0, this._count++, 2, 1);
+        if(!(x instanceof Gtk.CheckButton)) return;
+        if(y) x.bind_property('active', y, 'sensitive', GObject.BindingFlags.GET), y.set_sensitive(x.active);
+        if(z) x.bind_property('active', z, 'sensitive', GObject.BindingFlags.GET), z.set_sensitive(x.active);
     }
 
     _att(x, y, z) {
         let r = this._count++;
         if(z) {
-            let hbox = new Gtk.Box();
-            hbox.pack_start(y, true, true, 0);
-            hbox.pack_end(z, false, false, 0);
             this.attach(x, 0, r, 1, 1);
-            this.attach(hbox, 1, r, 1, 1);
+            this.attach(new Box().appends([y, z]), 1, r, 1, 1);
         } else if(y) {
             this.attach(x, 0, r, 1, 1);
             this.attach(y, 1, r, 1, 1);
         } else {
-            this.attach(x, 0, r, 1, 2)
+            this.attach(x, 0, r, 2, 1)
         }
     }
 });
@@ -164,24 +188,28 @@ var Entry = GObject.registerClass({
     _init(x, y, z) {
         super._init({
             hexpand: !z,
-            editable: false,
             placeholder_text: x,
             secondary_icon_sensitive: true,
             secondary_icon_activatable: true,
             secondary_icon_tooltip_text: y || '',
-            secondary_icon_name: 'action-unavailable',
+            secondary_icon_name: 'document-edit-symbolic',
         });
+
         this.connect('icon-press', () => { this.set_edit(!this.get_editable()); });
     }
 
     set_edit(edit) {
-        if(edit) {
-            this.set_editable(true);
-            this.secondary_icon_name = 'document-edit-symbolic';
-        } else {
-            this.set_editable(false);
-            this.secondary_icon_name = 'action-unavailable'
-        }
+        this.set_editable(edit);
+        this.secondary_icon_name = edit ? 'document-edit-symbolic' : 'action-unavailable-symbolic';
+    }
+
+    _set_edit() {
+        this.set_edit(!this.get_text());
+    }
+
+    _set_text(text) {
+        this.set_text(text);
+        this.set_edit(!text);
     }
 });
 
@@ -205,32 +233,55 @@ var Frame = GObject.registerClass({
 }, class Frame extends Gtk.Frame {
     _init(widget, label) {
         super._init({
-            margin_end: 30,
+            margin_end: 60,
             margin_top: 30,
-            margin_start: 30,
+            margin_start: 60,
             margin_bottom: 30,
         });
 
-        this.add(widget);
+        this.set_child(widget);
         if(!label) return;
-        this.set_label_widget(new Gtk.Label({
-            use_markup: true,
-            label: '<b><big>' + label + '</big></b>',
-        }));
+        this.set_label_widget(new Gtk.Label({ use_markup: true, label: '<b><big>' + label + '</big></b>', }));
     }
 });
 
 var Box = GObject.registerClass({
     GTypeName: 'Gjs_%s_UI_Box'.format(Uuid),
 }, class Box extends Gtk.Box {
-    _init(vertical, margin) {
-        super._init({
-            margin_end: margin,
-            margin_top: margin,
-            margin_start: margin,
-            margin_bottom: margin,
-            orientation: vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
+    _init(params) {
+        super._init();
+        if(params?.margins) this.set_margins(params.margins);
+        if(params?.spacing) this.set_spacing(params.spacing);
+        if(params?.vertical) this.set_orientation(Gtk.Orientation.VERTICAL);
+    }
+
+    set_margins(margins) {
+        let set_mgns = mgns => {
+            this.set_margin_top(mgns[0]);
+            this.set_margin_end(mgns[1]);
+            this.set_margin_bottom(mgns[2]);
+            this.set_margin_start(mgns[3]);
+        };
+        switch(margins.length) {
+        case 4: set_mgns(margins); break;
+        case 3: set_mgns(margins.concat(margins[1])); break;
+        case 2: set_mgns(margins.concat(margins)); break;
+        case 1: set_mgns(Array(4).fill(margins[0])); break;
+        }
+    }
+
+    appends(widgets) {
+        widgets.forEach(w => { if(w) this.append(w); });
+        return this;
+    }
+
+    appendS(widgets) {
+        widgets.forEach((w, i, arr) => {
+            if(!w) return;
+            this.append(w);
+            if(!Object.is(arr.length - 1, i)) this.append(new Gtk.Separator());
         });
+        return this;
     }
 });
 
@@ -246,4 +297,3 @@ var Check = GObject.registerClass({
         });
     }
 });
-
