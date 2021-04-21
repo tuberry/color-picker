@@ -73,3 +73,11 @@ msgstr "Menüyü açmak için orta tıkla veya menü tuşuna bas"
 
 #~ msgid "Choose a symbolic icon"
 #~ msgstr "Sembolik bir simge seçin"
+
+#: prefs.js:41
+msgid "Automatically copy"
+msgstr "Renk kodunu panoya kopyala"
+
+#: prefs.js:41
+msgid "copy the color to clipboard after picking"
+msgstr "Renk seçildikten sonra panoya renk kodunu kopyalar"
