@@ -2,6 +2,7 @@
 // by:tuberry@github
 //
 var Fields = {
+    AUTOCOPY:       'auto-copy',
     MENUSIZE:       'menu-size',
     MENUSTYLE:      'menu-style',
     NOTIFYSTYLE:    'notify-style',

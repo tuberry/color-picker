@@ -432,14 +432,15 @@ const ColorPicker = GObject.registerClass({
     Properties: {
         'collect':       GObject.ParamSpec.string('collect', 'collect', 'collect', GObject.ParamFlags.WRITABLE, ''),
         'history':       GObject.ParamSpec.string('history', 'history', 'history', GObject.ParamFlags.WRITABLE, ''),
-        'systray':       GObject.ParamSpec.boolean('systray', 'systray', 'systray', GObject.ParamFlags.WRITABLE, false),
-        'preview':       GObject.ParamSpec.boolean('preview', 'preview', 'preview', GObject.ParamFlags.READWRITE, false),
+        'systray':       GObject.ParamSpec.boolean('systray', 'systray', 'systray', GObject.ParamFlags.WRITABLE, true),
+        'preview':       GObject.ParamSpec.boolean('preview', 'preview', 'preview', GObject.ParamFlags.READWRITE, true),
         'icon-name':     GObject.ParamSpec.string('icon-name', 'icon-name', 'icon name', GObject.ParamFlags.WRITABLE, ''),
         'shortcut':      GObject.ParamSpec.boolean('shortcut', 'shortcut', 'shortcut', GObject.ParamFlags.WRITABLE, false),
+        'auto-copy':     GObject.ParamSpec.boolean('auto-copy', 'auto-copy', 'auto-copy', GObject.ParamFlags.READWRITE, true),
         'menu-size':     GObject.ParamSpec.uint('menu-size', 'menu-size', 'menu size', GObject.ParamFlags.READWRITE, 1, 16, 8),
         'menu-style':    GObject.ParamSpec.uint('menu-style', 'menu-style', 'menu style', GObject.ParamFlags.WRITABLE, 0, 1, 0),
         'notify-style':  GObject.ParamSpec.uint('notify-style', 'notify-style', 'notify style', GObject.ParamFlags.READWRITE, 0, 1, 0),
-        'enable-notify': GObject.ParamSpec.boolean('enable-notify', 'enable-notify', 'enable notify', GObject.ParamFlags.READWRITE, false),
+        'enable-notify': GObject.ParamSpec.boolean('enable-notify', 'enable-notify', 'enable notify', GObject.ParamFlags.READWRITE, true),
     },
 }, class ColorPicker extends GObject.Object {
     _init() {
@@ -454,6 +455,7 @@ const ColorPicker = GObject.registerClass({
         gsettings.bind(Fields.COLORSCOLLECT,  this, 'collect',       Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.MENUSTYLE,      this, 'menu-style',    Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.MENUSIZE,       this, 'menu-size',     Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.AUTOCOPY,       this, 'auto-copy',     Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.ENABLESHORTCUT, this, 'shortcut',      Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.ENABLENOTIFY,   this, 'enable-notify', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.NOTIFYSTYLE,    this, 'notify-style',  Gio.SettingsBindFlags.GET);
@@ -546,7 +548,6 @@ const ColorPicker = GObject.registerClass({
         });
         button.connect('clicked', () => {
             if(this._menu_style == MENU.HISTORY) {
-                if(this._collect.includes(color)) return;
                 gsettings.set_string(Fields.COLORSCOLLECT, this._collect ? color + '|' + this._collect : color);
             } else {
                 let collects = this._collect.split('|');
@@ -601,8 +602,7 @@ const ColorPicker = GObject.registerClass({
     }
 
     _notify(actor, color) {
-        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
-        if(!this._history.includes(color)) this._setHistory(color);
+        this._setHistory(color);
         if(!this.enable_notify) return;
         if(this.notify_style == NOTIFY.MSG) {
             Main.notify(Me.metadata.name, _('%s is picked.').format(color));
@@ -622,6 +622,7 @@ const ColorPicker = GObject.registerClass({
     }
 
     _setHistory(color) {
+        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
         if(this._history) {
             let history = (color + '|' + this._history).split('|');
             gsettings.set_string(Fields.COLORSHISTORY, history.slice(0, this.menu_size).join('|'));

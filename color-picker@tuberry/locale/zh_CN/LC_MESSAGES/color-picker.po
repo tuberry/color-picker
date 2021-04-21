@@ -1,14 +1,15 @@
-# Chinese translations for Color Picker package.
-# Copyright (C) 2020 THE Color Picker'S COPYRIGHT HOLDER
+# Chinese translations for Color Picker package
+# Color Picker 软件包的简体中文翻译.
+# Copyright (C) 2021 THE Color Picker'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the Color Picker package.
 # tuberry <orzun@foxmail.com>, 2020-2021.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Color Picker 18\n"
+"Project-Id-Version: Color Picker 23\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-04-03 10:23+0800\n"
-"PO-Revision-Date: 2021-04-03 10:24+0800\n"
+"POT-Creation-Date: 2021-04-21 14:59+0800\n"
+"PO-Revision-Date: 2021-04-21 15:01+0800\n"
 "Last-Translator: tuberry <orzun@foxmail.com>\n"
 "Language-Team: Chinese (Simplified) <orzun@foxmail.com>\n"
 "Language: zh_CHS\n"
@@ -16,12 +17,12 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0\n"
-"X-Generator: Gtranslator 3.38.0\n"
+"X-Generator: Gtranslator 40.0\n"
 
 #: extension.js:608
 #, javascript-format
 msgid "%s is picked."
-msgstr "已拾取 %s"
+msgstr "已拾取%s。"
 
 #: prefs.js:32
 msgid "MSG"
@@ -71,5 +72,10 @@ msgstr "启用预览"
 msgid "middle click or MENU key to open menu"
 msgstr "中键或菜单键打开菜单"
 
-#~ msgid "Choose a symbolic icon"
-#~ msgstr "选取符号图标"
+#: prefs.js:41
+msgid "Automatically copy"
+msgstr "自动复制"
+
+#: prefs.js:41
+msgid "copy the color to clipboard after picking"
+msgstr "选取后复制颜色到剪贴板"

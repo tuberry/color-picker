@@ -17,6 +17,10 @@
             <default>false</default>
             <summary>persistent mode</summary>
         </key>
+        <key type="b" name="auto-copy">
+            <default>true</default>
+            <summary>auto copy color to clipboard</summary>
+        </key>
         <key type="b" name="enable-preview">
             <default>true</default>
             <summary>enable preview</summary>

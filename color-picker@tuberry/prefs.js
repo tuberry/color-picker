@@ -38,12 +38,14 @@ class ColorPickerPrefs extends Gtk.ScrolledWindow {
         this._field_enable_shortcut = new UI.Check(_('Shortcut to pick'), _('arrow keys to move by pixel'));
         this._field_persistent_mode = new UI.Check(_('Persistent mode'), _('right click or Escape key to exit'));
         this._field_enable_preview  = new UI.Check(_('Enable preview'), _('middle click or MENU key to open menu'));
+        this._field_auto_copy       = new UI.Check(_('Automatically copy'), _('copy the color to clipboard after picking'));
     }
 
     _buildUI() {
         let grid = new UI.ListGrid();
         grid._add(this._field_enable_preview);
         grid._add(this._field_persistent_mode);
+        grid._add(this._field_auto_copy);
         grid._add(this._field_enable_shortcut, this._field_shortcut);
         grid._add(this._field_enable_notify,   this._field_notify_style);
         grid._add(this._field_enable_systray,  this._field_systray_icon, this._field_menu_size);
@@ -56,6 +58,7 @@ class ColorPickerPrefs extends Gtk.ScrolledWindow {
         gsettings.bind(Fields.ENABLESYSTRAY,  this._field_enable_systray,  'active',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.ENABLEPREVIEW,  this._field_enable_preview,  'active',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.NOTIFYSTYLE,    this._field_notify_style,    'active',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.AUTOCOPY,       this._field_auto_copy,       'active',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.MENUSIZE,       this._field_menu_size,       'value',    Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SYSTRAYICON,    this._field_systray_icon,    'file',     Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PERSISTENTMODE, this._field_persistent_mode, 'active',   Gio.SettingsBindFlags.DEFAULT);
