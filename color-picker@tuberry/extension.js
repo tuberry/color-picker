@@ -18,6 +18,7 @@ const Fields = Me.imports.fields.Fields;
 const NOTIFY = { MSG: 0, OSD: 1 };
 const MENU = { HISTORY: 0, COLLECT: 1 };
 const NOTATION = { HEX: 0, RGB: 1, HSL: 2 };
+const COLOR_PICK_ICON = Me.dir.get_child('icons').get_child('color-pick.svg').get_path();
 const DROPPER_ICON = Me.dir.get_child('icons').get_child('dropper-symbolic.svg').get_path();
 
 const convToCSS = (color, notation) => {
@@ -314,7 +315,8 @@ const ColorArea = GObject.registerClass({
             });
 
             this._icon = new St.Icon({
-                icon_name: 'color-pick',
+                // icon_name: 'color-pick',
+                gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(COLOR_PICK_ICON) }),
                 icon_size: Meta.prefs_get_cursor_size() * 1.5,
                 effect: this._effect,
                 visible: false,
