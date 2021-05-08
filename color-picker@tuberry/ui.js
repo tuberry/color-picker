@@ -75,7 +75,7 @@ var ColourButton = GObject.registerClass({
 }, class ColourButton extends Gtk.ColorButton {
     _init(params) {
         super._init(params);
-        this.connect('notify::color', () => { this.notify('colour'); });
+        this.connect('color-set', () => { this.notify('colour'); });
     }
 
     get colour() {

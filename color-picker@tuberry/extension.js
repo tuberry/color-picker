@@ -48,6 +48,7 @@ const convToHex = color => {
 const convToText = color => {
     let hex = convToHex(color);
     let [h, l, s] = Clutter.Color.from_string(hex)[1].to_hls();
+    //NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
     return ' <span fgcolor="%s" bgcolor="%s">%s</span>'.format(Math.round(l) ? '#000' : '#fff', hex, color);
 }
 
@@ -525,12 +526,11 @@ const ColorPicker = GObject.registerClass({
 
     _updateMenu() {
         this._button.menu.removeAll();
-        if(this._menu_style == MENU.HISTORY) {
-            if(this._history) this._history.split('|').forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
-        } else {
-            if(this._collect) this._collect.split('|').forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
+        let colors = this._menu_style == MENU.HISTORY ? this._history : this._collect;
+        if(colors) {
+            colors.split('|').forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
+            this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
         }
-        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
         this._button.menu.addMenuItem(this._settingItem());
     }
 
@@ -540,7 +540,6 @@ const ColorPicker = GObject.registerClass({
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
         });
         let label = new St.Label({ x_expand: true, });
-        //NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
         label.clutter_text.set_markup(convToText(color));
         item.add_child(label);
 
@@ -550,6 +549,7 @@ const ColorPicker = GObject.registerClass({
         });
         button.connect('clicked', () => {
             if(this._menu_style == MENU.HISTORY) {
+                if(this._collect.includes(color)) return;
                 gsettings.set_string(Fields.COLORSCOLLECT, this._collect ? color + '|' + this._collect : color);
             } else {
                 let collects = this._collect.split('|');
