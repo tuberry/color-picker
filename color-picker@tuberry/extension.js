@@ -513,6 +513,7 @@ const ColorPicker = GObject.registerClass({
             this._button.add_actor(this.icon);
             this._button.connect('left-click', this._beginPick.bind(this));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
+            this._updateMenu();
         } else {
             if(this._icon) {
                 this._icon.destroy();
@@ -525,6 +526,7 @@ const ColorPicker = GObject.registerClass({
     }
 
     _updateMenu() {
+        if(!this._button) return;
         this._button.menu.removeAll();
         let colors = this._menu_style == MENU.HISTORY ? this._history : this._collect;
         if(colors) {
