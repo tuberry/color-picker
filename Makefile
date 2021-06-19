@@ -7,10 +7,17 @@ UUID = $(shell ls | grep @)
 NAME = $(shell cat $(UUID)/metadata.json | grep gettext-domain | sed -e 's/.* "//; s/",//')
 PACK = $(shell echo $(NAME) | sed -e 's/^./\U&/g; s/-/ /g; s/ ./\U&/g')
 EGOURL = https://extensions.gnome.org/extension/$(EXTNUM)/$(NAME)/
-
 MSGPOS = $(wildcard $(UUID)/locale/*/LC_MESSAGES/*.po)
-SCMXML = $(UUID)/schemas/org.gnome.shell.extensions.$(NAME).gschema.xml
-SCMCPL = $(UUID)/schemas/gschemas.compiled
+
+BUILD = _build
+
+# for translators: `make mergepo` or `make LANG=YOUR_LANG mergepo`
+# The envvar LANG is used to localize pot file.
+#
+LANGUAGE = $(shell echo $(LANG) | sed -e 's/\..*//')
+MSGDIR = $(UUID)/locale/$(LANGUAGE)/LC_MESSAGES
+MSGPOT = $(UUID)/locale/$(NAME).pot
+MSGAIM = $(MSGDIR)/$(NAME).po
 
 ifeq ($(strip $(DESTDIR)),)
 	INSTALLTYPE = local
@@ -29,65 +36,51 @@ ifndef VERSION
 	VERSION = $(shell curl -s $(EGOURL) 2>&1 | grep data-svm | sed -e 's/.*: //; s/}}"//' | xargs -I{} expr {} + 1)
 endif
 
-# for translators: `make mergepo` or `make LANG=YOUR_LANG mergepo`
-# The command line passed variable LANG is used to localize pot file.
-#
-LANGUAGE = $(shell echo $(LANG) | sed -e 's/\..*//')
-MSGPOT = locale/$(NAME).pot
-MSGDIR = locale/$(LANGUAGE)/LC_MESSAGES
-MSGSRC = $(MSGDIR)/$(NAME).po
-MSGAIM = $(MSGDIR)/$(NAME).mo
-
-all: _build
+all: $(BUILD)
 
 clean:
-	-rm -fR _build
+	-rm -fR $(BUILD)
 	-rm -fR *.zip
-	-rm -fR $(SCMCPL)
-	-rm -fR $(MSGPOS:.po=.mo)
-	-rm -fR $(MSGPOS:.po=.po~)
-
-$(SCMCPL): $(SCMXML)
-	glib-compile-schemas ./$(UUID)/schemas/
 
 %.mo: %.po
 	msgfmt $< -o $@
 
-_build: $(SCMCPL) $(MSGPOS:.po=.mo)
-	-rm -fR _build
-	mkdir -p _build
-	cp -r $(UUID)/* _build
-	sed -i 's/"version": [[:digit:]]\+/"version": $(VERSION)/' _build/metadata.json;
+$(BUILD): $(MSGPOS:.po=.mo)
+	mkdir -p $(BUILD)
+	cp -rf $(UUID)/* $(BUILD)
+	-rm -fR $(BUILD)/locale/*/LC_MESSAGES/*po
+	-rm -fR $(UUID)/locale/*/LC_MESSAGES/*mo
+	glib-compile-schemas $(BUILD)/schemas/
+	-rm -fR $(BUILD)/schemas/*xml
+	sed -i 's/"version": [[:digit:]]\+/"version": $(VERSION)/' $(BUILD)/metadata.json;
 
-zip: _build
-	cd _build ; \
-		zip -qr "$(NAME)_v$(shell cat _build/metadata.json | grep \"version\" | sed -e 's/[^0-9]*//').zip" .
-	mv _build/*.zip ./
+pack: $(BUILD)
+	cd $(BUILD); \
+		zip -qr "$(NAME)_v$(shell cat $(BUILD)/metadata.json | grep \"version\" | sed -e 's/[^0-9]*//').zip" .
+	mv $(BUILD)/*.zip ./
 
-install: _build
-	rm -rf $(INSTALLBASE)/$(UUID)
+install: $(BUILD)
+	rm -fR $(INSTALLBASE)/$(UUID)
 	mkdir -p $(INSTALLBASE)/$(UUID)
-	cp -r ./_build/* $(INSTALLBASE)/$(UUID)/
+	cp -r $(BUILD)/* $(INSTALLBASE)/$(UUID)/
 ifeq ($(INSTALLTYPE),system)
 	# system-wide settings and locale files
 	rm -r $(INSTALLBASE)/$(UUID)/schemas $(INSTALLBASE)/$(UUID)/locale
 	mkdir -p $(SHARE_PREFIX)/glib-2.0/schemas $(SHARE_PREFIX)/locale
-	cp -r ./_build/schemas/*gschema.xml $(SHARE_PREFIX)/glib-2.0/schemas
-	cd _build/locale ; \
+	cp -r $(UUID)/schemas/*gschema.xml $(SHARE_PREFIX)/glib-2.0/schemas
+	cd $(BUILD)/locale; \
 		cp --parents */LC_MESSAGES/*.mo $(SHARE_PREFIX)/locale
 endif
 
-$(UUID)/$(MSGSRC):
-	cd $(UUID); \
-		mkdir -p $(MSGDIR); \
-		msginit --no-translator --locale $(LANGUAGE).UTF-8 -i ./$(MSGPOT) -o ./$(MSGSRC)
+$(MSGAIM):
+	mkdir -p $(MSGDIR); \
+		msginit --no-translator --locale $(LANGUAGE).UTF-8 -i $(MSGPOT) -o $(MSGAIM)
 
-potfile: # always gen new pot from source
+$(MSGPOT):
 	cd $(UUID); \
-		xgettext -k --keyword=_ --from-code=utf-8 --package-name="$(PACK)" --package-version=$(VERSION) --add-comments='Translators:' --output ./$(MSGPOT) *js
+		xgettext -k --keyword=_ --from-code=utf-8 --package-name="$(PACK)" --package-version=$(VERSION) --add-comments='Translators:' --output locale/$(NAME).pot *js
 
-pofile: $(UUID)/$(MSGSRC)
-
-mergepo: potfile pofile
-	cd $(UUID); \
-		msgmerge -U $(MSGSRC) $(MSGPOT)
+mergepo: $(MSGPOT) $(MSGAIM)
+	msgmerge -U $(MSGAIM) $(MSGPOT)
+	-rm -fR $(MSGPOT)
+	-rm -fR $(MSGDIR)/*po~

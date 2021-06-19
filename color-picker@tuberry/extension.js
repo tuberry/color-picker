@@ -509,7 +509,7 @@ const ColorPicker = GObject.registerClass({
     set systray(systray) {
         if(systray) {
             if(this._button) return;
-            this._button = new ColorButton(null);
+            this._button = new ColorButton(null, Me.metadata.uuid);
             this._button.add_actor(this.icon);
             this._button.connect('left-click', this._beginPick.bind(this));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
@@ -538,12 +538,11 @@ const ColorPicker = GObject.registerClass({
 
     _menuItemMaker(color) {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item popup-menu-item' });
-        item.connect('activate', () => {
-            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
-        });
+        item.connect('activate', () => { St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color); });
         let label = new St.Label({ x_expand: true, });
         label.clutter_text.set_markup(convToText(color));
         item.add_child(label);
+
 
         let button = new St.Button({
             style_class: this._menu_style == MENU.HISTORY ? 'color-picker-history' : 'color-picker-collection',
@@ -618,7 +617,7 @@ const ColorPicker = GObject.registerClass({
             Main.osdWindowManager.show(index, icon, color, null, 2);
             let clearId = osd._box.connect('notify::mapped', box => {
                 if(box.mapped) return Clutter.EVENT_STOP;
-                osd._icon.set_style('color: none;');
+                osd._icon.set_style('');
                 osd._box.disconnect(clearId);
                 return Clutter.EVENT_STOP;
             });
