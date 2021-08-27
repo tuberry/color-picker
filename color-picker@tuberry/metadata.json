@@ -1,6 +1,6 @@
 {
   "name": "Color Picker",
-  "gettext-domain": "color-picker",
+  "gettext-domain": "gnome-shell-extension-color-picker",
   "settings-schema": "org.gnome.shell.extensions.color-picker",
   "description": "Simple color picker for gnome shell\n\nFor support, please report any issues via the homepage link below.",
   "uuid": "color-picker@tuberry",

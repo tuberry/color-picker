@@ -97,13 +97,13 @@ var Shortcut = GObject.registerClass({
         'changed': { param_types: [GObject.TYPE_STRING] },
     },
 }, class Shortcut extends Gtk.Box {
-    _init(shortcut) {
-        super._init();
+    _init(shortcut, tooltip) {
+        super._init({ tooltip_text: tooltip || '' });
         let model = new Gtk.ListStore();
         model.set_column_types([GObject.TYPE_STRING]);
         let [ok, key, mods] = Gtk.accelerator_parse(shortcut[0]);
         model.set(model.insert(0), [0], [Gtk.accelerator_get_label(key, mods)]);
-        let tree = new Gtk.TreeView({ model: model, headers_visible: false });
+        let tree = new Gtk.TreeView({ valign: Gtk.Align.CENTER, model: model, headers_visible: false });
         let acc = new Gtk.CellRendererAccel({ editable: true, accel_mode: Gtk.CellRendererAccelMode.GTK });
         let column = new Gtk.TreeViewColumn();
         column.pack_start(acc, false);
@@ -118,6 +118,11 @@ var Shortcut = GObject.registerClass({
             this.emit('changed', name);
         });
         this.append(tree);
+    }
+
+    vfunc_snapshot(snapshot) {
+        snapshot.render_background(new Gtk.Entry().get_style_context(), 0, 0, this.get_width(), this.get_height());
+        super.vfunc_snapshot(snapshot);
     }
 });
 
@@ -231,12 +236,12 @@ var Combo = GObject.registerClass({
 var Frame = GObject.registerClass({
     GTypeName: 'Gjs_%s_UI_Frame'.format(Uuid),
 }, class Frame extends Gtk.Frame {
-    _init(widget, label) {
+    _init(widget, label, gap) {
         super._init({
             margin_end: 60,
             margin_top: 30,
             margin_start: 60,
-            margin_bottom: 30,
+            margin_bottom: gap ? 0 : 30,
         });
 
         this.set_child(widget);
@@ -293,7 +298,7 @@ var Check = GObject.registerClass({
             label: x,
             hexpand: true,
             halign: Gtk.Align.START,
-            tooltip_text: y ? y : '',
+            tooltip_text: y || '',
         });
     }
 });
