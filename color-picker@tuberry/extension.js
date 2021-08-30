@@ -23,13 +23,9 @@ const DROPPER_ICON = Me.dir.get_child('icons').get_child('dropper-symbolic.svg')
 
 const convToCSS = (color, notation) => {
     switch(notation) {
-    case NOTATION.RGB:
-        return 'rgb(%d, %d, %d)'.format(color.red, color.green, color.blue);
-    case NOTATION.HSL:
-        let [h, l, s] = color.to_hls();
-        return 'hsl(%d, %f%%, %f%%)'.format(h, Number(s * 100).toFixed(1), Number(l * 100).toFixed(1));
-    default:
-        return color.to_string().slice(0, 7);
+    case NOTATION.RGB: return 'rgb(%d, %d, %d)'.format(color.red, color.green, color.blue);
+    case NOTATION.HSL: return ((h, l, s) => 'hsl(%d, %f%%, %f%%)'.format(h, Number(s * 100).toFixed(1), Number(l * 100).toFixed(1)))(...color.to_hls());
+    default: return color.to_string().slice(0, 7);
     }
 }
 
@@ -38,8 +34,7 @@ const convToHex = color => {
         let [h, s, l] = color.slice(4, -1).split(',').map((v, i, a) => parseFloat(v) / (i == 0 ? 1 : 100));
         return Clutter.Color.from_hls(h, l, s).to_string().slice(0, 7);
     } else if(color.includes('rgb')) {
-        let rgb = Clutter.Color.from_string(color)[1];
-        return rgb.to_string().slice(0, 7);
+        return (Clutter.Color.from_string(color)[1]).to_string().slice(0, 7);
     } else {
         return color;
     }
@@ -62,8 +57,8 @@ const ColorSlider = GObject.registerClass({
         this.base = params.base;
     }
 
-    vfunc_key_press_event(keyPressEvent) {
-        let key = keyPressEvent.keyval;
+    vfunc_key_press_event(event) {
+        let key = event.keyval;
         if (key == Clutter.KEY_Right || key == Clutter.KEY_Left) {
             let delta = key == Clutter.KEY_Right ? this.step : -this.step;
             this.value = Math.max(0, Math.min(this._value + delta, this._maxValue));
@@ -77,22 +72,16 @@ const ColorSlider = GObject.registerClass({
     }
 
     scroll(event) {
-        let direction = event.get_scroll_direction();
-        let delta;
-
-        if (event.is_pointer_emulated())
-            return Clutter.EVENT_PROPAGATE;
-
-        if (direction == Clutter.ScrollDirection.DOWN) {
-            delta = -this.step;
-        } else if (direction == Clutter.ScrollDirection.UP) {
-            delta = this.step;
-        } else if (direction == Clutter.ScrollDirection.SMOOTH) {
-            let [, dy] = event.get_scroll_delta();
-            delta = -dy * this.step;
-        }
-
-        this.value = Math.min(Math.max(0, this._value + delta), this._maxValue);
+        if(event.is_pointer_emulated()) return Clutter.EVENT_PROPAGATE;
+        let delta = ((direction) => {
+            switch(direction) {
+            case Clutter.ScrollDirection.UP: return 1;
+            case Clutter.ScrollDirection.DOWN: return -1;
+            case Clutter.ScrollDirection.SMOOTH: return -event.get_scroll_delta()[1];
+            default: return 0;
+            }
+        })(event.get_scroll_direction());
+        this.value = Math.min(Math.max(0, this._value + delta * this.step), this._maxValue);
 
         return Clutter.EVENT_STOP;
     }
@@ -207,28 +196,20 @@ const ColorMenu = GObject.registerClass({
         item.add_child(label);
         item.label = label;
 
-        let hex = new St.Button({ label: 'HEX', style_class: 'color-picker-label-button button' });
-        hex.connect('clicked', () => {
-            item._getTopMenu().close();
-            this.emit('color-selected', convToCSS(this._color, NOTATION.HEX));
-        });
-        item.add_child(hex);
-
-        let rgb = new St.Button({ label: 'RGB', style_class: 'color-picker-label-button button' });
-        rgb.connect('clicked', () => {
-            item._getTopMenu().close();
-            this.emit('color-selected', convToCSS(this._color, NOTATION.RGB));
-        });
-        item.add_child(rgb);
-
-        let hsl = new St.Button({ label: 'HSL', style_class: 'color-picker-label-button button' });
-        hsl.connect('clicked', () => {
-            item._getTopMenu().close();
-            this.emit('color-selected', convToCSS(this._color, NOTATION.HSL));
-        });
-        item.add_child(hsl);
+        this._addLabelButton(item, 'HEX', NOTATION.HEX);
+        this._addLabelButton(item, 'RGB', NOTATION.RGB);
+        this._addLabelButton(item, 'HSL', NOTATION.HSL);
 
         return item;
+    }
+
+    _addLabelButton(item, label, notation) {
+        let btn = new St.Button({ label: label, style_class: 'color-picker-label-button button' });
+        btn.connect('clicked', () => {
+            item._getTopMenu().close();
+            this.emit('color-selected', convToCSS(this._color, notation));
+        });
+        item.add_child(btn);
     }
 
     _separatorItem(text) {
@@ -314,7 +295,6 @@ const ColorArea = GObject.registerClass({
                 threshold: 0.03,
                 smoothing: 0.3,
             });
-
             this._icon = new St.Icon({
                 // icon_name: 'color-pick',
                 gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(COLOR_PICK_ICON) }),
@@ -328,9 +308,7 @@ const ColorArea = GObject.registerClass({
             this._menu.actor.hide();
             Main.layoutManager.addTopChrome(this._menu.actor);
             Main.layoutManager.addTopChrome(this._icon);
-            this._menu.connect('menu-closed', () => {
-                this._pick().then(this._updateColor.bind(this));
-            });
+            this._menu.connect('menu-closed', () => { this._pick().then(this._updateColor.bind(this)); });
             this._menu.connect('color-selected', (menu, color) => {
                 this.emit('notify-color', color);
                 if(!this._persist) this.emit('end-pick');
@@ -346,9 +324,7 @@ const ColorArea = GObject.registerClass({
     }
 
     vfunc_motion_event(event) {
-        if(!this._icon)
-            return Clutter.EVENT_PROPAGATE;
-        this._pick().then(this._updateColor.bind(this));
+        if(this._icon) this._pick().then(this._updateColor.bind(this));
         return Clutter.EVENT_PROPAGATE;
     }
 
@@ -356,22 +332,20 @@ const ColorArea = GObject.registerClass({
         let [X, Y] = global.get_pointer();
         switch(event.keyval) {
         case Clutter.KEY_Left:
-            this._pointer.notify_absolute_motion(global.get_current_time(), X-1, Y);
+            this._pointer.notify_absolute_motion(global.get_current_time(), X - 1, Y);
             break;
         case Clutter.KEY_Up:
-            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y-1);
+            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y - 1);
             break;
         case Clutter.KEY_Right:
-            this._pointer.notify_absolute_motion(global.get_current_time(), X+1, Y);
+            this._pointer.notify_absolute_motion(global.get_current_time(), X + 1, Y);
             break;
         case Clutter.KEY_Down:
-            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y+1);
+            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y + 1);
             break;
         case Clutter.KEY_Escape:
             this.emit('end-pick');
             return Clutter.EVENT_PROPAGATE;
-        default:
-            break;
         }
 
         return super.vfunc_key_press_event(event);
@@ -391,8 +365,7 @@ const ColorArea = GObject.registerClass({
             }
             break;
         case 2:
-            if(this._icon)
-                this._menu.open(this._effect._color);
+            if(this._icon) this._menu.open(this._effect._color);
             break;
         default:
             this.emit('end-pick');
@@ -421,8 +394,7 @@ const ColorButton = GObject.registerClass({
     }
 
     vfunc_event(event) {
-        if (event.type() == Clutter.EventType.BUTTON_PRESS &&
-            event.get_button() == 1) {
+        if(event.type() == Clutter.EventType.BUTTON_PRESS && event.get_button() == 1) {
             this.emit('left-click');
             return Clutter.EVENT_STOP;
         }
@@ -542,8 +514,6 @@ const ColorPicker = GObject.registerClass({
         let label = new St.Label({ x_expand: true, });
         label.clutter_text.set_markup(convToText(color));
         item.add_child(label);
-
-
         let button = new St.Button({
             style_class: this._menu_style == MENU.HISTORY ? 'color-picker-history' : 'color-picker-collection',
             child: new St.Icon({ icon_name: 'emblem-favorite-symbolic', style_class: 'color-picker-icon', }),
@@ -559,6 +529,7 @@ const ColorPicker = GObject.registerClass({
             }
         });
         item.add_child(button);
+
         return item;
     }
 
@@ -578,6 +549,7 @@ const ColorPicker = GObject.registerClass({
         addButtonItem('face-cool-symbolic', () => { gsettings.set_uint(Fields.MENUSTYLE, 1 - this._menu_style); });
         addButtonItem('emblem-system-symbolic', () => { item._getTopMenu().close(); ExtensionUtils.openPrefs(); });
         item.add_child(hbox);
+
         return item;
     }
 

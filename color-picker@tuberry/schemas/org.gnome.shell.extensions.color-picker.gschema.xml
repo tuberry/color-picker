@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="gnome-shell-extensions-color-picker">
+<schemalist gettext-domain="gnome-shell-extension-color-picker">
     <schema path="/org/gnome/shell/extensions/color-picker/" id="org.gnome.shell.extensions.color-picker">
         <key type="b" name="enable-systray">
             <default>true</default>
