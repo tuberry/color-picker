@@ -1,5 +1,5 @@
 // vim:fdm=syntax
-// by: tuberry@github
+// by tuberry
 'use strict';
 
 const { Gtk, Gdk, GObject, Gio } = imports.gi;

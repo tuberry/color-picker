@@ -12,7 +12,7 @@ const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const gsettings = ExtensionUtils.getSettings();
 const Me = ExtensionUtils.getCurrentExtension();
-const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
+const _ = ExtensionUtils.gettext;
 const Fields = Me.imports.fields.Fields;
 
 const NOTIFY = { MSG: 0, OSD: 1 };

@@ -5,7 +5,7 @@
   "description": "Simple color picker for gnome shell\n\nFor support, please report any issues via the homepage link below.",
   "uuid": "color-picker@tuberry",
   "shell-version": [
-    "40"
+    "41"
   ],
   "url": "https://github.com/tuberry/color-picker",
   "version": 1
