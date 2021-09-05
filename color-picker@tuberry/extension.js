@@ -21,7 +21,7 @@ const NOTATION = { HEX: 0, RGB: 1, HSL: 2 };
 const COLOR_PICK_ICON = Me.dir.get_child('icons').get_child('color-pick.svg').get_path();
 const DROPPER_ICON = Me.dir.get_child('icons').get_child('dropper-symbolic.svg').get_path();
 
-const convToCSS = (color, notation) => {
+function convToCSS(color, notation) {
     switch(notation) {
     case NOTATION.RGB: return 'rgb(%d, %d, %d)'.format(color.red, color.green, color.blue);
     case NOTATION.HSL: return ((h, l, s) => 'hsl(%d, %f%%, %f%%)'.format(h, Number(s * 100).toFixed(1), Number(l * 100).toFixed(1)))(...color.to_hls());
@@ -29,7 +29,7 @@ const convToCSS = (color, notation) => {
     }
 }
 
-const convToHex = color => {
+function convToHex(color) {
     if(color.includes('hsl')) {
         let [h, s, l] = color.slice(4, -1).split(',').map((v, i, a) => parseFloat(v) / (i == 0 ? 1 : 100));
         return Clutter.Color.from_hls(h, l, s).to_string().slice(0, 7);
@@ -40,7 +40,7 @@ const convToHex = color => {
     }
 }
 
-const convToText = color => {
+function convToText(color) {
     let hex = convToHex(color);
     let [h, l, s] = Clutter.Color.from_string(hex)[1].to_hls();
     //NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
@@ -97,7 +97,8 @@ const ColorMenu = GObject.registerClass({
         super._init();
         this._color = new Clutter.Color({ red: 255, green: 255, blue: 255, }),
         this._menu = new PopupMenu.PopupMenu(actor, 0.25, St.Side.LEFT);
-        this._menu.connect('open-state-changed', (menu, open) => global.display.set_cursor(Meta.Cursor[open ? 'DEFAULT' : 'BLANK']));
+        this._menu.connect('open-state-changed', (menu, open) =>
+                           global.display.set_cursor(Meta.Cursor[open ? 'DEFAULT' : 'BLANK']));
         this._menu.connect('menu-closed', () => { this.emit('menu-closed'); })
         this.actor.add_style_class_name('color-picker-menu popup-menu');
         this._menuManager = new PopupMenu.PopupMenuManager(area);
@@ -132,9 +133,12 @@ const ColorMenu = GObject.registerClass({
         let section = new PopupMenu.PopupMenuSection();
         let [r, g, b] = [this._color.red, this._color.green, this._color.blue];
         this._rgb = this._separatorItem(convToCSS(this._color, NOTATION.RGB).toUpperCase());
-        this._rslider = this._sliderItem('R', r, 255, x => { this.rgbColor = Clutter.Color.new(Math.round(x * 255), this._color.green, this._color.blue, 255); });
-        this._gslider = this._sliderItem('G', g, 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, Math.round(x * 255), this._color.blue, 255); });
-        this._bslider = this._sliderItem('B', b, 255, x => { this.rgbColor = Clutter.Color.new(this._color.red, this._color.green, Math.round(x * 255), 255); });
+        this._rslider = this._sliderItem('R', r, 255, x => {
+            this.rgbColor = Clutter.Color.new(Math.round(x * 255), this._color.green, this._color.blue, 255); });
+        this._gslider = this._sliderItem('G', g, 255, x => {
+            this.rgbColor = Clutter.Color.new(this._color.red, Math.round(x * 255), this._color.blue, 255); });
+        this._bslider = this._sliderItem('B', b, 255, x => {
+            this.rgbColor = Clutter.Color.new(this._color.red, this._color.green, Math.round(x * 255), 255); });
 
         this._menu.addMenuItem(this._rgb);
         this._menu.addMenuItem(this._rslider);
@@ -146,7 +150,10 @@ const ColorMenu = GObject.registerClass({
         let [h, l, s] = this._color.to_hls();
         let section = new PopupMenu.PopupMenuSection();
         this._hsl = this._separatorItem(convToCSS(this._color, NOTATION.HSL).toUpperCase());
-        this._hslider = this._sliderItem('H', h, 360, x => { this.hslColor = Clutter.Color.from_hls(Math.round(x * 360), this._color.to_hls()[1] , this._color.to_hls()[2]); });
+        this._hslider = this._sliderItem('H', h, 360, x => {
+            let [, l, s] = this._color.to_hls();
+            this.hslColor = Clutter.Color.from_hls(Math.round(x * 360), l, s);
+        });
         this._sslider = this._sliderItem('S', s, 100, x => {
             this.hslColor = Clutter.Color.from_hls(this._color.to_hls()[0], this._color.to_hls()[1], x);
             this._hslider.slider.value = this._color.to_hls()[0] / 360;
@@ -205,8 +212,7 @@ const ColorMenu = GObject.registerClass({
 
     _addLabelButton(item, label, notation) {
         let btn = new St.Button({ label: label, style_class: 'color-picker-label-button button' });
-        btn.connect('clicked', () => {
-            item._getTopMenu().close();
+        btn.connect('clicked', () => { this._menu.close();
             this.emit('color-selected', convToCSS(this._color, notation));
         });
         item.add_child(btn);
@@ -267,23 +273,11 @@ const ColorArea = GObject.registerClass({
         gsettings.bind(Fields.ENABLEPREVIEW,  this, 'preview', Gio.SettingsBindFlags.GET);
     }
 
-    _pick() {
-        return new Promise((resolve, reject) => {
-            try {
-                let [x, y] = global.get_pointer();
-                this._picker.pick_color(x, y, (pick, res) => {
-                    let [, color] = pick.pick_color_finish(res);
-                    resolve({ color: color, x: x, y: y });
-                });
-            } catch(e) {
-                reject(e.message);
-            }
-        });
-    }
-
-    _updateColor(pramas) {
-        this._icon.set_position(pramas.x, pramas.y);
-        this._effect.color = pramas.color;
+    async _pick() {
+        let [x, y] = global.get_pointer();
+        this._icon.set_position(x, y);
+        let [color] = await this._picker.pick_color(x, y);
+        this._effect.color = color;
         this._icon.show();
     }
 
@@ -302,13 +296,13 @@ const ColorArea = GObject.registerClass({
                 effect: this._effect,
                 visible: false,
             });
-            this._pick().then(this._updateColor.bind(this));
+            this._pick().then(null).catch(() => this.emit('end-pick'));
 
             this._menu = new ColorMenu(this._icon, this);
             this._menu.actor.hide();
             Main.layoutManager.addTopChrome(this._menu.actor);
             Main.layoutManager.addTopChrome(this._icon);
-            this._menu.connect('menu-closed', () => { this._pick().then(this._updateColor.bind(this)); });
+            this._menu.connect('menu-closed', () => { this._pick().then(null).catch(() => this.emit('end-pick')); });
             this._menu.connect('color-selected', (menu, color) => {
                 this.emit('notify-color', color);
                 if(!this._persist) this.emit('end-pick');
@@ -324,7 +318,7 @@ const ColorArea = GObject.registerClass({
     }
 
     vfunc_motion_event(event) {
-        if(this._icon) this._pick().then(this._updateColor.bind(this));
+        if(this._icon) this._pick().then(null).catch(() => this.emit('end-pick'));
         return Clutter.EVENT_PROPAGATE;
     }
 
@@ -358,10 +352,10 @@ const ColorArea = GObject.registerClass({
                 this.emit('notify-color', convToCSS(this._effect._color, NOTATION.HEX));
                 if(!this._persist) this.emit('end-pick');
             } else {
-                this._pick().then(scc => {
-                    this.emit('notify-color', convToCSS(scc.color, NOTATION.HEX));
+                this._pick().then(() => {
+                    this.emit('notify-color', convToCSS(this._effect.color, NOTATION.HEX));
                     if(!this._persist) this.emit('end-pick');
-                });
+                }).catch(() => this.emit('end-pick'));
             }
             break;
         case 2:
@@ -545,9 +539,9 @@ const ColorPicker = GObject.registerClass({
             btn.connect('clicked', func);
             hbox.add_child(btn);
         }
-        addButtonItem('find-location-symbolic', () => { item._getTopMenu().close(); this._beginPick(); });
+        addButtonItem('find-location-symbolic', () => { this._button.menu.close(); this._beginPick(); });
         addButtonItem('face-cool-symbolic', () => { gsettings.set_uint(Fields.MENUSTYLE, 1 - this._menu_style); });
-        addButtonItem('emblem-system-symbolic', () => { item._getTopMenu().close(); ExtensionUtils.openPrefs(); });
+        addButtonItem('emblem-system-symbolic', () => { this._button.menu.close(); ExtensionUtils.openPrefs(); });
         item.add_child(hbox);
 
         return item;
