@@ -211,7 +211,7 @@ const ColorMenu = GObject.registerClass({
     }
 
     _addLabelButton(item, label, notation) {
-        let btn = new St.Button({ label: label, style_class: 'color-picker-label-button button' });
+        let btn = new St.Button({ label, style_class: 'color-picker-label-button button' });
         btn.connect('clicked', () => { this._menu.close();
             this.emit('color-selected', convToCSS(this._color, notation));
         });
@@ -224,8 +224,8 @@ const ColorMenu = GObject.registerClass({
 
     _sliderItem(text, value, base, func) {
         let item = new PopupMenu.PopupBaseMenuItem({ activate: false });
-        let label = new St.Label({ text: text, style_class: 'color-picker-item popup-menu-item', x_expand: false });
-        let slider = new ColorSlider({ value: value > 1 ? value / base : value, base: base });
+        let label = new St.Label({ text, style_class: 'color-picker-item popup-menu-item', x_expand: false });
+        let slider = new ColorSlider({ value: value > 1 ? value / base : value, base });
         slider.connect('notify::value', () => { if(item.active) func(slider.value); });
         item.connect('button-press-event', (actor, event) => { return actor.slider.startDragging(event); });
         item.connect('key-press-event', (actor, event) => { return actor.slider.emit('key-press-event', event); });
@@ -318,7 +318,7 @@ const ColorArea = GObject.registerClass({
     }
 
     vfunc_motion_event(event) {
-        if(this._icon) this._pick().then(null).catch(() => this.emit('end-pick'));
+        if(this._icon) this._pick().then(null).catch(null);
         return Clutter.EVENT_PROPAGATE;
     }
 
@@ -379,17 +379,38 @@ const ColorArea = GObject.registerClass({
 });
 
 const ColorButton = GObject.registerClass({
+    Properties: {
+        'icon-name': GObject.ParamSpec.string('icon-name', 'icon-name', 'icon name', GObject.ParamFlags.WRITABLE, ''),
+    },
     Signals: {
-        'left-click': {},
+        'btn-left-click': {},
     },
 }, class ColorButton extends PanelMenu.Button {
     _init(params) {
         super._init(params);
+        gsettings.bind(Fields.SYSTRAYICON, this, 'icon-name', Gio.SettingsBindFlags.GET);
+        this.add_actor(this.icon);
+    }
+
+    set icon_name(path) {
+        let icon = Gio.File.new_for_path(path);
+        let gicon = new Gio.FileIcon({ file: path.endsWith('svg') && icon.query_exists(null) ? icon : Gio.File.new_for_path(DROPPER_ICON) });
+        if(this._icon) {
+            this._icon.gicon = gicon;
+        } else {
+            this._icon = new St.Icon({ style_class: 'color-picker system-status-icon', gicon });
+        }
+        this._icon_name = path;
+    }
+
+    get icon() {
+        if(!this._icon) this.icon_name = this._icon_name;
+        return this._icon;
     }
 
     vfunc_event(event) {
         if(event.type() == Clutter.EventType.BUTTON_PRESS && event.get_button() == 1) {
-            this.emit('left-click');
+            this.emit('btn-left-click');
             return Clutter.EVENT_STOP;
         }
 
@@ -417,8 +438,7 @@ const ColorPicker = GObject.registerClass({
         this._bindSettings();
     }
 
-    _bindSettings() { // NOTE: the order of binds matters
-        gsettings.bind(Fields.SYSTRAYICON,    this, 'icon-name',     Gio.SettingsBindFlags.GET);
+    _bindSettings() {
         gsettings.bind(Fields.ENABLESYSTRAY,  this, 'systray',       Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.COLORSHISTORY,  this, 'history',       Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.COLORSCOLLECT,  this, 'collect',       Gio.SettingsBindFlags.GET);
@@ -436,24 +456,6 @@ const ColorPicker = GObject.registerClass({
         this._updateMenu();
     }
 
-    set icon_name(path) {
-        let icon = Gio.File.new_for_path(path);
-        if(this._icon) {
-            this._icon.gicon = new Gio.FileIcon({ file: path.endsWith('svg') && icon.query_exists(null) ? icon : Gio.File.new_for_path(DROPPER_ICON) });
-        } else {
-            this._icon = new St.Icon({
-                style_class: 'color-picker system-status-icon',
-                gicon: new Gio.FileIcon({ file: path.endsWith('svg') && icon.query_exists(null) ? icon : Gio.File.new_for_path(DROPPER_ICON) }),
-            });
-        }
-        this._icon_name = path;
-    }
-
-    get icon() {
-        if(!this._icon) this.icon_name = this._icon_name;
-        return this._icon;
-    }
-
     set history(history) {
         this._history = history || '';
         if(this._menu_style == MENU.HISTORY) this._updateMenu();
@@ -466,9 +468,9 @@ const ColorPicker = GObject.registerClass({
 
     set shortcut(shortcut) {
         if(shortcut) {
-            Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
+            this._shortId = Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
         } else {
-            Main.wm.removeKeybinding(Fields.PICKSHORTCUT);
+            if(this._shortId !== undefined) Main.wm.removeKeybinding(Fields.PICKSHORTCUT), delete this._shortId;
         }
     }
 
@@ -476,15 +478,10 @@ const ColorPicker = GObject.registerClass({
         if(systray) {
             if(this._button) return;
             this._button = new ColorButton(null, Me.metadata.uuid);
-            this._button.add_actor(this.icon);
-            this._button.connect('left-click', this._beginPick.bind(this));
+            this._button.connect('btn-left-click', this._beginPick.bind(this));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
             this._updateMenu();
         } else {
-            if(this._icon) {
-                this._icon.destroy();
-                delete this._icon;
-            }
             if(!this._button) return;
             this._button.destroy();
             delete this._button;
@@ -492,7 +489,7 @@ const ColorPicker = GObject.registerClass({
     }
 
     _updateMenu() {
-        if(!this._button) return;
+        if([this._button, this._menu_style, this._history, this._collect].some(x => x === undefined)) return;
         this._button.menu.removeAll();
         let colors = this._menu_style == MENU.HISTORY ? this._history : this._collect;
         if(colors) {
@@ -563,8 +560,8 @@ const ColorPicker = GObject.registerClass({
         if(!this._area) return;
         global.display.set_cursor(Meta.Cursor.DEFAULT);
         if(this._button) this._button.remove_style_class_name('active');
-        if(this._area.endId) this._area.disconnect(this._area.endId), this._area.endId = 0;
-        if(this._area.showId) this._area.disconnect(this._area.showId), this._area.showId = 0;
+        if(this._area.endId) this._area.disconnect(this._area.endId), delete this._area.endId;
+        if(this._area.showId) this._area.disconnect(this._area.showId), delete this._area.showId;
         if(Main._findModal(this._area) != -1) Main.popModal(this._area);
         this._area.destroy();
         delete this._area;

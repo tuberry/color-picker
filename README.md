@@ -1,6 +1,6 @@
 # color-picker
 
-Simple color picker for gnome shell.
+Simple color picker for GNOME Shell.
 > 春水碧于天，画船听雨眠。 —— *韦庄《菩萨蛮》*<br>
 [![license]](/LICENSE)
 </br>
@@ -15,12 +15,12 @@ Simple color picker for gnome shell.
 
 ### Manual
 
-The latest and supported version should only work on the the most current stable version of GNOME Shell.
+The latest and supported version should only work on the most current stable version of GNOME Shell.
 
 ```bash
 git clone https://github.com/tuberry/color-picker.git && cd color-picker
 make && make install
-# make mergepo # for translation
+# make LANG=your_language_code mergepo # for translation
 ```
 
 For older versions, it's necessary to switch the git tag before `make`:
