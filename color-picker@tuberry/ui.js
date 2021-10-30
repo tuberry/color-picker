@@ -92,7 +92,6 @@ var Shortcut = GObject.registerClass({
     GTypeName: 'Gjs_%s_UI_Shortcut'.format(Uuid),
     Properties: {
         'shortcut': GObject.ParamSpec.jsobject('shortcut', 'shortcut', 'shortcut', GObject.ParamFlags.READWRITE, []),
-        'sensitive': GObject.ParamSpec.boolean('sensitive', 'sensitive', 'sensitive', GObject.ParamFlags.READWRITE, false),
     },
     Signals: {
         'changed': { param_types: [GObject.TYPE_STRING] },
@@ -118,7 +117,6 @@ var Shortcut = GObject.registerClass({
             this.shortcut = [name];
             this.emit('changed', name);
         });
-        this.bind_property('sensitive', this.tree, 'sensitive', GObject.BindingFlags.GET);
         this.append(this.tree);
     }
 

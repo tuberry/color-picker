@@ -64,6 +64,7 @@ const ColorSlider = GObject.registerClass({
             this.value = Math.max(0, Math.min(this._value + delta, this._maxValue));
             return Clutter.EVENT_STOP;
         }
+
         return super.vfunc_key_press_event(keyPressEvent);
     }
 
@@ -139,7 +140,6 @@ const ColorMenu = GObject.registerClass({
             this.rgbColor = Clutter.Color.new(this._color.red, Math.round(x * 255), this._color.blue, 255); });
         this._bslider = this._sliderItem('B', b, 255, x => {
             this.rgbColor = Clutter.Color.new(this._color.red, this._color.green, Math.round(x * 255), 255); });
-
         this._menu.addMenuItem(this._rgb);
         this._menu.addMenuItem(this._rslider);
         this._menu.addMenuItem(this._gslider);
@@ -164,7 +164,6 @@ const ColorMenu = GObject.registerClass({
             this._hslider.slider.value = this._color.to_hls()[0] / 360;
             this._sslider.slider.value = this._color.to_hls()[2];
         });
-
         this._menu.addMenuItem(this._hsl);
         this._menu.addMenuItem(this._hslider);
         this._menu.addMenuItem(this._sslider);
@@ -202,7 +201,6 @@ const ColorMenu = GObject.registerClass({
         label.clutter_text.set_markup(convToText(color));
         item.add_child(label);
         item.label = label;
-
         this._addLabelButton(item, 'HEX', NOTATION.HEX);
         this._addLabelButton(item, 'RGB', NOTATION.RGB);
         this._addLabelButton(item, 'HSL', NOTATION.HSL);
@@ -253,7 +251,7 @@ const ColorArea = GObject.registerClass({
         'end-pick': {},
         'notify-color': { param_types: [GObject.TYPE_STRING] },
     },
-}, class ColorArea extends St.DrawingArea {
+}, class ColorArea extends St.Widget {
     _init(params) {
         super._init({ reactive: true });
         this.ignorePersist = params && params.ignorePersist || false;
@@ -296,17 +294,13 @@ const ColorArea = GObject.registerClass({
                 effect: this._effect,
                 visible: false,
             });
-            this._pick().then(null).catch(() => this.emit('end-pick'));
-
+            this._pick().then().catch(() => this.emit('end-pick'));
             this._menu = new ColorMenu(this._icon, this);
             this._menu.actor.hide();
             Main.layoutManager.addTopChrome(this._menu.actor);
             Main.layoutManager.addTopChrome(this._icon);
-            this._menu.connect('menu-closed', () => { this._pick().then(null).catch(() => this.emit('end-pick')); });
-            this._menu.connect('color-selected', (menu, color) => {
-                this.emit('notify-color', color);
-                if(!this._persist) this.emit('end-pick');
-            });
+            this._menu.connect('menu-closed', () => { this._pick().then().catch(() => this.emit('end-pick')); });
+            this._menu.connect('color-selected', (menu, color) => this._emitColor(color));
         } else {
             if(!this._icon) return;
             this._menu.destroy();
@@ -317,8 +311,13 @@ const ColorArea = GObject.registerClass({
         }
     }
 
+    _emitColor(color) {
+        this.emit('notify-color', color || convToCSS(this._effect._color, NOTATION.HEX));
+        if(!this._persist) this.emit('end-pick');
+    }
+
     vfunc_motion_event(event) {
-        if(this._icon) this._pick().then(null).catch(null);
+        if(this._icon) this._pick();
         return Clutter.EVENT_PROPAGATE;
     }
 
@@ -326,20 +325,15 @@ const ColorArea = GObject.registerClass({
         let [X, Y] = global.get_pointer();
         switch(event.keyval) {
         case Clutter.KEY_Left:
-            this._pointer.notify_absolute_motion(global.get_current_time(), X - 1, Y);
-            break;
+            this._pointer.notify_absolute_motion(global.get_current_time(), X - 1, Y); break;
         case Clutter.KEY_Up:
-            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y - 1);
-            break;
+            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y - 1); break;
         case Clutter.KEY_Right:
-            this._pointer.notify_absolute_motion(global.get_current_time(), X + 1, Y);
-            break;
+            this._pointer.notify_absolute_motion(global.get_current_time(), X + 1, Y); break;
         case Clutter.KEY_Down:
-            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y + 1);
-            break;
+            this._pointer.notify_absolute_motion(global.get_current_time(), X, Y + 1); break;
         case Clutter.KEY_Escape:
-            this.emit('end-pick');
-            return Clutter.EVENT_PROPAGATE;
+            this.emit('end-pick'); return Clutter.EVENT_PROPAGATE;
         }
 
         return super.vfunc_key_press_event(event);
@@ -348,22 +342,11 @@ const ColorArea = GObject.registerClass({
     vfunc_button_press_event(event) {
         switch(event.button) {
         case 1:
-            if(this._icon) {
-                this.emit('notify-color', convToCSS(this._effect._color, NOTATION.HEX));
-                if(!this._persist) this.emit('end-pick');
-            } else {
-                this._pick().then(() => {
-                    this.emit('notify-color', convToCSS(this._effect.color, NOTATION.HEX));
-                    if(!this._persist) this.emit('end-pick');
-                }).catch(() => this.emit('end-pick'));
-            }
-            break;
+            this._icon ? this._emitColor() : this._pick().then(() => this._emitColor()).catch(() => this.emit('end-pick')); break;
         case 2:
-            if(this._icon) this._menu.open(this._effect._color);
-            break;
+            if(this._icon) this._menu.open(this._effect._color); break;
         default:
-            this.emit('end-pick');
-            break;
+            this.emit('end-pick'); break;
         }
 
         return Clutter.EVENT_PROPAGATE;
@@ -373,7 +356,6 @@ const ColorArea = GObject.registerClass({
         this.preview = false;
         delete this._pointer;
         delete this._picker;
-
         super.destroy();
     }
 });
@@ -468,9 +450,9 @@ const ColorPicker = GObject.registerClass({
 
     set shortcut(shortcut) {
         if(shortcut) {
-            this._shortId = Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
+            this._shortcutId = Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
         } else {
-            if(this._shortId !== undefined) Main.wm.removeKeybinding(Fields.PICKSHORTCUT), delete this._shortId;
+            if(this._shortcutId !== undefined) Main.wm.removeKeybinding(Fields.PICKSHORTCUT), delete this._shortcutId;
         }
     }
 
@@ -605,13 +587,8 @@ const ColorPicker = GObject.registerClass({
                 if(this._button) this._button.add_style_class_name('active');
                 this._area = new ColorArea({ ignorePersist: true });
                 this._area.set_size(...global.display.get_size());
-                this._area.endId = this._area.connect('end-pick', () => {
-                    this._endPick();
-                    reject(new Error('Cancelled'));
-                });
-                this._area.showId = this._area.connect('notify-color', (actor, color) => {
-                    resolve(color);
-                });
+                this._area.endId = this._area.connect('end-pick', () => { this._endPick(); reject(new Error('Cancelled')); });
+                this._area.showId = this._area.connect('notify-color', (actor, color) => { resolve(color); });
                 Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
                 Main.layoutManager.addTopChrome(this._area);
             } catch(e) {
