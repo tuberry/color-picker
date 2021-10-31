@@ -1,6 +1,8 @@
 // vim:fdm=syntax
 // by tuberry
-//
+/* exported init buildPrefsWidget */
+'use strict';
+
 const { Gio, Gtk, GObject } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -21,9 +23,9 @@ function init() {
 const ColorPickerPrefs = GObject.registerClass(
 class ColorPickerPrefs extends Gtk.ScrolledWindow {
     _init() {
-        super._init({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
+        super._init({ hscrollbar_policy: Gtk.PolicyType.NEVER });
 
-        this._buildWidgets()
+        this._buildWidgets();
         this._bindValues();
         this._buildUI();
     }

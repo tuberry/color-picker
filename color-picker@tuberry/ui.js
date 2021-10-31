@@ -1,5 +1,7 @@
 // vim:fdm=syntax
 // by tuberry
+/* exported Frame Combo Entry Label Spin Check
+ * ListGrid Shortcut ColourButton FileButton */
 'use strict';
 
 const { Gtk, Gdk, GObject, Gio } = imports.gi;
@@ -101,9 +103,9 @@ var Shortcut = GObject.registerClass({
         super._init({ tooltip_text: tooltip || '' });
         let model = new Gtk.ListStore();
         model.set_column_types([GObject.TYPE_STRING]);
-        let [ok, key, mods] = Gtk.accelerator_parse(shortcut[0]);
-        model.set(model.insert(0), [0], [Gtk.accelerator_get_label(key, mods)]);
-        this.tree = new Gtk.TreeView({ valign: Gtk.Align.CENTER, model: model, headers_visible: false });
+        let [ok, ky, md] = Gtk.accelerator_parse(shortcut[0]);
+        model.set(model.insert(0), [0], [Gtk.accelerator_get_label(ky, md)]);
+        this.tree = new Gtk.TreeView({ valign: Gtk.Align.CENTER, model, headers_visible: false });
         let acc = new Gtk.CellRendererAccel({ editable: true, accel_mode: Gtk.CellRendererAccelMode.GTK });
         let column = new Gtk.TreeViewColumn();
         column.pack_start(acc, false);
@@ -128,7 +130,7 @@ var Shortcut = GObject.registerClass({
 
 var ListGrid = GObject.registerClass({
     GTypeName: 'Gjs_%s_UI_ListGrid'.format(Uuid),
-} ,class ListGrid extends Gtk.Grid {
+}, class ListGrid extends Gtk.Grid {
     _init() {
         super._init({
             hexpand: true,
@@ -145,8 +147,8 @@ var ListGrid = GObject.registerClass({
     _add(x, y, z) {
         this.attach(new Box().appends([x, y, z]), 0, this._count++, 2, 1);
         if(!(x instanceof Gtk.CheckButton)) return;
-        if(y) x.bind_property('active', y, 'sensitive', GObject.BindingFlags.GET), y.set_sensitive(x.active);
-        if(z) x.bind_property('active', z, 'sensitive', GObject.BindingFlags.GET), z.set_sensitive(x.active);
+        if(y) x.bind_property('active', y, 'sensitive', GObject.BindingFlags.GET) && y.set_sensitive(x.active);
+        if(z) x.bind_property('active', z, 'sensitive', GObject.BindingFlags.GET) && z.set_sensitive(x.active);
     }
 
     _att(x, y, z) {
@@ -158,7 +160,7 @@ var ListGrid = GObject.registerClass({
             this.attach(x, 0, r, 1, 1);
             this.attach(y, 1, r, 1, 1);
         } else {
-            this.attach(x, 0, r, 2, 1)
+            this.attach(x, 0, r, 2, 1);
         }
     }
 });
@@ -183,7 +185,7 @@ var Label = GObject.registerClass({
         super._init(params);
         this.set_label(x);
         this.set_halign(Gtk.Align.START);
-        this.set_hexpand(y ? false : true);
+        this.set_hexpand(!y);
     }
 });
 
@@ -221,11 +223,10 @@ var Entry = GObject.registerClass({
 var Combo = GObject.registerClass({
     GTypeName: 'Gjs_%s_UI_Combo'.format(Uuid),
 }, class Combo extends Gtk.ComboBox {
-    _init(ops, tip, params) {
+    _init(ops, tip) {
         let l = new Gtk.ListStore();
         l.set_column_types([GObject.TYPE_STRING]);
         ops.forEach(op => l.set(l.append(), [0], [op]));
-        let c = new Gtk.ComboBox({  });
         super._init({ model: l, tooltip_text: tip || '' });
         let r = new Gtk.CellRendererText();
         this.pack_start(r, false);
@@ -246,7 +247,7 @@ var Frame = GObject.registerClass({
 
         this.set_child(widget);
         if(!label) return;
-        this.set_label_widget(new Gtk.Label({ use_markup: true, label: '<b><big>' + label + '</big></b>', }));
+        this.set_label_widget(new Gtk.Label({ use_markup: true, label: '<b><big>%s</big></b>'.format(label) }));
     }
 });
 

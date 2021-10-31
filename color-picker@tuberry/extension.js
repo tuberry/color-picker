@@ -1,6 +1,8 @@
 // vim:fdm=syntax
 // by tuberry
-//
+/* exported init */
+'use strict';
+
 const Main = imports.ui.main;
 const Slider = imports.ui.slider;
 const PanelMenu = imports.ui.panelMenu;
@@ -20,6 +22,7 @@ const MENU = { HISTORY: 0, COLLECT: 1 };
 const NOTATION = { HEX: 0, RGB: 1, HSL: 2 };
 const COLOR_PICK_ICON = Me.dir.get_child('icons').get_child('color-pick.svg').get_path();
 const DROPPER_ICON = Me.dir.get_child('icons').get_child('dropper-symbolic.svg').get_path();
+const setCursor = cursor => global.display.set_cursor(Meta.Cursor[cursor]);
 
 function convToCSS(color, notation) {
     switch(notation) {
@@ -31,10 +34,10 @@ function convToCSS(color, notation) {
 
 function convToHex(color) {
     if(color.includes('hsl')) {
-        let [h, s, l] = color.slice(4, -1).split(',').map((v, i, a) => parseFloat(v) / (i == 0 ? 1 : 100));
+        let [h, s, l] = color.slice(4, -1).split(',').map((v, i) => parseFloat(v) / (i ? 100 : 1));
         return Clutter.Color.from_hls(h, l, s).to_string().slice(0, 7);
     } else if(color.includes('rgb')) {
-        return (Clutter.Color.from_string(color)[1]).to_string().slice(0, 7);
+        return Clutter.Color.from_string(color)[1].to_string().slice(0, 7);
     } else {
         return color;
     }
@@ -42,8 +45,8 @@ function convToHex(color) {
 
 function convToText(color) {
     let hex = convToHex(color);
-    let [h, l, s] = Clutter.Color.from_string(hex)[1].to_hls();
-    //NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
+    let [, l] = Clutter.Color.from_string(hex)[1].to_hls();
+    // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
     return ' <span fgcolor="%s" bgcolor="%s">%s</span>'.format(Math.round(l) ? '#000' : '#fff', hex, color);
 }
 
@@ -59,13 +62,13 @@ const ColorSlider = GObject.registerClass({
 
     vfunc_key_press_event(event) {
         let key = event.keyval;
-        if (key == Clutter.KEY_Right || key == Clutter.KEY_Left) {
-            let delta = key == Clutter.KEY_Right ? this.step : -this.step;
+        if(key === Clutter.KEY_Right || key === Clutter.KEY_Left) {
+            let delta = key === Clutter.KEY_Right ? this.step : -this.step;
             this.value = Math.max(0, Math.min(this._value + delta, this._maxValue));
             return Clutter.EVENT_STOP;
         }
 
-        return super.vfunc_key_press_event(keyPressEvent);
+        return super.vfunc_key_press_event(event);
     }
 
     set base(value) {
@@ -74,7 +77,7 @@ const ColorSlider = GObject.registerClass({
 
     scroll(event) {
         if(event.is_pointer_emulated()) return Clutter.EVENT_PROPAGATE;
-        let delta = ((direction) => {
+        let delta = (direction => {
             switch(direction) {
             case Clutter.ScrollDirection.UP: return 1;
             case Clutter.ScrollDirection.DOWN: return -1;
@@ -96,11 +99,10 @@ const ColorMenu = GObject.registerClass({
 }, class ColorMenu extends GObject.Object {
     _init(actor, area) {
         super._init();
-        this._color = new Clutter.Color({ red: 255, green: 255, blue: 255, }),
+        this._color = new Clutter.Color({ red: 255, green: 255, blue: 255 });
         this._menu = new PopupMenu.PopupMenu(actor, 0.25, St.Side.LEFT);
-        this._menu.connect('open-state-changed', (menu, open) =>
-                           global.display.set_cursor(Meta.Cursor[open ? 'DEFAULT' : 'BLANK']));
-        this._menu.connect('menu-closed', () => { this.emit('menu-closed'); })
+        this._menu.connect('open-state-changed', (_menu, open) => setCursor(open ? 'DEFAULT' : 'BLANK'));
+        this._menu.connect('menu-closed', () => this.emit('menu-closed'));
         this.actor.add_style_class_name('color-picker-menu popup-menu');
         this._menuManager = new PopupMenu.PopupMenuManager(area);
         this._menuManager.addMenu(this._menu);
@@ -131,15 +133,11 @@ const ColorMenu = GObject.registerClass({
     }
 
     _addRGBSection() {
-        let section = new PopupMenu.PopupMenuSection();
-        let [r, g, b] = [this._color.red, this._color.green, this._color.blue];
+        let { red, green, blue } = this._color;
         this._rgb = this._separatorItem(convToCSS(this._color, NOTATION.RGB).toUpperCase());
-        this._rslider = this._sliderItem('R', r, 255, x => {
-            this.rgbColor = Clutter.Color.new(Math.round(x * 255), this._color.green, this._color.blue, 255); });
-        this._gslider = this._sliderItem('G', g, 255, x => {
-            this.rgbColor = Clutter.Color.new(this._color.red, Math.round(x * 255), this._color.blue, 255); });
-        this._bslider = this._sliderItem('B', b, 255, x => {
-            this.rgbColor = Clutter.Color.new(this._color.red, this._color.green, Math.round(x * 255), 255); });
+        this._rslider = this._sliderItem('R', red, 255, x => { this.rgbColor = { red: Math.round(x * 255) }; });
+        this._gslider = this._sliderItem('G', green, 255, x => { this.rgbColor = { green: Math.round(x * 255) }; });
+        this._bslider = this._sliderItem('B', blue, 255, x => { this.rgbColor = { blue: Math.round(x * 255) }; });
         this._menu.addMenuItem(this._rgb);
         this._menu.addMenuItem(this._rslider);
         this._menu.addMenuItem(this._gslider);
@@ -148,11 +146,10 @@ const ColorMenu = GObject.registerClass({
 
     _addHSLSection() {
         let [h, l, s] = this._color.to_hls();
-        let section = new PopupMenu.PopupMenuSection();
         this._hsl = this._separatorItem(convToCSS(this._color, NOTATION.HSL).toUpperCase());
         this._hslider = this._sliderItem('H', h, 360, x => {
-            let [, l, s] = this._color.to_hls();
-            this.hslColor = Clutter.Color.from_hls(Math.round(x * 360), l, s);
+            let [, l_, s_] = this._color.to_hls();
+            this.hslColor = Clutter.Color.from_hls(Math.round(x * 360), l_, s_);
         });
         this._sslider = this._sliderItem('S', s, 100, x => {
             this.hslColor = Clutter.Color.from_hls(this._color.to_hls()[0], this._color.to_hls()[1], x);
@@ -172,7 +169,6 @@ const ColorMenu = GObject.registerClass({
 
     set hslColor(color) {
         this._color = color;
-        let [h, l, s] = color.to_hls()
         let hex = convToCSS(color, NOTATION.HEX);
         this._hex.label.clutter_text.set_markup(convToText(hex));
         this._rgb.label.set_text(convToCSS(color, NOTATION.RGB).toUpperCase());
@@ -183,12 +179,12 @@ const ColorMenu = GObject.registerClass({
     }
 
     set rgbColor(color) {
-        this._color = color;
-        let [h, l, s] = color.to_hls();
-        let hex = convToCSS(color, NOTATION.HEX);
+        Object.assign(this._color, color);
+        let [h, l, s] = this._color.to_hls();
+        let hex = convToCSS(this._color, NOTATION.HEX);
         this._hex.label.clutter_text.set_markup(convToText(hex));
-        this._rgb.label.set_text(convToCSS(color, NOTATION.RGB).toUpperCase());
-        this._hsl.label.set_text(convToCSS(color, NOTATION.HSL).toUpperCase());
+        this._rgb.label.set_text(convToCSS(this._color, NOTATION.RGB).toUpperCase());
+        this._hsl.label.set_text(convToCSS(this._color, NOTATION.HSL).toUpperCase());
         this._hslider.slider.value = h / 360;
         this._lslider.slider.value = l;
         this._sslider.slider.value = s;
@@ -210,7 +206,8 @@ const ColorMenu = GObject.registerClass({
 
     _addLabelButton(item, label, notation) {
         let btn = new St.Button({ label, style_class: 'color-picker-label-button button' });
-        btn.connect('clicked', () => { this._menu.close();
+        btn.connect('clicked', () => {
+            this._menu.close();
             this.emit('color-selected', convToCSS(this._color, notation));
         });
         item.add_child(btn);
@@ -283,7 +280,7 @@ const ColorArea = GObject.registerClass({
         if(preview) {
             if(this._icon) return;
             this._effect = new Screenshot.RecolorEffect({
-                chroma: new Clutter.Color({ red: 80, green: 219, blue: 181, }),
+                chroma: new Clutter.Color({ red: 80, green: 219, blue: 181 }),
                 threshold: 0.03,
                 smoothing: 0.3,
             });
@@ -316,7 +313,7 @@ const ColorArea = GObject.registerClass({
         if(!this._persist) this.emit('end-pick');
     }
 
-    vfunc_motion_event(event) {
+    vfunc_motion_event() {
         if(this._icon) this._pick();
         return Clutter.EVENT_PROPAGATE;
     }
@@ -377,11 +374,9 @@ const ColorButton = GObject.registerClass({
     set icon_name(path) {
         let icon = Gio.File.new_for_path(path);
         let gicon = new Gio.FileIcon({ file: path.endsWith('svg') && icon.query_exists(null) ? icon : Gio.File.new_for_path(DROPPER_ICON) });
-        if(this._icon) {
-            this._icon.gicon = gicon;
-        } else {
-            this._icon = new St.Icon({ style_class: 'color-picker system-status-icon', gicon });
-        }
+        if(this._icon) this._icon.gicon = gicon;
+        else this._icon = new St.Icon({ style_class: 'color-picker system-status-icon', gicon });
+
         this._icon_name = path;
     }
 
@@ -391,13 +386,13 @@ const ColorButton = GObject.registerClass({
     }
 
     vfunc_event(event) {
-        if(event.type() == Clutter.EventType.BUTTON_PRESS && event.get_button() == 1) {
+        if(event.type() === Clutter.EventType.BUTTON_PRESS && event.get_button() === 1) {
             this.emit('btn-left-click');
             return Clutter.EVENT_STOP;
         }
 
         return super.vfunc_event(event);
-    };
+    }
 });
 
 const ColorPicker = GObject.registerClass({
@@ -440,20 +435,17 @@ const ColorPicker = GObject.registerClass({
 
     set history(history) {
         this._history = history || '';
-        if(this._menu_style == MENU.HISTORY) this._updateMenu();
+        if(this._menu_style === MENU.HISTORY) this._updateMenu();
     }
 
     set collect(collect) {
         this._collect = collect || '';
-        if(this._menu_style == MENU.COLLECT) this._updateMenu();
+        if(this._menu_style === MENU.COLLECT) this._updateMenu();
     }
 
     set shortcut(shortcut) {
-        if(shortcut) {
-            this._shortcutId = Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this));
-        } else {
-            if(this._shortcutId !== undefined) Main.wm.removeKeybinding(Fields.PICKSHORTCUT), delete this._shortcutId;
-        }
+        if(this._shortcutId) Main.wm.removeKeybinding(Fields.PICKSHORTCUT);
+        this._shortcutId = shortcut ? Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._beginPick.bind(this)) : undefined;
     }
 
     set systray(systray) {
@@ -473,7 +465,7 @@ const ColorPicker = GObject.registerClass({
     _updateMenu() {
         if([this._button, this._menu_style, this._history, this._collect].some(x => x === undefined)) return;
         this._button.menu.removeAll();
-        let colors = this._menu_style == MENU.HISTORY ? this._history : this._collect;
+        let colors = this._menu_style === MENU.HISTORY ? this._history : this._collect;
         if(colors) {
             colors.split('|').forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
             this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
@@ -484,17 +476,17 @@ const ColorPicker = GObject.registerClass({
     _menuItemMaker(color) {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item popup-menu-item' });
         item.connect('activate', () => { St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color); });
-        let label = new St.Label({ x_expand: true, });
+        let label = new St.Label({ x_expand: true });
         label.clutter_text.set_markup(convToText(color));
         item.add_child(label);
         let button = new St.Button({
-            style_class: this._menu_style == MENU.HISTORY ? 'color-picker-history' : 'color-picker-collection',
-            child: new St.Icon({ icon_name: 'emblem-favorite-symbolic', style_class: 'color-picker-icon', }),
+            style_class: this._menu_style === MENU.HISTORY ? 'color-picker-history' : 'color-picker-collection',
+            child: new St.Icon({ icon_name: 'emblem-favorite-symbolic', style_class: 'color-picker-icon' }),
         });
         button.connect('clicked', () => {
-            if(this._menu_style == MENU.HISTORY) {
+            if(this._menu_style === MENU.HISTORY) {
                 if(this._collect.includes(color)) return;
-                gsettings.set_string(Fields.COLORSCOLLECT, this._collect ? color + '|' + this._collect : color);
+                gsettings.set_string(Fields.COLORSCOLLECT, this._collect ? '%s|%s'.format(color, this._collect) : color);
             } else {
                 let collects = this._collect.split('|');
                 collects.splice(collects.indexOf(color), 1);
@@ -513,11 +505,11 @@ const ColorPicker = GObject.registerClass({
             let btn = new St.Button({
                 x_expand: true,
                 style_class: 'color-picker-setting-button color-picker-button',
-                child: new St.Icon({ icon_name: icon, style_class: 'color-picker-icon popup-menu-icon', }),
+                child: new St.Icon({ icon_name: icon, style_class: 'color-picker-icon popup-menu-icon' }),
             });
             btn.connect('clicked', func);
             hbox.add_child(btn);
-        }
+        };
         addButtonItem('find-location-symbolic', () => { this._button.menu.close(); this._beginPick(); });
         addButtonItem('face-cool-symbolic', () => { gsettings.set_uint(Fields.MENUSTYLE, 1 - this._menu_style); });
         addButtonItem('emblem-system-symbolic', () => { this._button.menu.close(); ExtensionUtils.openPrefs(); });
@@ -528,23 +520,21 @@ const ColorPicker = GObject.registerClass({
 
     _beginPick() {
         if(this._area) return;
-        global.display.set_cursor(Meta.Cursor[this.preview ? 'BLANK' : 'CROSSHAIR']);
+        setCursor(this.preview ? 'BLANK' : 'CROSSHAIR');
         if(this._button) this._button.add_style_class_name('active');
         this._area = new ColorArea();
         this._area.set_size(...global.display.get_size());
-        this._area.endId = this._area.connect('end-pick', this._endPick.bind(this));
-        this._area.showId = this._area.connect('notify-color', this._notify.bind(this));
+        this._area.connect('end-pick', this._endPick.bind(this));
+        this._area.connect('notify-color', this._notify.bind(this));
         Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
         Main.layoutManager.addChrome(this._area);
     }
 
     _endPick() {
         if(!this._area) return;
-        global.display.set_cursor(Meta.Cursor.DEFAULT);
+        setCursor('DEFAULT');
         if(this._button) this._button.remove_style_class_name('active');
-        if(this._area.endId) this._area.disconnect(this._area.endId), delete this._area.endId;
-        if(this._area.showId) this._area.disconnect(this._area.showId), delete this._area.showId;
-        if(Main._findModal(this._area) != -1) Main.popModal(this._area);
+        if(Main._findModal(this._area) !== -1) Main.popModal(this._area);
         this._area.destroy();
         delete this._area;
     }
@@ -552,7 +542,7 @@ const ColorPicker = GObject.registerClass({
     _notify(actor, color) {
         this._setHistory(color);
         if(!this.enable_notify) return;
-        if(this.notify_style == NOTIFY.MSG) {
+        if(this.notify_style === NOTIFY.MSG) {
             Main.notify(Me.metadata.name, _('%s is picked.').format(color));
         } else {
             let index = global.display.get_current_monitor();
@@ -571,24 +561,20 @@ const ColorPicker = GObject.registerClass({
 
     _setHistory(color) {
         if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
-        if(this._history) {
-            let history = (color + '|' + this._history).split('|');
-            gsettings.set_string(Fields.COLORSHISTORY, history.slice(0, this.menu_size).join('|'));
-        } else {
-            gsettings.set_string(Fields.COLORSHISTORY, color);
-        }
+        if(this._history) gsettings.set_string(Fields.COLORSHISTORY, [color].concat(this._history.split('|')).slice(0, this.menu_size).join('|'));
+        else gsettings.set_string(Fields.COLORSHISTORY, color);
     }
 
     pickAsync() {
         return new Promise((resolve, reject) => {
             try {
                 if(this._area) { reject(new Error('Cannot start picking')); return; }
-                global.display.set_cursor(Meta.Cursor[this.preview ? 'BLANK' : 'CROSSHAIR']);
+                setCursor(this.preview ? 'BLANK' : 'CROSSHAIR');
                 if(this._button) this._button.add_style_class_name('active');
                 this._area = new ColorArea({ ignorePersist: true });
                 this._area.set_size(...global.display.get_size());
-                this._area.endId = this._area.connect('end-pick', () => { this._endPick(); reject(new Error('Cancelled')); });
-                this._area.showId = this._area.connect('notify-color', (actor, color) => { resolve(color); });
+                this._area.connect('end-pick', () => { this._endPick(); reject(new Error('Cancelled')); });
+                this._area.connect('notify-color', (actor, color) => { resolve(color); });
                 Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
                 Main.layoutManager.addTopChrome(this._area);
             } catch(e) {
@@ -622,7 +608,7 @@ const Extension = class Extension {
         this._ext.destroy();
         delete this._ext;
     }
-}
+};
 
 function init() {
     return new Extension();
