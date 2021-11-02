@@ -9,10 +9,6 @@ Simple color picker for GNOME Shell.
 
 ## Installation
 
-### Recommended
-
-[<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
-
 ### Manual
 
 The latest and supported version should only work on the most current stable version of GNOME Shell.
@@ -29,6 +25,9 @@ For older versions, it's necessary to switch the git tag before `make`:
 # git tag # to see available versions
 git checkout your_gnome_shell_version
 ```
+### E.G.O
+
+[<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
 
 ## Features
 
