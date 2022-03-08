@@ -1,0 +1,80 @@
+# Dutch translations for gnome-shell-extension-color-picker package.
+# Copyright (C) 2021 THE gnome-shell-extension-color-picker'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-color-picker package.
+# Automatically generated, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extension-color-picker\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-09-16 13:46+0200\n"
+"PO-Revision-Date: 2021-09-16 13:50+0200\n"
+"Last-Translator: Ángel Fernández <angelfx19@outlook.com>\n"
+"Language-Team: none\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0\n"
+
+#: extension.js:577
+#, javascript-format
+msgid "%s is picked."
+msgstr "Color ‘%s’ seleccionado."
+
+#: prefs.js:32
+msgid "MSG"
+msgstr "MSG"
+
+#: prefs.js:32
+msgid "OSD"
+msgstr "OSD"
+
+#: prefs.js:33
+msgid "Notification style"
+msgstr "Estilo de notificación"
+
+#: prefs.js:36
+msgid "history size"
+msgstr "Tamaño del historial"
+
+#: prefs.js:37
+msgid "Enable systray"
+msgstr "Habilitar el indicador del panel"
+
+#: prefs.js:37
+msgid "right click to open menu"
+msgstr "Click derecho para abrir el menú"
+
+#: prefs.js:38
+msgid "Shortcut to pick"
+msgstr "Acceso directo a la selección"
+
+#: prefs.js:38
+msgid "arrow keys to move by pixel"
+msgstr "Teclas de dirección para moverte por píxeles"
+
+#: prefs.js:39
+msgid "Persistent mode"
+msgstr "Modo permanente"
+
+#: prefs.js:39
+msgid "right click or Escape key to exit"
+msgstr "Click derecho o tecla de escape para salir"
+
+#: prefs.js:40
+msgid "Enable preview"
+msgstr "Habilitar previsualización"
+
+#: prefs.js:40
+msgid "middle click or MENU key to open menu"
+msgstr "Click central o tecla menú para abrir el menú"
+
+#: prefs.js:41
+msgid "Automatically copy"
+msgstr "Copia automática"
+
+#: prefs.js:41
+msgid "copy the color to clipboard after picking"
+msgstr "Copiar el color en el portapapeles después de seleccionar el color"

@@ -1,25 +1,21 @@
 /* Add your custom extension styling here */
+
 .color-picker-menu {
-    min-width: 25em;
+    /* min-width: 18em; */
 }
 
 .color-picker-label-button {
-    padding: 0 0.2em;
-    min-height: 1em;
-}
-
-.color-picker-icon {
-    icon-size: 1em;
+    padding: 0 0.5em;
 }
 
 .color-picker-history:hover,
-.color-picker-collection {
+.color-picker-collect {
     color: pink;
 }
 
-.active .color-picker,
-.color-picker-setting-button:hover,
-.color-picker-collection:hover {
+.color-picker-systray:busy,
+.color-picker-setting:hover,
+.color-picker-collect:hover {
     color: deepskyblue;
 }
 
