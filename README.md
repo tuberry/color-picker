@@ -31,7 +31,7 @@ git checkout your_gnome_shell_version
 
 ## Features
 
-![cppref](https://user-images.githubusercontent.com/17917040/109381645-873b8b80-7916-11eb-8451-b50f8d1d5545.png)
+![cppref](https://user-images.githubusercontent.com/17917040/155882315-739d0ec7-9947-49a8-a58c-31475feafdc6.png)
 
 [license]:https://img.shields.io/badge/license-GPLv3-green.svg
 [EGO]:https://extensions.gnome.org/extension/3396/color-picker/
