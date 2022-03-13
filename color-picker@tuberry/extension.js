@@ -20,8 +20,6 @@ let gsettings = null;
 const Notify = { MSG: 0, OSD: 1 };
 const Menu = { History: 0, Collect: 1 };
 const Format = { HEX: 0, RGB: 1, HSL: 2 };
-const PICKER = Me.dir.get_child('icons').get_child('color-pick.svg').get_path();
-const getIcon = x => Me.dir.get_child('icons').get_child('%s-symbolic.svg'.format(x)).get_path();
 const setCursor = cursor => global.display.set_cursor(Meta.Cursor[cursor]);
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
@@ -335,8 +333,9 @@ class ColorArea extends St.Widget {
     set preview(preview) {
         if((this._preview = preview)) {
             if(this._icon) return;
+            let gicon =  Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child('color-pick.svg').get_path());
             this._effect = new Screenshot.RecolorEffect({ chroma: new Clutter.Color({ red: 80, green: 219, blue: 181 }), threshold: 0.03, smoothing: 0.3 });
-            this._icon = new St.Icon({ visible: false, effect: this._effect, gicon: Gio.Icon.new_for_string(PICKER), icon_size: Meta.prefs_get_cursor_size() * 1.5 });
+            this._icon = new St.Icon({ visible: false, effect: this._effect, gicon, icon_size: Meta.prefs_get_cursor_size() * 1.5 });
             this._pick().catch(() => this.emit('end-pick'));
             this._menu = new ColorMenu(this._icon, this);
             Main.layoutManager.addTopChrome(this._menu.actor);
@@ -443,7 +442,7 @@ class ColorButton extends PanelMenu.Button {
     }
 
     set icon_name(path) {
-        this._icon.set_gicon(Gio.Icon.new_for_string(path || getIcon('dropper')));
+        path ? this._icon.set_gicon(Gio.Icon.new_for_string(path)) : this._icon.set_icon_name('color-select-symbolic');
     }
 
     set history(history) {
