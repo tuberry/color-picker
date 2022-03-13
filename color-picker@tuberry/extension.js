@@ -313,6 +313,7 @@ class ColorArea extends St.Widget {
         this.connect('popup-menu', () => { if(this._icon) this._menu.open(this._color); });
         [[Fields.PERSISTENTMODE, 'persist'], [Fields.ENABLEPREVIEW, 'preview']]
             .forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
+        this.set_size(...global.display.get_size());
         setCursor(this._preview ? 'BLANK' : 'CROSSHAIR');
     }
 
