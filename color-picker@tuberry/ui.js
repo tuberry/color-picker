@@ -8,32 +8,6 @@ const _GTK = imports.gettext.domain('gtk40').gettext;
 const _ = imports.misc.extensionUtils.gettext;
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
-function keyvalIsForbidden(keyval) {
-    return [Gdk.KEY_Home, Gdk.KEY_Left, Gdk.KEY_Up, Gdk.KEY_Right, Gdk.KEY_Down, Gdk.KEY_Page_Up,
-        Gdk.KEY_Page_Down, Gdk.KEY_End, Gdk.KEY_Tab, Gdk.KEY_KP_Enter, Gdk.KEY_Return, Gdk.KEY_Mode_switch].includes(keyval);
-}
-
-function isValidBinding(mask, keycode, keyval) {
-    // From: https://gitlab.gnome.org/GNOME/gnome-control-center/-/blob/master/panels/keyboard/keyboard-shortcuts.c
-    return !(mask === 0 || mask === Gdk.SHIFT_MASK && keycode !== 0 &&
-             ((keyval >= Gdk.KEY_a && keyval <= Gdk.KEY_z) ||
-                 (keyval >= Gdk.KEY_A && keyval <= Gdk.KEY_Z) ||
-                 (keyval >= Gdk.KEY_0 && keyval <= Gdk.KEY_9) ||
-                 (keyval >= Gdk.KEY_kana_fullstop && keyval <= Gdk.KEY_semivoicedsound) ||
-                 (keyval >= Gdk.KEY_Arabic_comma && keyval <= Gdk.KEY_Arabic_sukun) ||
-                 (keyval >= Gdk.KEY_Serbian_dje && keyval <= Gdk.KEY_Cyrillic_HARDSIGN) ||
-                 (keyval >= Gdk.KEY_Greek_ALPHAaccent && keyval <= Gdk.KEY_Greek_omega) ||
-                 (keyval >= Gdk.KEY_hebrew_doublelowline && keyval <= Gdk.KEY_hebrew_taf) ||
-                 (keyval >= Gdk.KEY_Thai_kokai && keyval <= Gdk.KEY_Thai_lekkao) ||
-                 (keyval >= Gdk.KEY_Hangul_Kiyeog && keyval <= Gdk.KEY_Hangul_J_YeorinHieuh) ||
-                 (keyval === Gdk.KEY_space && mask === 0) || keyvalIsForbidden(keyval))
-    );
-}
-
-function isValidAccel(mask, keyval) {
-    return Gtk.accelerator_valid(keyval, mask) || (keyval === Gdk.KEY_Tab && mask !== 0);
-}
-
 var File = class extends Gtk.Box {
     static {
         GObject.registerClass({
@@ -54,7 +28,7 @@ var File = class extends Gtk.Box {
         [this._icon, this._label].forEach(x => box.append(x));
         this._btn = new Gtk.Button({ child: box });
         let reset = new Gtk.Button({ icon_name: 'edit-clear-symbolic', tooltip_text: _('Clear') });
-        reset.connect('clicked', () => { this.file = ''; });
+        reset.connect('clicked', () => (this.file = ''));
         this._btn.connect('clicked', this._onClicked.bind(this));
         [this._btn, reset].forEach(x => this.append(x));
         this._buildChooser(params);
@@ -130,7 +104,7 @@ var Color = class extends Gtk.ColorButton {
 
     constructor(text, alpha) {
         super({ use_alpha: !alpha, title: text, tooltip_text: text, valign: Gtk.Align.CENTER });
-        this.connect('color-set', () => { this.notify('colour'); });
+        this.connect('color-set', () => this.notify('colour'));
     }
 
     get colour() {
@@ -179,13 +153,39 @@ var Short = class extends Gtk.Button {
         let mask = state & Gtk.accelerator_get_default_mod_mask();
         mask &= ~Gdk.ModifierType.LOCK_MASK;
         if(!mask && keyval === Gdk.KEY_Escape) { this._editor.close(); return Gdk.EVENT_STOP; }
-        if(!isValidBinding(mask, keycode, keyval) || !isValidAccel(mask, keyval)) return Gdk.EVENT_STOP;
+        if(!this.isValidBinding(mask, keycode, keyval) || !this.isValidAccel(mask, keyval)) return Gdk.EVENT_STOP;
         this.shortcut = Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask);
         this.emit('changed', this.shortcut);
         this._setting.set_strv(this._key, [this.shortcut]);
         this._editor.destroy();
 
         return Gdk.EVENT_STOP;
+    }
+
+    keyvalIsForbidden(keyval) {
+        return [Gdk.KEY_Home, Gdk.KEY_Left, Gdk.KEY_Up, Gdk.KEY_Right, Gdk.KEY_Down, Gdk.KEY_Page_Up,
+            Gdk.KEY_Page_Down, Gdk.KEY_End, Gdk.KEY_Tab, Gdk.KEY_KP_Enter, Gdk.KEY_Return, Gdk.KEY_Mode_switch].includes(keyval);
+    }
+
+    isValidBinding(mask, keycode, keyval) {
+        // From: https://gitlab.gnome.org/GNOME/gnome-control-center/-/blob/master/panels/keyboard/keyboard-shortcuts.c
+        return !(mask === 0 || mask === Gdk.SHIFT_MASK && keycode !== 0 &&
+                 ((keyval >= Gdk.KEY_a && keyval <= Gdk.KEY_z) ||
+                     (keyval >= Gdk.KEY_A && keyval <= Gdk.KEY_Z) ||
+                     (keyval >= Gdk.KEY_0 && keyval <= Gdk.KEY_9) ||
+                     (keyval >= Gdk.KEY_kana_fullstop && keyval <= Gdk.KEY_semivoicedsound) ||
+                     (keyval >= Gdk.KEY_Arabic_comma && keyval <= Gdk.KEY_Arabic_sukun) ||
+                     (keyval >= Gdk.KEY_Serbian_dje && keyval <= Gdk.KEY_Cyrillic_HARDSIGN) ||
+                     (keyval >= Gdk.KEY_Greek_ALPHAaccent && keyval <= Gdk.KEY_Greek_omega) ||
+                     (keyval >= Gdk.KEY_hebrew_doublelowline && keyval <= Gdk.KEY_hebrew_taf) ||
+                     (keyval >= Gdk.KEY_Thai_kokai && keyval <= Gdk.KEY_Thai_lekkao) ||
+                     (keyval >= Gdk.KEY_Hangul_Kiyeog && keyval <= Gdk.KEY_Hangul_J_YeorinHieuh) ||
+                     (keyval === Gdk.KEY_space && mask === 0) || this.keyvalIsForbidden(keyval))
+        );
+    }
+
+    isValidAccel(mask, keyval) {
+        return Gtk.accelerator_valid(keyval, mask) || (keyval === Gdk.KEY_Tab && mask !== 0);
     }
 };
 
