@@ -624,6 +624,7 @@ class Extension {
 
     disable() {
         this._ext.destroy();
+        gsettings.run_dispose();
         gsettings = this._ext = null;
     }
 }
