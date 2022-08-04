@@ -23,7 +23,7 @@ var File = class extends Gtk.Box {
     constructor(params) {
         super({ valign: Gtk.Align.CENTER, css_classes: ['linked'] }); // no 'always-show-image'
         let box = new Gtk.Box({ spacing: 5 });
-        this._icon = new Gtk.Image({ icon_name:  'document-open-symbolic' });
+        this._icon = new Gtk.Image({ icon_name: 'document-open-symbolic' });
         this._label = new Gtk.Label({ label: _GTK('(None)') });
         [this._icon, this._label].forEach(x => box.append(x));
         this._btn = new Gtk.Button({ child: box });
@@ -143,7 +143,7 @@ var Short = class extends Gtk.Button {
     _onActivated(widget) {
         let ctl = new Gtk.EventControllerKey();
         let content = new Adw.StatusPage({ title: _GTK('New accelerator…'), icon_name: 'preferences-desktop-keyboard-shortcuts-symbolic' });
-        this._editor = new Adw.Window({ modal: true, hide_on_close: true, transient_for: widget.get_root(), width_request: 480,  height_request: 320, content });
+        this._editor = new Adw.Window({ modal: true, hide_on_close: true, transient_for: widget.get_root(), width_request: 480, height_request: 320, content });
         this._editor.add_controller(ctl);
         ctl.connect('key-pressed', this._onKeyPressed.bind(this));
         this._editor.present();
@@ -170,17 +170,17 @@ var Short = class extends Gtk.Button {
     isValidBinding(mask, keycode, keyval) {
         // From: https://gitlab.gnome.org/GNOME/gnome-control-center/-/blob/master/panels/keyboard/keyboard-shortcuts.c
         return !(mask === 0 || mask === Gdk.SHIFT_MASK && keycode !== 0 &&
-                 ((keyval >= Gdk.KEY_a && keyval <= Gdk.KEY_z) ||
-                     (keyval >= Gdk.KEY_A && keyval <= Gdk.KEY_Z) ||
-                     (keyval >= Gdk.KEY_0 && keyval <= Gdk.KEY_9) ||
-                     (keyval >= Gdk.KEY_kana_fullstop && keyval <= Gdk.KEY_semivoicedsound) ||
-                     (keyval >= Gdk.KEY_Arabic_comma && keyval <= Gdk.KEY_Arabic_sukun) ||
-                     (keyval >= Gdk.KEY_Serbian_dje && keyval <= Gdk.KEY_Cyrillic_HARDSIGN) ||
-                     (keyval >= Gdk.KEY_Greek_ALPHAaccent && keyval <= Gdk.KEY_Greek_omega) ||
-                     (keyval >= Gdk.KEY_hebrew_doublelowline && keyval <= Gdk.KEY_hebrew_taf) ||
-                     (keyval >= Gdk.KEY_Thai_kokai && keyval <= Gdk.KEY_Thai_lekkao) ||
-                     (keyval >= Gdk.KEY_Hangul_Kiyeog && keyval <= Gdk.KEY_Hangul_J_YeorinHieuh) ||
-                     (keyval === Gdk.KEY_space && mask === 0) || this.keyvalIsForbidden(keyval))
+            ((keyval >= Gdk.KEY_a && keyval <= Gdk.KEY_z) ||
+                (keyval >= Gdk.KEY_A && keyval <= Gdk.KEY_Z) ||
+                (keyval >= Gdk.KEY_0 && keyval <= Gdk.KEY_9) ||
+                (keyval >= Gdk.KEY_kana_fullstop && keyval <= Gdk.KEY_semivoicedsound) ||
+                (keyval >= Gdk.KEY_Arabic_comma && keyval <= Gdk.KEY_Arabic_sukun) ||
+                (keyval >= Gdk.KEY_Serbian_dje && keyval <= Gdk.KEY_Cyrillic_HARDSIGN) ||
+                (keyval >= Gdk.KEY_Greek_ALPHAaccent && keyval <= Gdk.KEY_Greek_omega) ||
+                (keyval >= Gdk.KEY_hebrew_doublelowline && keyval <= Gdk.KEY_hebrew_taf) ||
+                (keyval >= Gdk.KEY_Thai_kokai && keyval <= Gdk.KEY_Thai_lekkao) ||
+                (keyval >= Gdk.KEY_Hangul_Kiyeog && keyval <= Gdk.KEY_Hangul_J_YeorinHieuh) ||
+                (keyval === Gdk.KEY_space && mask === 0) || this.keyvalIsForbidden(keyval))
         );
     }
 
@@ -296,4 +296,3 @@ var LazyEntry = class extends Gtk.Stack {
         return box;
     }
 };
-

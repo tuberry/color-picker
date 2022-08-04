@@ -51,10 +51,9 @@
             <default>8</default>
             <summary>menu item size</summary>
         </key>
-        <key type="u" name="menu-style">
-            <range min="0" max="1"/>
-            <default>0</default>
-            <summary>menu style: 0-history 1-collection</summary>
+        <key type="b" name="menu-style">
+            <default>false</default>
+            <summary>menu style: false-history true-collection</summary>
         </key>
     </schema>
 </schemalist>

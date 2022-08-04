@@ -13,15 +13,12 @@ const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const Fields = Me.imports.fields.Fields;
+const { Fields } = Me.imports.fields;
 const _ = ExtensionUtils.gettext;
-let gsettings = null;
 
 const Notify = { MSG: 0, OSD: 1 };
-const Menu = { History: 0, Collect: 1 };
 const Format = { HEX: 0, RGB: 1, HSL: 2 };
 const setCursor = cursor => global.display.set_cursor(Meta.Cursor[cursor]);
-const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
 function toText(color, format) {
     switch(format) {
@@ -47,6 +44,32 @@ function toMarkup(text) {
     let lightness = Clutter.Color.from_string(hex)[1].to_hls()[1];
     // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
     return ` <span fgcolor="${Math.round(lightness) ? '#000' : '#fff'}" bgcolor="${hex}">${text}</span>`;
+}
+
+class Field {
+    constructor(prop, gset, obj) {
+        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
+        this.prop = prop;
+        this.bind(obj);
+    }
+
+    _get(x) {
+        return this.gset[`get_${this.prop[x][1]}`](this.prop[x][0]);
+    }
+
+    _set(x, y) {
+        this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
+    }
+
+    bind(a) {
+        let fs = Object.entries(this.prop);
+        fs.forEach(([x]) => { a[x] = this._get(x); });
+        this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
+    }
+
+    unbind(a) {
+        this.gset.disconnectObject(a);
+    }
 }
 
 class IconItem extends PopupMenu.PopupBaseMenuItem {
@@ -196,8 +219,8 @@ class ColorMenu extends GObject.Object {
     static {
         GObject.registerClass({
             Signals: {
+                menu_closed: {},
                 color_selected: { param_types: [GObject.TYPE_STRING] },
-                menu_closed: { },
             },
         }, this);
     }
@@ -220,13 +243,13 @@ class ColorMenu extends GObject.Object {
         this._menus = {
             hex: this._genRGBSection(),
             rgb: new PopupMenu.PopupSeparatorMenuItem(),
-            r:   new SliderItem('R', this._color.red, 255, red => this.setRGB({ red })),
-            g:   new SliderItem('G', this._color.green, 255, green => this.setRGB({ green })),
-            b:   new SliderItem('B', this._color.blue, 255, blue => this.setRGB({ blue })),
+            r: new SliderItem('R', this._color.red, 255, red => this.setRGB({ red })),
+            g: new SliderItem('G', this._color.green, 255, green => this.setRGB({ green })),
+            b: new SliderItem('B', this._color.blue, 255, blue => this.setRGB({ blue })),
             hsl: new PopupMenu.PopupSeparatorMenuItem(),
-            h:   new SliderItem('H', h, 360, x => this.setHLS({ 0: x })),
-            l:   new SliderItem('L', l, 1, x => this.setHLS({ 1: x })),
-            s:   new SliderItem('S', s, 1, x => this.setHLS({ 2: x })),
+            h: new SliderItem('H', h, 360, x => this.setHLS({ 0: x })),
+            l: new SliderItem('L', l, 1, x => this.setHLS({ 1: x })),
+            s: new SliderItem('S', s, 1, x => this.setHLS({ 2: x })),
         };
         for(let p in this._menus) this._menu.addMenuItem(this._menus[p]);
     }
@@ -293,10 +316,6 @@ class ColorMenu extends GObject.Object {
 class ColorArea extends St.Widget {
     static {
         GObject.registerClass({
-            Properties: {
-                preview: genParam('boolean', 'preview', false),
-                persist: genParam('boolean', 'persist', false),
-            },
             Signals: {
                 end_pick: {},
                 notify_color: { param_types: [GObject.TYPE_STRING] },
@@ -311,8 +330,10 @@ class ColorArea extends St.Widget {
         this._color = new Clutter.Color({ red: 0, green: 0, blue: 0 });
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         this.connect('popup-menu', () => this._icon && this._menu.open(this._color));
-        [[Fields.PERSISTENTMODE, 'persist'], [Fields.ENABLEPREVIEW, 'preview']]
-            .forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
+        this._field = new Field({
+            persist: [Fields.PERSISTENTMODE, 'boolean'],
+            preview: [Fields.ENABLEPREVIEW,  'boolean'],
+        }, ExtensionUtils.getSettings(), this);
         this.set_size(...global.display.get_size());
         setCursor(this._preview ? 'BLANK' : 'CROSSHAIR');
     }
@@ -334,7 +355,7 @@ class ColorArea extends St.Widget {
     set preview(preview) {
         if((this._preview = preview)) {
             if(this._icon) return;
-            let gicon =  Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child('color-pick.svg').get_path());
+            let gicon = Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child('color-pick.svg').get_path());
             this._effect = new Screenshot.RecolorEffect({ chroma: new Clutter.Color({ red: 80, green: 219, blue: 181 }), threshold: 0.03, smoothing: 0.3 });
             this._icon = new St.Icon({ visible: false, effect: this._effect, gicon, icon_size: Meta.prefs_get_cursor_size() * 1.5 });
             this._pick().catch(() => this.emit('end-pick'));
@@ -383,6 +404,7 @@ class ColorArea extends St.Widget {
     }
 
     destroy() {
+        this._field.unbind(this);
         this.preview = this._pointer = this._picker = null;
         setCursor('DEFAULT');
         super.destroy();
@@ -392,13 +414,6 @@ class ColorArea extends St.Widget {
 class ColorButton extends PanelMenu.Button {
     static {
         GObject.registerClass({
-            Properties: {
-                collect:    genParam('string', 'collect', ''),
-                history:    genParam('string', 'history', ''),
-                icon_name:  genParam('string', 'icon_name', ''),
-                menu_size:  genParam('uint', 'menu_size', 1, 16, 8),
-                menu_style: genParam('uint', 'menu_style', 0, 1, 0),
-            },
             Signals: {
                 btn_left_click: {},
             },
@@ -420,22 +435,22 @@ class ColorButton extends PanelMenu.Button {
     }
 
     _bindSettings() {
-        [
-            [Fields.COLORSCOLLECT, 'collect'],
-            [Fields.COLORSHISTORY, 'history'],
-            [Fields.MENUSIZE,      'menu_size'],
-            [Fields.SYSTRAYICON,   'icon_name'],
-            [Fields.MENUSTYLE,     'menu_style'],
-        ].forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
+        this._field = new Field({
+            collect:    [Fields.COLORSCOLLECT, 'string'],
+            history:    [Fields.COLORSHISTORY, 'string'],
+            menu_size:  [Fields.MENUSIZE,      'uint'],
+            icon_name:  [Fields.SYSTRAYICON,   'string'],
+            menu_style: [Fields.MENUSTYLE,     'boolean'],
+        }, ExtensionUtils.getSettings(), this);
     }
 
     _addMenuItems() {
         this._menus = {
-            section:  new DListSection(...this.section),
-            sep:      new PopupMenu.PopupSeparatorMenuItem(),
+            section: new DListSection(...this.section),
+            sep: new PopupMenu.PopupSeparatorMenuItem(),
             settings: new IconItem('color-picker-setting', [
                 ['find-location-symbolic', () => { this.menu.close(); this.emit('btn-left-click'); }],
-                ['face-cool-symbolic',     () => gsettings.set_uint(Fields.MENUSTYLE, 1 - this._menu_style)],
+                ['face-cool-symbolic',     () => this._field._set('menu_style', !this._menu_style)],
                 ['emblem-system-symbolic', () => { this.menu.close(); ExtensionUtils.openPrefs(); }],
             ]),
         };
@@ -448,36 +463,35 @@ class ColorButton extends PanelMenu.Button {
 
     set history(history) {
         this._history = history.split('|').filter(Boolean);
-        if(this._menu_style === Menu.History) this._menus?.section.setList(this._history);
+        if(!this._menu_style) this._menus?.section.setList(this._history);
     }
 
     set collect(collect) {
         this._collect = collect.split('|').filter(Boolean);
-        if(this._menu_style === Menu.Collect) this._menus?.section.setList(this._collect);
+        if(this._menu_style) this._menus?.section.setList(this._collect);
     }
 
     set menu_style(menu_style) {
-        if(this._menu_style === menu_style) return;
         this._menu_style = menu_style;
         this._menus?.section.updateList(...this.section);
     }
 
     get section() {
-        return this._menu_style === Menu.History
-            ? [this._history, 'color-picker-history', x => this._addCollect(x)]
-            : [this._collect, 'color-picker-collect', x => this._delCollect(x)];
+        return this._menu_style
+            ? [this._collect ?? [], 'color-picker-collect', x => this._delCollect(x)]
+            : [this._history ?? [], 'color-picker-history', x => this._addCollect(x)];
     }
 
     _addCollect(color) {
         if(this._collect.includes(color)) return;
         let collect = [color, ...this._collect];
         while(collect.length > this.menu_size) collect.pop();
-        gsettings.set_string(Fields.COLORSCOLLECT, collect.join('|'));
+        this._field._set('collect', collect.join('|'));
     }
 
     _delCollect(color) {
         this._collect.splice(this._collect.indexOf(color), 1);
-        gsettings.set_string(Fields.COLORSCOLLECT, this._collect.join('|'));
+        this._field._set('collect', this._collect.join('|'));
     }
 
     vfunc_event(event) {
@@ -487,43 +501,30 @@ class ColorButton extends PanelMenu.Button {
         }
         return super.vfunc_event(event);
     }
+
+    destroy() {
+        this._field.unbind(this);
+        super.destroy();
+    }
 }
 
-class ColorPicker extends GObject.Object {
-    static {
-        GObject.registerClass({
-            Properties: {
-                history:       genParam('string', 'history', ''),
-                systray:       genParam('boolean', 'systray', true),
-                auto_copy:     genParam('boolean', 'auto_copy', true),
-                shortcut:      genParam('boolean', 'shortcut', false),
-                menu_size:     genParam('uint', 'menu_size', 1, 16, 8),
-                notify_style:  genParam('uint', 'notify_style', 0, 1, 0),
-                enable_notify: genParam('boolean', 'enable_notify', true),
-            },
-        }, this);
-    }
-
+class ColorPicker {
     constructor() {
-        super();
-        this._bindSettings();
-    }
-
-    _bindSettings() {
-        [
-            [Fields.ENABLESYSTRAY,  'systray'],
-            [Fields.MENUSIZE,       'menu_size'],
-            [Fields.AUTOCOPY,       'auto_copy'],
-            [Fields.ENABLESHORTCUT, 'shortcut'],
-            [Fields.ENABLENOTIFY,   'enable_notify'],
-            [Fields.NOTIFYSTYLE,    'notify_style'],
-            [Fields.COLORSHISTORY,  'history', Gio.SettingsBindFlags.DEFAULT],
-        ].forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
+        this.gset = ExtensionUtils.getSettings();
+        this._field = new Field({
+            history:       [Fields.COLORSHISTORY,  'string'],
+            systray:       [Fields.ENABLESYSTRAY,  'boolean'],
+            auto_copy:     [Fields.AUTOCOPY,       'boolean'],
+            shortcut:      [Fields.ENABLESHORTCUT, 'boolean'],
+            menu_size:     [Fields.MENUSIZE,       'uint'],
+            notify_style:  [Fields.NOTIFYSTYLE,    'uint'],
+            enable_notify: [Fields.ENABLENOTIFY,   'boolean'],
+        }, this.gset, this);
     }
 
     set shortcut(shortcut) {
         this._shortId && Main.wm.removeKeybinding(Fields.PICKSHORTCUT);
-        this._shortId = shortcut && Main.wm.addKeybinding(Fields.PICKSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this.summon.bind(this));
+        this._shortId = shortcut && Main.wm.addKeybinding(Fields.PICKSHORTCUT, this.gset, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this.summon.bind(this));
     }
 
     set systray(systray) {
@@ -543,8 +544,7 @@ class ColorPicker extends GObject.Object {
         if(this._area) return;
         if(this._button) this._button.add_style_pseudo_class('busy');
         this._area = new ColorArea();
-        this._area.connect('end-pick', this.dispel.bind(this));
-        this._area.connect('notify-color', this.inform.bind(this));
+        this._area.connectObject('end-pick', this.dispel.bind(this), 'notify-color', this.inform.bind(this), this);
         Main.layoutManager.addChrome(this._area);
         this._grab = Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
     }
@@ -559,7 +559,8 @@ class ColorPicker extends GObject.Object {
     }
 
     inform(actor, color) {
-        this._addHistory(color);
+        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
+        if(this._button) this._addHistory(color);
         if(!this.enable_notify) return;
         if(this.notify_style === Notify.MSG) {
             Main.notify(Me.metadata.name, _('%s is picked.').format(color));
@@ -579,10 +580,9 @@ class ColorPicker extends GObject.Object {
     }
 
     _addHistory(color) {
-        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
         let history = [color, ...this.history.split('|').filter(Boolean)];
         while(history.length > this.menu_size) history.pop();
-        this.history = history.join('|');
+        this._field._set('history', history.join('|'));
     }
 
     pickAsync() {
@@ -602,6 +602,7 @@ class ColorPicker extends GObject.Object {
     }
 
     destroy() {
+        this._field.unbind(this);
         this.dispel();
         this.systray = this.shortcut = null;
     }
@@ -614,18 +615,16 @@ class Extension {
 
     // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
     pickAsync() {
-        return this._ext.pickAsync();
+        return this._ext?.pickAsync();
     }
 
     enable() {
-        gsettings = ExtensionUtils.getSettings();
         this._ext = new ColorPicker();
     }
 
     disable() {
         this._ext.destroy();
-        gsettings.run_dispose();
-        gsettings = this._ext = null;
+        this._ext = null;
     }
 }
 

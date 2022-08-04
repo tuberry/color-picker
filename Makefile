@@ -40,7 +40,6 @@ $(BUILD):
 	if test -d $(BUILD)/locale; then for p in $(BUILD)/locale/*/LC_MESSAGES/*.po; do msgfmt -o $${p/.po/.mo} $$p; done; fi;
 	rm -f $(BUILD)/locale/*/LC_MESSAGES/*po
 	glib-compile-schemas $(BUILD)/schemas/
-	rm -f $(BUILD)/schemas/*xml
 ifndef VERSION
 	$(eval VERSION=$(shell curl -s $(EGOURL) 2>&1 | grep data-svm | sed -e 's/.*: //; s/}}"//' | xargs -I{} expr {} + 1))
 endif
