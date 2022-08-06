@@ -255,7 +255,7 @@ var LazyEntry = class extends Gtk.Stack {
         this._label = new Gtk.Entry({ hexpand: true, sensitive: false, placeholder_text: holder || '' });
         this._entry = new Gtk.Entry({ hexpand: true, enable_undo: true, placeholder_text: holder || '' });
         this._edit = new Gtk.Button({ icon_name: 'document-edit-symbolic', tooltip_text: tip || '' });
-        this._done = new Gtk.Button({ icon_name: 'object-select-symbolic', tooltip_text: _('Click or Press ENTER to commit changes'), css_classes: ['suggested-action'] });
+        this._done = new Gtk.Button({ icon_name: 'object-select-symbolic', tooltip_text: _('Click or press ENTER to commit changes'), css_classes: ['suggested-action'] });
         this.add_named(this._boxWrapper(this._label, this._edit), 'label');
         this.add_named(this._boxWrapper(this._entry, this._done), 'entry');
         this.bind_property('text', this._label, 'text', GObject.BindingFlags.BIDIRECTIONAL);

@@ -77,46 +77,33 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
     constructor() {
         super();
         this._buildWidgets();
-        this._bindValues();
         this._buildUI();
     }
 
     _buildWidgets() {
-        this._field_systray_icon    = new IconBtn();
-        this._field_auto_copy       = new Gtk.CheckButton();
-        this._field_enable_preview  = new Gtk.CheckButton();
-        this._field_enable_shortcut = new Gtk.CheckButton();
-        this._field_persistent_mode = new Gtk.CheckButton();
-        this._field_enable_notify   = new Gtk.CheckButton();
-        this._field_enable_systray  = new Gtk.CheckButton();
-        this._field_notify_style    = new UI.Drop(_('MSG'), _('OSD'));
-        this._field_menu_size       = new UI.Spin(1, 16, 1, _('history size'));
-        this._field_shortcut        = new UI.Short(gsettings, Fields.PICKSHORTCUT);
+        this._field_shortcut = new UI.Short(gsettings, Fields.PICKSHORTCUT);
+        this._field = {
+            SYSTRAYICON:    ['file',     new IconBtn()],
+            AUTOCOPY:       ['active',   new Gtk.CheckButton()],
+            ENABLENOTIFY:   ['active',   new Gtk.CheckButton()],
+            ENABLEPREVIEW:  ['active',   new Gtk.CheckButton()],
+            ENABLESHORTCUT: ['active',   new Gtk.CheckButton()],
+            ENABLESYSTRAY:  ['active',   new Gtk.CheckButton()],
+            PERSISTENTMODE: ['active',   new Gtk.CheckButton()],
+            NOTIFYSTYLE:    ['selected', new UI.Drop(_('MSG'), _('OSD'))],
+            MENUSIZE:       ['value',    new UI.Spin(1, 16, 1, _('history size'))],
+        };
+        Object.entries(this._field).forEach(([x, [y, z]]) => gsettings.bind(Fields[x], z, y, Gio.SettingsBindFlags.DEFAULT));
     }
 
     _buildUI() {
         [
-            [this._field_enable_preview, [_('Enable preview'), _('middle click or MENU key to open menu')]],
-            [this._field_persistent_mode, [_('Persistent mode'), _('right click or Escape key to exit')]],
-            [this._field_auto_copy, [_('Automatically copy'), _('copy the color to clipboard after picking')]],
-            [this._field_enable_shortcut, [_('Shortcut to pick'), _('arrow keys to move by pixel')], this._field_shortcut],
-            [this._field_enable_notify, [_('Notification style')],  this._field_notify_style],
-            [this._field_enable_systray, [_('Enable systray'), _('right click to open menu')], this._field_systray_icon, this._field_menu_size],
+            [this._field.ENABLEPREVIEW[1],  [_('Enable preview'), _('middle click or MENU key to open menu')]],
+            [this._field.PERSISTENTMODE[1], [_('Persistent mode'), _('right click or Escape key to exit')]],
+            [this._field.AUTOCOPY[1],       [_('Automatically copy'), _('copy the color to clipboard after picking')]],
+            [this._field.ENABLESHORTCUT[1], [_('Shortcut to pick'), _('arrow keys to move by pixel')], this._field_shortcut],
+            [this._field.ENABLENOTIFY[1],   [_('Notification style')],  this._field.NOTIFYSTYLE[1]],
+            [this._field.ENABLESYSTRAY[1],  [_('Enable systray'), _('right click to open menu')], this._field.SYSTRAYICON[1], this._field.MENUSIZE[1]],
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));
     }
-
-    _bindValues() {
-        [
-            [Fields.ENABLENOTIFY,   this._field_enable_notify,   'active'],
-            [Fields.ENABLESHORTCUT, this._field_enable_shortcut, 'active'],
-            [Fields.ENABLESYSTRAY,  this._field_enable_systray,  'active'],
-            [Fields.ENABLEPREVIEW,  this._field_enable_preview,  'active'],
-            [Fields.NOTIFYSTYLE,    this._field_notify_style,    'selected'],
-            [Fields.AUTOCOPY,       this._field_auto_copy,       'active'],
-            [Fields.MENUSIZE,       this._field_menu_size,       'value'],
-            [Fields.SYSTRAYICON,    this._field_systray_icon,    'file'],
-            [Fields.PERSISTENTMODE, this._field_persistent_mode, 'active'],
-        ].forEach(xs => gsettings.bind(...xs, Gio.SettingsBindFlags.DEFAULT));
-    }
 }
-
