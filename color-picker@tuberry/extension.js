@@ -329,8 +329,10 @@ class ColorArea extends St.Widget {
         this._picker = new Shell.Screenshot();
         this._color = new Clutter.Color({ red: 0, green: 0, blue: 0 });
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
-        this.connect('popup-menu', () => this._icon && this._menu.open(this._color));
+        this.connect('popup-menu', this._openMenu.bind(this));
         this._field = new Field({
+            menukey: [Fields.MENUKEY,        'string'],
+            quitkey: [Fields.QUITKEY,        'string'],
             persist: [Fields.PERSISTENTMODE, 'boolean'],
             preview: [Fields.ENABLEPREVIEW,  'boolean'],
         }, ExtensionUtils.getSettings(), this);
@@ -380,14 +382,41 @@ class ColorArea extends St.Widget {
         return Clutter.EVENT_PROPAGATE;
     }
 
-    vfunc_key_press_event(event) {
+    _moveCursorTo(x, y) {
         let [X, Y] = global.get_pointer();
-        switch(event.keyval) {
-        case Clutter.KEY_Left:   this._pointer.notify_absolute_motion(global.get_current_time(), X - 1, Y); break;
-        case Clutter.KEY_Up:     this._pointer.notify_absolute_motion(global.get_current_time(), X, Y - 1); break;
-        case Clutter.KEY_Right:  this._pointer.notify_absolute_motion(global.get_current_time(), X + 1, Y); break;
-        case Clutter.KEY_Down:   this._pointer.notify_absolute_motion(global.get_current_time(), X, Y + 1); break;
-        case Clutter.KEY_Escape: this.emit('end-pick'); return Clutter.EVENT_PROPAGATE;
+        this._pointer.notify_absolute_motion(global.get_current_time(), X + x, Y + y);
+    }
+
+    _openMenu() {
+        if(this._icon) this._menu.open(this._color);
+    }
+
+    _onMoveKeyPressed(keyval) {
+        switch(keyval) {
+        case Clutter.KEY_a:
+        case Clutter.KEY_h:
+        case Clutter.KEY_Left:   this._moveCursorTo(-1, 0); break;
+        case Clutter.KEY_w:
+        case Clutter.KEY_k:
+        case Clutter.KEY_Up:     this._moveCursorTo(0, -1); break;
+        case Clutter.KEY_d:
+        case Clutter.KEY_l:
+        case Clutter.KEY_Right:  this._moveCursorTo(1, 0); break;
+        case Clutter.KEY_s:
+        case Clutter.KEY_j:
+        case Clutter.KEY_Down:   this._moveCursorTo(0, 1); break;
+        }
+    }
+
+    vfunc_key_press_event(event) {
+        let { keyval } = event;
+        if(this.menukey && keyval === Clutter[`KEY_${this.menukey}`]) {
+            this._openMenu();
+        } else if(keyval === Clutter.KEY_Escape || this.quitkey && keyval === Clutter[`KEY_${this.quitkey}`]) {
+            this.emit('end-pick');
+            return Clutter.EVENT_PROPAGATE;
+        } else {
+            this._onMoveKeyPressed(keyval);
         }
 
         return super.vfunc_key_press_event(event);
@@ -396,7 +425,7 @@ class ColorArea extends St.Widget {
     vfunc_button_press_event(event) {
         switch(event.button) {
         case 1:  this._icon ? this._emitColor() : this._pick().then(() => this._emitColor()); break;
-        case 2:  if(this._icon) this._menu.open(this._color); break;
+        case 2:  this._openMenu(); break;
         default: this.emit('end-pick'); break;
         }
 
@@ -615,7 +644,7 @@ class Extension {
 
     // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
     pickAsync() {
-        return this._ext?.pickAsync();
+        return this._ext.pickAsync();
     }
 
     enable() {

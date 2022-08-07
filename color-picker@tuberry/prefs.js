@@ -8,9 +8,10 @@ const { Adw, Gio, Gtk, GObject, Gdk, GLib } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const _ = ExtensionUtils.gettext;
-const gsettings = ExtensionUtils.getSettings();
 const { Fields } = Me.imports.fields;
 const UI = Me.imports.ui;
+
+const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
 function buildPrefsWidget() {
     return new ColorPickerPrefs();
@@ -69,6 +70,54 @@ class IconBtn extends UI.File {
     }
 }
 
+var KeyBtn = class extends Gtk.Box {
+    static {
+        GObject.registerClass({
+            Properties: {
+                key: genParam('string', 'key', ''),
+            },
+            Signals: {
+                changed: { param_types: [GObject.TYPE_STRING] },
+            },
+        }, this);
+    }
+
+    constructor() {
+        super({ valign: Gtk.Align.CENTER, css_classes: ['linked'] }); // no 'always-show-image'
+        let label = new Gtk.ShortcutLabel({ disabled_text: _('(Key)') });
+        this.bind_property('key', label, 'accelerator', GObject.BindingFlags.DEFAULT);
+        this._btn = new Gtk.Button({ child: label });
+        let reset = new Gtk.Button({ icon_name: 'edit-clear-symbolic', tooltip_text: _('Clear') });
+        reset.connect('clicked', () => (this.key = ''));
+        this._btn.connect('clicked', this._onActivated.bind(this));
+        [this._btn, reset].forEach(x => this.append(x));
+    }
+
+    _onActivated(widget) {
+        let ctl = new Gtk.EventControllerKey();
+        let content = new Adw.StatusPage({ title: _('Press any keys.'), icon_name: 'preferences-desktop-keyboard-symbolic' });
+        this._editor = new Adw.Window({ modal: true, hide_on_close: true, transient_for: widget.get_root(), width_request: 480, height_request: 320, content });
+        this._editor.add_controller(ctl);
+        ctl.connect('key-pressed', this._onKeyPressed.bind(this));
+        this._editor.present();
+    }
+
+    _onKeyPressed(_widget, keyval, keycode, state) {
+        let mask = state & Gtk.accelerator_get_default_mod_mask();
+        mask &= ~Gdk.ModifierType.LOCK_MASK;
+        if(!mask && keyval === Gdk.KEY_Escape) { this._editor.close(); return Gdk.EVENT_STOP; }
+        this.key = Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask);
+        this.emit('changed', this.key);
+        this._editor.destroy();
+
+        return Gdk.EVENT_STOP;
+    }
+
+    vfunc_mnemonic_activate() {
+        this._btn.activate();
+    }
+};
+
 class ColorPickerPrefs extends Adw.PreferencesGroup {
     static {
         GObject.registerClass(this);
@@ -81,8 +130,11 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
     }
 
     _buildWidgets() {
+        let gsettings = ExtensionUtils.getSettings();
         this._field_shortcut = new UI.Short(gsettings, Fields.PICKSHORTCUT);
         this._field = {
+            MENUKEY:        ['key',      new KeyBtn()],
+            QUITKEY:        ['key',      new KeyBtn()],
             SYSTRAYICON:    ['file',     new IconBtn()],
             AUTOCOPY:       ['active',   new Gtk.CheckButton()],
             ENABLENOTIFY:   ['active',   new Gtk.CheckButton()],
@@ -98,10 +150,10 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
 
     _buildUI() {
         [
-            [this._field.ENABLEPREVIEW[1],  [_('Enable preview'), _('middle click or MENU key to open menu')]],
-            [this._field.PERSISTENTMODE[1], [_('Persistent mode'), _('right click or Escape key to exit')]],
             [this._field.AUTOCOPY[1],       [_('Automatically copy'), _('copy the color to clipboard after picking')]],
-            [this._field.ENABLESHORTCUT[1], [_('Shortcut to pick'), _('arrow keys to move by pixel')], this._field_shortcut],
+            [this._field.ENABLEPREVIEW[1],  [_('Enable preview'), _('middle click or press Menu key to open menu')], this._field.MENUKEY[1]],
+            [this._field.PERSISTENTMODE[1], [_('Persistent mode'), _('right click or press Esc key to quit')], this._field.QUITKEY[1]],
+            [this._field.ENABLESHORTCUT[1], [_('Shortcut to pick'), _('press arrow keys / wasd / hjkl to move by pixel')], this._field_shortcut],
             [this._field.ENABLENOTIFY[1],   [_('Notification style')],  this._field.NOTIFYSTYLE[1]],
             [this._field.ENABLESYSTRAY[1],  [_('Enable systray'), _('right click to open menu')], this._field.SYSTRAYICON[1], this._field.MENUSIZE[1]],
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));

@@ -4,6 +4,8 @@
 'use strict';
 
 var Fields = {
+    MENUKEY:        'menu-key',
+    QUITKEY:        'quit-key',
     AUTOCOPY:       'auto-copy',
     MENUSIZE:       'menu-size',
     MENUSTYLE:      'menu-style',

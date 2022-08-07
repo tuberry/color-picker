@@ -29,6 +29,14 @@
             <default><![CDATA[['<Super>0']]]></default>
             <summary>shortcut to pick color</summary>
         </key>
+        <key type="s" name="menu-key">
+            <default>""</default>
+            <summary>key to open menu</summary>
+        </key>
+        <key type="s" name="quit-key">
+            <default>""</default>
+            <summary>key to quit picking</summary>
+        </key>
         <key type="s" name="colors-history">
             <default>""</default>
             <summary>picked colors history</summary>
