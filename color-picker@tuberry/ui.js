@@ -233,8 +233,8 @@ var Drop = class extends Gtk.DropDown {
         GObject.registerClass(this);
     }
 
-    constructor(...args) {
-        super({ model: Gtk.StringList.new(args), valign: Gtk.Align.CENTER });
+    constructor(args, tip) {
+        super({ model: Gtk.StringList.new(args), valign: Gtk.Align.CENTER, tooltip_text: tip || '' });
     }
 };
 

@@ -4,7 +4,16 @@
     /* min-width: 18em; */
 }
 
-.color-picker-label-button {
+.color-picker-label {
+    color: black;
+    padding: 0.3em;
+    font-size: 1.4em;
+    border-radius: 0.4em;
+    background-color: rgba(225, 225, 225, 1);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.color-picker-button {
     padding: 0 0.5em;
 }
 

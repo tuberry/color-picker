@@ -10,6 +10,7 @@ var Fields = {
     MENUSIZE:       'menu-size',
     MENUSTYLE:      'menu-style',
     NOTIFYSTYLE:    'notify-style',
+    PREVIEW:        'preview-style',
     ENABLENOTIFY:   'enable-notify',
     COLORSHISTORY:  'colors-history',
     ENABLEPREVIEW:  'enable-preview',
