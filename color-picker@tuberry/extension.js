@@ -320,11 +320,11 @@ class ColorLabel extends BoxPointer.BoxPointer {
     constructor() {
         super(St.Side.TOP);
         this.visible = false;
-        this.style_class = 'light-dict-box-boxpointer';
+        this.style_class = 'color-picker-boxpointer';
         Main.layoutManager.addTopChrome(this);
         this._label = new St.Label({ style_class: 'color-picker-label' });
         this.bin.set_child(this._label);
-        let s = Meta.prefs_get_cursor_size() * 0.8;
+        let s = Math.round(Meta.prefs_get_cursor_size() * 0.8);
         this._cursor = new Clutter.Actor({ opacity: 0, width: s, height: s });
         Main.uiGroup.add_actor(this._cursor);
         this.setCursor(true);
@@ -411,7 +411,7 @@ class ColorArea extends St.Widget {
             [this._color] = await this._picker.pick_color(x, y);
             this._view?.setColor(x, y, this._color);
             if(emit) this._emitColor();
-        } catch{
+        } catch(e) {
             this.emit('end-pick');
         }
     }
