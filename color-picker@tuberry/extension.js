@@ -24,14 +24,14 @@ const Format = { HEX: 0, RGB: 1, HSL: 2 };
 function toText(color, format) {
     switch(format) {
     case Format.RGB: return `rgb(${color.red}, ${color.green}, ${color.blue})`;
-    case Format.HSL: return ((h, l, s) => `hsl(${Math.round(h)}, ${(s * 100).toFixed(1)}%, ${(l * 100).toFixed(1)}%)`)(...color.to_hls());
+    case Format.HSL: return ((h, l, s) => `hsl(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`)(...color.to_hls());
     default: return color.to_string().slice(0, 7);
     }
 }
 
 function toHex(text) {
     if(text.includes('hsl')) {
-        let [h, s, l] = text.slice(4, -1).split(',').map((v, i) => parseFloat(v) / (i ? 100 : 1));
+        let [h, s, l] = text.slice(4, -1).split(',').map((v, i) => parseInt(v) / (i ? 100 : 1));
         return Clutter.Color.from_hls(h, l, s).to_string().slice(0, 7);
     } else if(text.includes('rgb')) {
         return Clutter.Color.from_string(text)[1].to_string().slice(0, 7);
@@ -286,7 +286,7 @@ class ColorMenu extends GObject.Object {
 
     setHLS(color = {}) {
         let hls = this._color.to_hls();
-        this._color = Clutter.Color.from_hls(...Object.assign(this._color.to_hls(), color));
+        this._color = Clutter.Color.from_hls(...Object.assign(hls, color));
         this._menus.r.setNumber(this._color.red);
         this._menus.g.setNumber(this._color.green);
         this._menus.b.setNumber(this._color.blue);
@@ -391,6 +391,11 @@ class ColorArea extends St.Widget {
         this._picker = new Shell.Screenshot();
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         this.connect('popup-menu', () => this._menu?.open(this._color));
+        this.set_size(...global.display.get_size());
+        this._bindSettings();
+    }
+
+    _bindSettings() {
         this._field = new Field({
             pvstyle: [Fields.PREVIEW,        'uint'],
             menukey: [Fields.MENUKEY,        'string'],
@@ -398,7 +403,6 @@ class ColorArea extends St.Widget {
             persist: [Fields.PERSISTENTMODE, 'boolean'],
             preview: [Fields.ENABLEPREVIEW,  'boolean'],
         }, ExtensionUtils.getSettings(), this);
-        this.set_size(...global.display.get_size());
     }
 
     get _persist() {
@@ -428,7 +432,7 @@ class ColorArea extends St.Widget {
             this._menu.connectObject('color-selected', (_m, color) => this._emitColor(color), this);
         } else {
             if(!this._view) return;
-            ['_view', '_menu'].forEach(x => { this[x].destroy?.(); this[x] = null; });
+            ['_view', '_menu'].forEach(x => { this[x].destroy(); this[x] = null; });
         }
     }
 
