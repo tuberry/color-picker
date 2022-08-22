@@ -649,7 +649,7 @@ class ColorPicker {
     }
 
     inform(actor, color) {
-        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color.slice(!this.prefix_pound));
+        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color.slice(!this.prefix_pound && color[0] === "#"));
         if(this._button) this._addHistory(color);
         if(!this.enable_notify) return;
         if(this.notify_style === Notify.MSG) {
