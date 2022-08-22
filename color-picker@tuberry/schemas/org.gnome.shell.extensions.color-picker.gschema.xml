@@ -21,6 +21,10 @@
             <default>true</default>
             <summary>auto copy color to clipboard</summary>
         </key>
+        <key type="b" name="prefix-pound">
+            <default>true</default>
+            <summary>prefix copied color with a pound sign</summary>
+        </key>
         <key type="b" name="enable-preview">
             <default>true</default>
             <summary>enable preview</summary>

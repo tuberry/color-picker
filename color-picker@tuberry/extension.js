@@ -608,6 +608,7 @@ class ColorPicker {
             menu_size:     [Fields.MENUSIZE,       'uint'],
             notify_style:  [Fields.NOTIFYSTYLE,    'uint'],
             enable_notify: [Fields.ENABLENOTIFY,   'boolean'],
+            prefix_pound:  [Fields.PREFIXPOUND,    'boolean'],
         }, this.gset, this);
     }
 
@@ -648,7 +649,7 @@ class ColorPicker {
     }
 
     inform(actor, color) {
-        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
+        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color.slice(!this.prefix_pound));
         if(this._button) this._addHistory(color);
         if(!this.enable_notify) return;
         if(this.notify_style === Notify.MSG) {
