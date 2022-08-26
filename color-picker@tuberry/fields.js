@@ -20,5 +20,6 @@ var Fields = {
     COLORSCOLLECT:  'colors-collection',
     SYSTRAYICON:    'systray-dropper-icon',
     PICKSHORTCUT:   'color-picker-shortcut',
+    PREFIXPOUND:    'prefix-pound',
 };
 

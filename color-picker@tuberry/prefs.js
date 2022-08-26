@@ -137,6 +137,7 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
             QUITKEY:        ['key',      new KeyBtn()],
             SYSTRAYICON:    ['file',     new IconBtn()],
             AUTOCOPY:       ['active',   new Gtk.CheckButton()],
+            PREFIXPOUND:    ['active',   new Gtk.CheckButton()],
             ENABLENOTIFY:   ['active',   new Gtk.CheckButton()],
             ENABLEPREVIEW:  ['active',   new Gtk.CheckButton()],
             ENABLESHORTCUT: ['active',   new Gtk.CheckButton()],
@@ -152,6 +153,7 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
     _buildUI() {
         [
             [this._field.AUTOCOPY[1],       [_('Automatically copy'), _('copy the color to clipboard after picking')]],
+            [this._field.PREFIXPOUND[1],    [_('Add # prefix'), _('prefix copied color with a pound sign')]],
             [this._field.ENABLESHORTCUT[1], [_('Shortcut to pick'), _('press arrow keys / wasd / hjkl to move by pixel')], this._field_shortcut],
             [this._field.ENABLENOTIFY[1],   [_('Notification style')], this._field.NOTIFYSTYLE[1]],
             [this._field.PERSISTENTMODE[1], [_('Persistent mode'), _('right click or press Esc key to quit')], this._field.QUITKEY[1]],
