@@ -1,4 +1,4 @@
-# Portuguese (europpean) translations for gnome-shell-extension-color-picker package.
+# Portuguese (european) translations for gnome-shell-extension-color-picker package.
 # Copyright (C) 2022 THE gnome-shell-extension-color-picker'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the gnome-shell-extension-color-picker package.
 # Automatically generated, 2022.
