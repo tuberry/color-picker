@@ -24,55 +24,66 @@ const Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 };
 class Color {
     constructor(text, format) {
         this._text = text || '#fff';
-        this.format = format ?? this.format;
+        this.format = format;
     }
 
     set format(format) {
         this._format = format;
     }
 
+    get text_format() {
+        return this._text_format ?? (this._text_format = this.toFormat(this._text));
+    }
+
     get format() {
-        if(this._format === undefined) {
-            if(this._text.startsWith('#')) this._format = Format.HEX;
-            else if(this._text.startsWith('rgb')) this._format = Format.RGB;
-            else if(this._text.startsWith('hsl')) this._format = Format.HSL;
-            else if(this._text.startsWith('hsv')) this._format = Format.HSV;
-            else if(this._text.startsWith('cmyk')) this._format = Format.CMYK;
-            else this._format = Format.hex;
-        }
-        return this._format;
+        return this._format ?? this.text_format;
+    }
+
+    toFormat(x) {
+        if(x.startsWith('#')) return Format.HEX;
+        else if(x.startsWith('rgb')) return Format.RGB;
+        else if(x.startsWith('hsl')) return Format.HSL;
+        else if(x.startsWith('hsv')) return Format.HSV;
+        else if(x.startsWith('cmyk')) return Format.CMYK;
+        else return Format.hex;
     }
 
     toText(format) {
         switch(format ?? this.format) {
         case Format.RGB: return (({ r, g, b }) => `rgb(${r}, ${g}, ${b})`)(this.rgb);
         case Format.HSL: return (({ h, s, l }) => `hsl(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`)(this.hsl);
-        case Format.HSV: return (({ h, s, v }) => `hsv(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(v * 100)}%)`)(this.hsl2hsv(this.hsl));
-        case Format.CMYK: return (({ c, m, y, k }) => `cmyk(${c}, ${m}, ${y}, ${k})`)(this.rgb2cmyk(this.rgb));
+        case Format.HSV: return (({ h, s, v }) => `hsv(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(v * 100)}%)`)(this.hsv);
+        case Format.CMYK: return (({ c, m, y, k }) => `cmyk(${c}, ${m}, ${y}, ${k})`)(this.cmyk);
         case Format.hex: return this.color.to_string().slice(1, 7);
         default: return this.color.to_string().slice(0, 7);
         }
     }
 
-    get color() {
-        if(this._color) return this._color;
-        if(this._text.startsWith('hsl')) {
-            let [h, s, l] = this._text.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
-            this._color = Clutter.Color.from_hls(h, l, s);
-        } else if(['#', 'rgb'].some(x => this._text.startsWith(x))) {
-            this._color = Clutter.Color.from_string(this._text)[1];
-        } else if(this._text.startsWith('hsv')) {
-            let [h, s, v] = this._text.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
-            let { h: hue, s: sat, l } = this.hsv2hsl({ h, s, v });
-            this._color = Clutter.Color.from_hls(hue, l, sat);
-        } else if(this._text.startsWith('cmyk')) {
-            let [c, m, y, k] = this._text.slice(5, -1).split(',').map(v => parseInt(v));
-            let { r, g, b } = this.cmyk2rgb({ c, m, y, k });
-            this._color = new Clutter.Color({ red: r, green: g, blue: b });
-        } else {
-            this._color = Clutter.Color.from_string(`#${this._text}`)[1];
+    toColor(t, f) {
+        switch(f) {
+        case Format.HEX:
+        case Format.RGB:
+            return Clutter.Color.from_string(t)[1];
+        case Format.HSL: {
+            let [h, s, l] = t.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
+            return Clutter.Color.from_hls(h, l, s);
         }
-        return this._color;
+        case Format.HSV: {
+            let [h, s, v] = t.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
+            let { h: hue, s: sat, l } = this.hsv2hsl({ h, s, v });
+            return Clutter.Color.from_hls(hue, l, sat);
+        }
+        case Format.CMYK: {
+            let [c, m, y, k] = t.slice(5, -1).split(',').map(v => parseInt(v));
+            let { r, g, b } = this.cmyk2rgb({ c, m, y, k });
+            return new Clutter.Color({ red: r, green: g, blue: b });
+        }
+        default: return Clutter.Color.from_string(`#${t}`)[1];
+        }
+    }
+
+    get color() {
+        return this._color ?? (this._color = this.toColor(this._text, this.text_format));
     }
 
     hsv2hsl({ h, s, v }) {
@@ -88,6 +99,10 @@ class Color {
         return { h, s: sv, v };
     }
 
+    get hsv() {
+        return this.hsl2hsv(this.hsl);
+    }
+
     cmyk2rgb({ c, m, y, k }) {
         [c, m, y, k] = [c, m, y, k].map(x => x / 255);
         let [r, g, b] = [c, m, y].map(x => Math.round((1 - x * (1 - k) - k) * 255));
@@ -100,6 +115,10 @@ class Color {
         let k = Math.min(...cmy);
         let [c, m, y, k1] = k === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - k) / (1 - k)).concat(k).map(x => Math.round(x * 255));
         return { c, m, y, k: k1 };
+    }
+
+    get cmyk() {
+        return this.rgb2cmyk(this.rgb);
     }
 
     set color(color) {
