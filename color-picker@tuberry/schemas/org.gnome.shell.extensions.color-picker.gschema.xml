@@ -59,9 +59,9 @@
             <summary>preview style: 0-Icon 1-Label</summary>
         </key>
         <key type="u" name="default-format">
-            <range min="0" max="3"/>
+            <range min="0" max="5"/>
             <default>0</default>
-            <summary>default format: 0-HEX 1-RGB 2-HSL 3-Hex(RRGGBB)</summary>
+            <summary>default format: 0-HEX 1-RGB 2-HSL 3-Hex(RRGGBB) 4-HSV 5-CMYK</summary>
         </key>
         <key type="u" name="notify-style">
             <range min="0" max="1"/>

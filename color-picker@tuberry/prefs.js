@@ -145,7 +145,7 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
             PERSISTENTMODE: ['active',   new Gtk.CheckButton()],
             NOTIFYSTYLE:    ['selected', new UI.Drop([_('MSG'), _('OSD')])],
             MENUSIZE:       ['value',    new UI.Spin(1, 16, 1, _('history size'))],
-            FORMAT:         ['selected', new UI.Drop(['HEX', 'RGB', 'HSL', 'hex'])],
+            FORMAT:         ['selected', new UI.Drop(['HEX', 'RGB', 'HSL', 'hex', 'HSV', 'CMYK'])],
             PREVIEW:        ['selected', new UI.Drop([_('Icon'), _('Label')], _('preview style'))],
         };
         Object.entries(this._field).forEach(([x, [y, z]]) => gsettings.bind(Fields[x], z, y, Gio.SettingsBindFlags.DEFAULT));

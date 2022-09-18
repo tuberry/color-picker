@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-18 17:57+0800\n"
+"POT-Creation-Date: 2022-09-18 21:35+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,11 +17,15 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:621 prefs.js:157
+#: extension.js:373
+msgid "Others"
+msgstr "其它"
+
+#: extension.js:663 prefs.js:157
 msgid "Default format"
 msgstr "默认格式"
 
-#: extension.js:758
+#: extension.js:800
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"

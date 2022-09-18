@@ -19,7 +19,7 @@ const _ = ExtensionUtils.gettext;
 const setCursor = cursor => global.display.set_cursor(Meta.Cursor[cursor]);
 
 const Notify = { MSG: 0, OSD: 1 };
-const Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3 };
+const Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 };
 
 class Color {
     constructor(text, format) {
@@ -36,6 +36,8 @@ class Color {
             if(this._text.startsWith('#')) this._format = Format.HEX;
             else if(this._text.startsWith('rgb')) this._format = Format.RGB;
             else if(this._text.startsWith('hsl')) this._format = Format.HSL;
+            else if(this._text.startsWith('hsv')) this._format = Format.HSV;
+            else if(this._text.startsWith('cmyk')) this._format = Format.CMYK;
             else this._format = Format.hex;
         }
         return this._format;
@@ -44,7 +46,9 @@ class Color {
     toText(format) {
         switch(format ?? this.format) {
         case Format.RGB: return (({ r, g, b }) => `rgb(${r}, ${g}, ${b})`)(this.rgb);
-        case Format.HSL: return (({ h, l, s }) => `hsl(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`)(this.hls);
+        case Format.HSL: return (({ h, s, l }) => `hsl(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`)(this.hsl);
+        case Format.HSV: return (({ h, s, v }) => `hsv(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(v * 100)}%)`)(this.hsl2hsv(this.hsl));
+        case Format.CMYK: return (({ c, m, y, k }) => `cmyk(${c}, ${m}, ${y}, ${k})`)(this.rgb2cmyk(this.rgb));
         case Format.hex: return this.color.to_string().slice(1, 7);
         default: return this.color.to_string().slice(0, 7);
         }
@@ -53,14 +57,49 @@ class Color {
     get color() {
         if(this._color) return this._color;
         if(this._text.startsWith('hsl')) {
-            let [h, s, l] = this._text.slice(4, -1).split(',').map((v, i) => parseInt(v) / (i ? 100 : 1));
+            let [h, s, l] = this._text.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
             this._color = Clutter.Color.from_hls(h, l, s);
         } else if(['#', 'rgb'].some(x => this._text.startsWith(x))) {
             this._color = Clutter.Color.from_string(this._text)[1];
+        } else if(this._text.startsWith('hsv')) {
+            let [h, s, v] = this._text.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
+            let { h: hue, s: sat, l } = this.hsv2hsl({ h, s, v });
+            this._color = Clutter.Color.from_hls(hue, l, sat);
+        } else if(this._text.startsWith('cmyk')) {
+            let [c, m, y, k] = this._text.slice(5, -1).split(',').map(v => parseInt(v));
+            let { r, g, b } = this.cmyk2rgb({ c, m, y, k });
+            this._color = new Clutter.Color({ red: r, green: g, blue: b });
         } else {
             this._color = Clutter.Color.from_string(`#${this._text}`)[1];
         }
         return this._color;
+    }
+
+    hsv2hsl({ h, s, v }) {
+        let l = v * (1 - s / 2);
+        let sl = l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l);
+        return { h, l, s: sl };
+    }
+
+    // Refer: https://en.wikipedia.org/wiki/HSL_and_HSV
+    hsl2hsv({ h, s, l }) {
+        let v = l + s * Math.min(l, 1 - l);
+        let sv = v === 0 ? 0 : 2 * (1 - l / v);
+        return { h, s: sv, v };
+    }
+
+    cmyk2rgb({ c, m, y, k }) {
+        [c, m, y, k] = [c, m, y, k].map(x => x / 255);
+        let [r, g, b] = [c, m, y].map(x => Math.round((1 - x * (1 - k) - k) * 255));
+        return { r, g, b };
+    }
+
+    // Refer: https://zh.wikipedia.org/wiki/%E5%8D%B0%E5%88%B7%E5%9B%9B%E5%88%86%E8%89%B2%E6%A8%A1%E5%BC%8F
+    rgb2cmyk({ r, g, b }) {
+        let cmy = [r, g, b].map(x => 1 - x / 255);
+        let k = Math.min(...cmy);
+        let [c, m, y, k1] = k === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - k) / (1 - k)).concat(k).map(x => Math.round(x * 255));
+        return { c, m, y, k: k1 };
     }
 
     set color(color) {
@@ -71,22 +110,23 @@ class Color {
         Object.assign(this._color, color);
     }
 
-    set hls(color) { // [h, l, s]
+    set hsl(color) { // [h, l, s]
         let hls = this.color.to_hls();
         this._color = Clutter.Color.from_hls(...Object.assign(hls, color));
     }
 
-    get hls() {
+    get hsl() {
         let [h, l, s] = this.color.to_hls();
-        return { h, l, s };
+        return { h, s, l };
     }
 
     get rgb() {
-        return { r: this.color.red, g: this.color.green, b: this.color.blue };
+        let { red: r, green: g, blue: b } = this.color;
+        return { r, g, b };
     }
 
     get markup() {
-        let { l } = this.hls;
+        let { l } = this.hsl;
         // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
         return ` <span fgcolor="${Math.round(l) ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText()}</span>`;
     }
@@ -318,23 +358,26 @@ class ColorMenu extends GObject.Object {
     }
 
     _addMenuItems() {
-        let { h, l, s } = this.color.hls;
+        let { h, s, l } = this.color.hsl;
         let { r, g, b } = this.color.rgb;
         this._menus = {
-            hex: this._genRGBSection(),
+            hex: this._genHEXItem(),
             rgb: new PopupMenu.PopupSeparatorMenuItem(),
             r: new SliderItem('R', r, 255, red => this.setRGB({ red })),
             g: new SliderItem('G', g, 255, green => this.setRGB({ green })),
             b: new SliderItem('B', b, 255, blue => this.setRGB({ blue })),
             hsl: new PopupMenu.PopupSeparatorMenuItem(),
-            h: new SliderItem('H', h, 360, x => this.setHLS({ 0: x })),
-            l: new SliderItem('L', l, 1, x => this.setHLS({ 1: x })),
-            s: new SliderItem('S', s, 1, x => this.setHLS({ 2: x })),
+            h: new SliderItem('H', h, 360, x => this.setHSL({ 0: x })),
+            s: new SliderItem('S', s, 1, x => this.setHSL({ 2: x })),
+            l: new SliderItem('L', l, 1, x => this.setHSL({ 1: x })),
+            other: new PopupMenu.PopupSeparatorMenuItem(_('Others')),
+            hsv: new MenuItem('hsv', () => this._emitSelected(Format.HSV)),
+            cmyk: new MenuItem('cmyk', () => this._emitSelected(Format.CMYK)),
         };
         for(let p in this._menus) this._menu.addMenuItem(this._menus[p]);
     }
 
-    _genRGBSection() {
+    _genHEXItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item' });
         item.connect('activate', () => this._emitSelected(Format.HEX));
         ['RGB', 'HSL', 'hex'].forEach(x => {
@@ -354,28 +397,27 @@ class ColorMenu extends GObject.Object {
     open(color) {
         if(this._menu.isOpen) this._menu.close();
         this.color = color;
-        this.setHLS();
+        this.setHSL();
         this._menu.open(BoxPointer.PopupAnimation.NONE);
     }
 
     _updateLabelText() {
         this._menus.hex.label.clutter_text.set_markup(this.color.markup);
-        this._menus.rgb.label.set_text(this.color.toText(Format.RGB).toUpperCase());
-        this._menus.hsl.label.set_text(this.color.toText(Format.HSL).toUpperCase());
+        ['rgb', 'hsl', 'hsv', 'cmyk'].forEach(x => this._menus[x].label.set_text(this.color.toText(Format[x.toUpperCase()])));
     }
 
-    setHLS(color = {}) {
-        this.color.hls = color;
-        let  { rgb, hls } = this.color;
+    setHSL(color = {}) {
+        this.color.hsl = color;
+        let  { rgb, hsl } = this.color;
         ['r', 'g', 'b'].forEach(x => this._menus[x].setNumber(rgb[x]));
-        ['h', 'l', 's'].forEach((x, i) => !(i in color) && this._menus[x].setNumber(hls[x]));
+        ['h', 'l', 's'].forEach((x, i) => !(i in color) && this._menus[x].setNumber(hsl[x]));
         this._updateLabelText();
     }
 
     setRGB(color) {
         this.color.rgb = color;
-        let { hls } = this.color;
-        ['h', 'l', 's'].forEach(x => this._menus[x].setNumber(hls[x]));
+        let { hsl } = this.color;
+        ['h', 'l', 's'].forEach(x => this._menus[x].setNumber(hsl[x]));
         this._updateLabelText();
     }
 
