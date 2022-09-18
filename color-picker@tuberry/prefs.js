@@ -137,15 +137,16 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
             QUITKEY:        ['key',      new KeyBtn()],
             SYSTRAYICON:    ['file',     new IconBtn()],
             AUTOCOPY:       ['active',   new Gtk.CheckButton()],
-            PREFIXPOUND:    ['active',   new Gtk.CheckButton()],
             ENABLENOTIFY:   ['active',   new Gtk.CheckButton()],
+            ENABLEFORMAT:   ['active',   new Gtk.CheckButton()],
             ENABLEPREVIEW:  ['active',   new Gtk.CheckButton()],
             ENABLESHORTCUT: ['active',   new Gtk.CheckButton()],
             ENABLESYSTRAY:  ['active',   new Gtk.CheckButton()],
             PERSISTENTMODE: ['active',   new Gtk.CheckButton()],
             NOTIFYSTYLE:    ['selected', new UI.Drop([_('MSG'), _('OSD')])],
-            PREVIEW:        ['selected', new UI.Drop([_('Icon'), _('Label')], _('preview style'))],
             MENUSIZE:       ['value',    new UI.Spin(1, 16, 1, _('history size'))],
+            FORMAT:         ['selected', new UI.Drop(['HEX', 'RGB', 'HSL', 'hex'])],
+            PREVIEW:        ['selected', new UI.Drop([_('Icon'), _('Label')], _('preview style'))],
         };
         Object.entries(this._field).forEach(([x, [y, z]]) => gsettings.bind(Fields[x], z, y, Gio.SettingsBindFlags.DEFAULT));
     }
@@ -153,9 +154,9 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
     _buildUI() {
         [
             [this._field.AUTOCOPY[1],       [_('Automatically copy'), _('copy the color to clipboard after picking')]],
-            [this._field.PREFIXPOUND[1],    [_('Add # prefix'), _('prefix copied color with a pound sign')]],
+            [this._field.ENABLEFORMAT[1],   [_('Default format'), _('hex here means poundless HEX such as “8fd0da”')], this._field.FORMAT[1]],
             [this._field.ENABLESHORTCUT[1], [_('Shortcut to pick'), _('press arrow keys / wasd / hjkl to move by pixel')], this._field_shortcut],
-            [this._field.ENABLENOTIFY[1],   [_('Notification style')], this._field.NOTIFYSTYLE[1]],
+            [this._field.ENABLENOTIFY[1],   [_('Notification style'), _('notify the color after picking')], this._field.NOTIFYSTYLE[1]],
             [this._field.PERSISTENTMODE[1], [_('Persistent mode'), _('right click or press Esc key to quit')], this._field.QUITKEY[1]],
             [this._field.ENABLEPREVIEW[1],  [_('Enable preview'), _('middle click or press Menu key to open menu')], this._field.PREVIEW[1], this._field.MENUKEY[1]],
             [this._field.ENABLESYSTRAY[1],  [_('Enable systray'), _('right click to open menu')], this._field.SYSTRAYICON[1], this._field.MENUSIZE[1]],

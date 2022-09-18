@@ -19,32 +19,77 @@ const _ = ExtensionUtils.gettext;
 const setCursor = cursor => global.display.set_cursor(Meta.Cursor[cursor]);
 
 const Notify = { MSG: 0, OSD: 1 };
-const Format = { HEX: 0, RGB: 1, HSL: 2 };
+const Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3 };
 
-function toText(color, format) {
-    switch(format) {
-    case Format.RGB: return `rgb(${color.red}, ${color.green}, ${color.blue})`;
-    case Format.HSL: return ((h, l, s) => `hsl(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`)(...color.to_hls());
-    default: return color.to_string().slice(0, 7);
+class Color {
+    constructor(text, format) {
+        this._text = text || '#fff';
+        this.format = format ?? this.format;
     }
-}
 
-function toHex(text) {
-    if(text.includes('hsl')) {
-        let [h, s, l] = text.slice(4, -1).split(',').map((v, i) => parseInt(v) / (i ? 100 : 1));
-        return Clutter.Color.from_hls(h, l, s).to_string().slice(0, 7);
-    } else if(text.includes('rgb')) {
-        return Clutter.Color.from_string(text)[1].to_string().slice(0, 7);
-    } else {
-        return text;
+    set format(format) {
+        this._format = format;
     }
-}
 
-function toMarkup(text) {
-    let hex = toHex(text);
-    let lightness = Clutter.Color.from_string(hex)[1].to_hls()[1];
-    // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-    return ` <span fgcolor="${Math.round(lightness) ? '#000' : '#fff'}" bgcolor="${hex}">${text}</span>`;
+    get format() {
+        if(this._format === undefined) {
+            if(this._text.startsWith('#')) this._format = Format.HEX;
+            else if(this._text.startsWith('rgb')) this._format = Format.RGB;
+            else if(this._text.startsWith('hsl')) this._format = Format.HSL;
+            else this._format = Format.hex;
+        }
+        return this._format;
+    }
+
+    toText(format) {
+        switch(format ?? this.format) {
+        case Format.RGB: return (({ r, g, b }) => `rgb(${r}, ${g}, ${b})`)(this.rgb);
+        case Format.HSL: return (({ h, l, s }) => `hsl(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`)(this.hls);
+        case Format.hex: return this.color.to_string().slice(1, 7);
+        default: return this.color.to_string().slice(0, 7);
+        }
+    }
+
+    get color() {
+        if(this._color) return this._color;
+        if(this._text.startsWith('hsl')) {
+            let [h, s, l] = this._text.slice(4, -1).split(',').map((v, i) => parseInt(v) / (i ? 100 : 1));
+            this._color = Clutter.Color.from_hls(h, l, s);
+        } else if(['#', 'rgb'].some(x => this._text.startsWith(x))) {
+            this._color = Clutter.Color.from_string(this._text)[1];
+        } else {
+            this._color = Clutter.Color.from_string(`#${this._text}`)[1];
+        }
+        return this._color;
+    }
+
+    set color(color) {
+        this._color = color;
+    }
+
+    set rgb(color) {
+        Object.assign(this._color, color);
+    }
+
+    set hls(color) { // [h, l, s]
+        let hls = this.color.to_hls();
+        this._color = Clutter.Color.from_hls(...Object.assign(hls, color));
+    }
+
+    get hls() {
+        let [h, l, s] = this.color.to_hls();
+        return { h, l, s };
+    }
+
+    get rgb() {
+        return { r: this.color.red, g: this.color.green, b: this.color.blue };
+    }
+
+    get markup() {
+        let { l } = this.hls;
+        // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
+        return ` <span fgcolor="${Math.round(l) ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText()}</span>`;
+    }
 }
 
 class Field {
@@ -70,6 +115,41 @@ class Field {
 
     unbind(a) {
         this.gset.disconnectObject(a);
+    }
+}
+
+class MenuItem extends PopupMenu.PopupMenuItem {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(text, callback, params) {
+        super(text, params);
+        this.connect('activate', callback);
+    }
+
+    setLabel(label) {
+        if(this.label.text !== label) this.label.set_text(label);
+    }
+}
+
+class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(name, modes, index, callback) {
+        super('');
+        this._name = name;
+        this._list = Object.keys(modes);
+        this._list.map((x, i) => new MenuItem(_(x), () => callback(i))).forEach(x => this.menu.addMenuItem(x));
+        this.setSelected(index);
+    }
+
+    setSelected(index) {
+        if(!(index in this._list)) return;
+        this.label.set_text(`${this._name}：${this._list[index]}`);
+        this.menu._getMenuItems().forEach((y, i) => y.setOrnament(index === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
     }
 }
 
@@ -102,17 +182,17 @@ class ColorItem extends PopupMenu.PopupBaseMenuItem {
         super();
         this._label = new St.Label({ x_expand: true });
         this._button = new St.Button({ child: new St.Icon({ icon_name: 'emblem-favorite-symbolic', style_class: 'popup-menu-icon' }) });
-        this._button.connect('clicked', () => this._call(this._color));
+        this._button.connect('clicked', () => this._call(this._color.text));
         [this._label, this._button].forEach(x => this.add_child(x));
         this.setLabel(color);
         this.setButton(style, callback);
-        this.connect('activate', () => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._color));
+        this.connect('activate', () => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._color.text));
     }
 
-    setLabel(label) {
-        if(this._color === label) return;
-        this._color = label || '#ffffff';
-        this._label.clutter_text.set_markup(toMarkup(this._color));
+    setLabel(text) {
+        if(this._color?.text === text) return;
+        this._color = new Color(text);
+        this._label.clutter_text.set_markup(this._color.markup);
     }
 
     setButton(style, callback) {
@@ -220,14 +300,14 @@ class ColorMenu extends GObject.Object {
     static {
         GObject.registerClass({
             Signals: {
-                color_selected: { param_types: [GObject.TYPE_STRING] },
+                color_selected: { param_types: [GObject.TYPE_JSOBJECT] },
             },
         }, this);
     }
 
     constructor(actor, area) {
         super();
-        this._color = new Clutter.Color({ red: 255, green: 255, blue: 255 });
+        this.color = new Color();
         this._menu = new PopupMenu.PopupMenu(actor, 0.15, St.Side.LEFT);
         this._manager = new PopupMenu.PopupMenuManager(area);
         this._manager.addMenu(this._menu);
@@ -238,13 +318,14 @@ class ColorMenu extends GObject.Object {
     }
 
     _addMenuItems() {
-        let [h, l, s] = this._color.to_hls();
+        let { h, l, s } = this.color.hls;
+        let { r, g, b } = this.color.rgb;
         this._menus = {
             hex: this._genRGBSection(),
             rgb: new PopupMenu.PopupSeparatorMenuItem(),
-            r: new SliderItem('R', this._color.red, 255, red => this.setRGB({ red })),
-            g: new SliderItem('G', this._color.green, 255, green => this.setRGB({ green })),
-            b: new SliderItem('B', this._color.blue, 255, blue => this.setRGB({ blue })),
+            r: new SliderItem('R', r, 255, red => this.setRGB({ red })),
+            g: new SliderItem('G', g, 255, green => this.setRGB({ green })),
+            b: new SliderItem('B', b, 255, blue => this.setRGB({ blue })),
             hsl: new PopupMenu.PopupSeparatorMenuItem(),
             h: new SliderItem('H', h, 360, x => this.setHLS({ 0: x })),
             l: new SliderItem('L', l, 1, x => this.setHLS({ 1: x })),
@@ -254,17 +335,16 @@ class ColorMenu extends GObject.Object {
     }
 
     _genRGBSection() {
-        let hex = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item' });
-        let rgb = new St.Button({ x_expand: false, label: 'RGB', style_class: 'color-picker-button button' });
-        let hsl = new St.Button({ x_expand: false, label: 'HSL', style_class: 'color-picker-button button' });
-        hex.connect('activate', () => this._emitSelected('HEX'));
-        rgb.connect('clicked', () => this._emitSelected(Format.RGB));
-        hsl.connect('clicked', () => this._emitSelected(Format.HSL));
-        hex.add_child(rgb);
-        hex.add_child(hsl);
-        hex.label = new St.Label({ x_expand: true });
-        hex.add_child(hex.label);
-        return hex;
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'color-picker-item' });
+        item.connect('activate', () => this._emitSelected(Format.HEX));
+        ['RGB', 'HSL', 'hex'].forEach(x => {
+            let btn = new St.Button({ x_expand: false, label: x, style_class: 'color-picker-button button' });
+            btn.connect('clicked', () => this._emitSelected(Format[x]));
+            item.add_child(btn);
+        });
+        item.label = new St.Label({ x_expand: true });
+        item.add_child(item.label);
+        return item;
     }
 
     get actor() {
@@ -273,37 +353,36 @@ class ColorMenu extends GObject.Object {
 
     open(color) {
         if(this._menu.isOpen) this._menu.close();
-        this._color = color;
+        this.color = color;
         this.setHLS();
         this._menu.open(BoxPointer.PopupAnimation.NONE);
     }
 
     _updateLabelText() {
-        this._menus.hex.label.clutter_text.set_markup(toMarkup(toText(this._color)));
-        this._menus.rgb.label.set_text(toText(this._color, Format.RGB).toUpperCase());
-        this._menus.hsl.label.set_text(toText(this._color, Format.HSL).toUpperCase());
+        this._menus.hex.label.clutter_text.set_markup(this.color.markup);
+        this._menus.rgb.label.set_text(this.color.toText(Format.RGB).toUpperCase());
+        this._menus.hsl.label.set_text(this.color.toText(Format.HSL).toUpperCase());
     }
 
     setHLS(color = {}) {
-        let hls = this._color.to_hls();
-        this._color = Clutter.Color.from_hls(...Object.assign(hls, color));
-        this._menus.r.setNumber(this._color.red);
-        this._menus.g.setNumber(this._color.green);
-        this._menus.b.setNumber(this._color.blue);
-        ['h', 'l', 's'].forEach((x, i) => !(i in color) && this._menus[x].setNumber(hls[i]));
+        this.color.hls = color;
+        let  { rgb, hls } = this.color;
+        ['r', 'g', 'b'].forEach(x => this._menus[x].setNumber(rgb[x]));
+        ['h', 'l', 's'].forEach((x, i) => !(i in color) && this._menus[x].setNumber(hls[x]));
         this._updateLabelText();
     }
 
     setRGB(color) {
-        Object.assign(this._color, color);
-        let hls = this._color.to_hls();
-        ['h', 'l', 's'].forEach((x, i) => this._menus[x].setNumber(hls[i]));
+        this.color.rgb = color;
+        let { hls } = this.color;
+        ['h', 'l', 's'].forEach(x => this._menus[x].setNumber(hls[x]));
         this._updateLabelText();
     }
 
     _emitSelected(format) {
         this._menu.close();
-        this.emit('color-selected', toText(this._color, format));
+        this.color.format = format;
+        this.emit('color-selected', this.color);
     }
 
     destroy() {
@@ -335,8 +414,7 @@ class ColorLabel extends BoxPointer.BoxPointer {
     }
 
     setColor(x, y, color) {
-        let hex = toText(color);
-        this._label.clutter_text.set_markup(`<span bgcolor="${hex}">\u2001 </span> ${hex}`);
+        this._label.clutter_text.set_markup(`<span bgcolor="${color.toText(Format.HEX)}">\u2001 </span> ${color.toText()}`);
         this._cursor.set_position(x, y);
         this.setPosition(this._cursor, 0);
         this.show();
@@ -368,7 +446,7 @@ class ColorIcon extends St.Icon {
     }
 
     setColor(x, y, color) {
-        this._effect.color = color;
+        this._effect.color = color.color;
         this.set_position(x, y);
         this.show();
     }
@@ -379,7 +457,7 @@ class ColorArea extends St.Widget {
         GObject.registerClass({
             Signals: {
                 end_pick: {},
-                notify_color: { param_types: [GObject.TYPE_STRING] },
+                notify_color: { param_types: [GObject.TYPE_JSOBJECT] },
             },
         }, this);
     }
@@ -387,8 +465,9 @@ class ColorArea extends St.Widget {
     constructor(params) {
         super({ reactive: true });
         setCursor('CROSSHAIR');
-        this.once = params?.once || false;
+        this.once = params?.once ?? false;
         this._picker = new Shell.Screenshot();
+        this._color = new Color(null, params?.format ?? Format.HEX);
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         this.connect('popup-menu', () => this._menu?.open(this._color));
         this.set_size(...global.display.get_size());
@@ -412,7 +491,7 @@ class ColorArea extends St.Widget {
     async _pick(emit) {
         try {
             let [x, y] = global.get_pointer();
-            [this._color] = await this._picker.pick_color(x, y);
+            [this._color.color] = await this._picker.pick_color(x, y);
             this._view?.setColor(x, y, this._color);
             if(emit) this._emitColor();
         } catch(e) {
@@ -437,7 +516,7 @@ class ColorArea extends St.Widget {
     }
 
     _emitColor(color) {
-        this.emit('notify-color', color || toText(this._color));
+        this.emit('notify-color', color || this._color);
         if(!this._persist) this.emit('end-pick');
     }
 
@@ -525,6 +604,8 @@ class ColorButton extends PanelMenu.Button {
 
     _bindSettings() {
         this._field = new Field({
+            format:     [Fields.FORMAT,        'uint'],
+            fmt:        [Fields.ENABLEFORMAT,  'boolean'],
             collect:    [Fields.COLORSCOLLECT, 'string'],
             history:    [Fields.COLORSHISTORY, 'string'],
             menu_size:  [Fields.MENUSIZE,      'uint'],
@@ -536,7 +617,9 @@ class ColorButton extends PanelMenu.Button {
     _addMenuItems() {
         this._menus = {
             section: new DListSection(...this.section),
-            sep: new PopupMenu.PopupSeparatorMenuItem(),
+            sep0: new PopupMenu.PopupSeparatorMenuItem(),
+            format: new RadioItem(_('Default format'), Format, this._format, x => this._field._set('format', x)),
+            sep1: new PopupMenu.PopupSeparatorMenuItem(),
             settings: new IconItem('color-picker-setting', [
                 ['find-location-symbolic', () => { this.menu.close(); this.emit('btn-left-click'); }],
                 ['face-cool-symbolic',     () => this._field._set('menu_style', !this._menu_style)],
@@ -544,6 +627,23 @@ class ColorButton extends PanelMenu.Button {
             ]),
         };
         for(let p in this._menus) this.menu.addMenuItem(this._menus[p]);
+        this.fmt = this._fmt;
+    }
+
+    set fmt(fmt) {
+        this._fmt = fmt;
+        if(fmt) {
+            this._menus?.sep0.show();
+            this._menus?.format.show();
+        } else {
+            this._menus?.sep0.hide();
+            this._menus?.format.hide();
+        }
+    }
+
+    set format(format) {
+        this._format = format;
+        this._menus?.format.setSelected(format);
     }
 
     set icon_name(path) {
@@ -601,6 +701,8 @@ class ColorPicker {
     constructor() {
         this.gset = ExtensionUtils.getSettings();
         this._field = new Field({
+            format:        [Fields.FORMAT,         'uint'],
+            fmt:           [Fields.ENABLEFORMAT,   'boolean'],
             history:       [Fields.COLORSHISTORY,  'string'],
             systray:       [Fields.ENABLESYSTRAY,  'boolean'],
             auto_copy:     [Fields.AUTOCOPY,       'boolean'],
@@ -608,7 +710,6 @@ class ColorPicker {
             menu_size:     [Fields.MENUSIZE,       'uint'],
             notify_style:  [Fields.NOTIFYSTYLE,    'uint'],
             enable_notify: [Fields.ENABLENOTIFY,   'boolean'],
-            prefix_pound:  [Fields.PREFIXPOUND,    'boolean'],
         }, this.gset, this);
     }
 
@@ -633,7 +734,7 @@ class ColorPicker {
     summon() {
         if(this._area) return;
         if(this._button) this._button.add_style_pseudo_class('busy');
-        this._area = new ColorArea();
+        this._area = this.fmt ? new ColorArea({ format: this.format }) : new ColorArea();
         this._area.connectObject('end-pick', this.dispel.bind(this), 'notify-color', this.inform.bind(this), this);
         Main.layoutManager.addChrome(this._area);
         this._grab = Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
@@ -648,8 +749,9 @@ class ColorPicker {
         this._area = null;
     }
 
-    inform(actor, color) {
-        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color.slice(!this.prefix_pound && color[0] === "#"));
+    inform(actor, cl) {
+        let color = cl.toText();
+        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
         if(this._button) this._addHistory(color);
         if(!this.enable_notify) return;
         if(this.notify_style === Notify.MSG) {
@@ -658,7 +760,7 @@ class ColorPicker {
             let index = global.display.get_current_monitor();
             let icon = new Gio.ThemedIcon({ name: 'media-playback-stop-symbolic' });
             let osd = Main.osdWindowManager._osdWindows[index];
-            osd._icon.set_style(`color: ${toHex(color)};`);
+            osd._icon.set_style(`color: ${cl.toText(Format.HEX)};`);
             Main.osdWindowManager.show(index, icon, color, null, 2);
             osd._hbox.connectObject('notify::mapped', box => {
                 if(box.mapped) return Clutter.EVENT_STOP;
@@ -682,7 +784,7 @@ class ColorPicker {
                 if(this._button) this._button.add_style_pseudo_class('busy');
                 this._area = new ColorArea({ once: true });
                 this._area.connect('end-pick', () => { this.dispel(); throw new Error('Cancelled'); });
-                this._area.connect('notify-color', (actor, color) => resolve(color));
+                this._area.connect('notify-color', (actor, color) => resolve(color.toText(Format.HEX)));
                 Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
                 Main.layoutManager.addTopChrome(this._area);
             } catch(e) {
