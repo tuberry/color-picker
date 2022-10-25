@@ -13,6 +13,8 @@ const UI = Me.imports.ui;
 
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
+Gio._promisify(Gio.File.prototype, 'query_info_async');
+
 function buildPrefsWidget() {
     return new ColorPickerPrefs();
 }
@@ -30,43 +32,32 @@ class IconBtn extends UI.File {
         super({ filter: 'image/svg+xml' });
     }
 
-    set_icon(icon) {
-        this.file = icon;
-    }
-
-    get file() {
-        return this._file ?? '';
-    }
-
     _checkIcon(path) {
         let name = GLib.basename(path).replace('.svg', '');
         return Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon(name) ? name : '';
     }
 
-    set file(path) {
-        let file = Gio.File.new_for_path(path);
-        file.query_info_async(Gio.FILE_ATTRIBUTE_STANDARD_NAME,
-            Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null, (src, res) => {
-                let prev = this._file;
-                try {
-                    let info = src.query_info_finish(res);
-                    this._setLabel(info.get_name().replace(RegExp(/(-symbolic)*.svg$/), ''));
-                    let icon = this._checkIcon(path);
-                    icon ? this._icon.set_from_icon_name(icon) : this._icon.set_from_gicon(Gio.Icon.new_for_string(path));
-                    if(!this.file) this.chooser.set_file(file);
-                    this._file = path;
-                    this._icon.show();
-                } catch(e) {
-                    this._icon.hide();
-                    this._setLabel(null);
-                    this._file = null;
-                } finally {
-                    if(prev !== undefined && prev !== this.file) {
-                        this.notify('file');
-                        this.emit('changed', this.file);
-                    }
-                }
-            });
+    async setFile(path) {
+        let prev = this._file;
+        try {
+            let file = Gio.File.new_for_path(path);
+            let info = await file.query_info_async(Gio.FILE_ATTRIBUTE_STANDARD_NAME, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
+            this._setLabel(info.get_name().replace(RegExp(/(-symbolic)*.svg$/), ''));
+            let icon = this._checkIcon(path);
+            icon ? this._icon.set_from_icon_name(icon) : this._icon.set_from_gicon(Gio.Icon.new_for_string(path));
+            if(!this.file) this.chooser.set_file(file);
+            this._file = path;
+            this._icon.show();
+        } catch(e) {
+            this._icon.hide();
+            this._setLabel(null);
+            this._file = null;
+        } finally {
+            if(prev !== undefined && prev !== this.file) {
+                this.notify('file');
+                this.emit('changed', this.file);
+            }
+        }
     }
 }
 

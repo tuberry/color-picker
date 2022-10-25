@@ -8,6 +8,8 @@ const _GTK = imports.gettext.domain('gtk40').gettext;
 const _ = imports.misc.extensionUtils.gettext;
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
+Gio._promisify(Gio.File.prototype, 'query_info_async');
+
 var File = class extends Gtk.Box {
     static {
         GObject.registerClass({
@@ -68,28 +70,30 @@ var File = class extends Gtk.Box {
         return this._file ?? '';
     }
 
+    async setFile(path) {
+        let prev = this._file;
+        try {
+            let file = Gio.File.new_for_path(path);
+            let info = await file.query_info_async([Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME, Gio.FILE_ATTRIBUTE_STANDARD_ICON].join(','),
+                Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
+            this._setLabel(info.get_display_name());
+            this._icon.set_from_gicon(info.get_icon());
+            if(!this.file) this.chooser.set_file(file);
+            this._file = path;
+        } catch(e) {
+            this._setLabel(null);
+            this._icon.icon_name = 'document-open-symbolic';
+            this._file = null;
+        } finally {
+            if(prev !== undefined && prev !== this.file) {
+                this.notify('file');
+                this.emit('changed', this.file);
+            }
+        }
+    }
+
     set file(path) {
-        let file = Gio.File.new_for_path(path);
-        file.query_info_async([Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME, Gio.FILE_ATTRIBUTE_STANDARD_ICON].join(','),
-            Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null, (src, res) => {
-                let prev = this._file;
-                try {
-                    let info = src.query_info_finish(res);
-                    this._setLabel(info.get_display_name());
-                    this._icon.set_from_gicon(info.get_icon());
-                    if(!this.file) this.chooser.set_file(file);
-                    this._file = path;
-                } catch(e) {
-                    this._icon.icon_name = 'document-open-symbolic';
-                    this._setLabel(null);
-                    this._file = null;
-                } finally {
-                    if(prev !== undefined && prev !== this.file) {
-                        this.notify('file');
-                        this.emit('changed', this.file);
-                    }
-                }
-            });
+        this.setFile(path);
     }
 };
 
@@ -258,7 +262,7 @@ var LazyEntry = class extends Gtk.Stack {
         this._done = new Gtk.Button({ icon_name: 'object-select-symbolic', tooltip_text: _('Click or press ENTER to commit changes'), css_classes: ['suggested-action'] });
         this.add_named(this._boxWrapper(this._label, this._edit), 'label');
         this.add_named(this._boxWrapper(this._entry, this._done), 'entry');
-        this.bind_property('text', this._label, 'text', GObject.BindingFlags.BIDIRECTIONAL);
+        this.bind_property('text', this._label, 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE);
         this._edit.connect('clicked', this._onEdit.bind(this));
         this._done.connect('clicked', this._onDone.bind(this));
         this._entry.connect('activate', this._onDone.bind(this));

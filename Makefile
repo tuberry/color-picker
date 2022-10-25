@@ -36,7 +36,7 @@ clean:
 # max version on E.G.O plus 1 is used. (It could take some time to visit E.G.O)
 $(BUILD):
 	mkdir -p $(BUILD)
-	cp -r $(UUID)/* $(BUILD)
+	cp -rP $(UUID)/* $(BUILD)
 	if test -d $(BUILD)/locale; then for p in $(BUILD)/locale/*/LC_MESSAGES/*.po; do msgfmt -o $${p/.po/.mo} $$p; done; fi;
 	rm -f $(BUILD)/locale/*/LC_MESSAGES/*po
 	glib-compile-schemas $(BUILD)/schemas/
@@ -47,13 +47,13 @@ endif
 
 zip: $(BUILD)
 	cd $(BUILD); \
-		zip -qr "$(NAME)_v$(shell cat $(BUILD)/metadata.json | grep \"version\" | sed -e 's/[^0-9]*//').zip" .
+		zip -qry "$(NAME)_v$(shell cat $(BUILD)/metadata.json | grep \"version\" | sed -e 's/[^0-9]*//').zip" .
 	mv $(BUILD)/*.zip ./
 
 install: $(BUILD)
 	rm -rf $(INSTALLBASE)/$(UUID)
 	mkdir -p $(INSTALLBASE)/$(UUID)
-	cp -r $(BUILD)/* $(INSTALLBASE)/$(UUID)/
+	cp -rP $(BUILD)/* $(INSTALLBASE)/$(UUID)/
 ifeq ($(INSTALLTYPE),system)
 	# system-wide settings and locale files
 	rm -rf $(INSTALLBASE)/$(UUID)/schemas $(INSTALLBASE)/$(UUID)/locale

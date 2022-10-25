@@ -16,14 +16,15 @@ const Me = ExtensionUtils.getCurrentExtension();
 const { Fields } = Me.imports.fields;
 const _ = ExtensionUtils.gettext;
 
-const setCursor = cursor => global.display.set_cursor(Meta.Cursor[cursor]);
+const setCursor = x => global.display.set_cursor(Meta.Cursor[x]);
+const setClipboard = x => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, x);
 
 const Notify = { MSG: 0, OSD: 1 };
 const Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 };
 
 class Color {
     constructor(text, format) {
-        this._text = text || '#fff';
+        this.text = text || '#fff';
         this.format = format;
     }
 
@@ -32,7 +33,7 @@ class Color {
     }
 
     get text_format() {
-        return this._text_format ?? (this._text_format = this.toFormat(this._text));
+        return this._text_format ?? (this._text_format = this.toFormat(this.text));
     }
 
     get format() {
@@ -83,7 +84,7 @@ class Color {
     }
 
     get color() {
-        return this._color ?? (this._color = this.toColor(this._text, this.text_format));
+        return this._color ?? (this._color = this.toColor(this.text, this.text_format));
     }
 
     hsv2hsl({ h, s, v }) {
@@ -92,7 +93,7 @@ class Color {
         return { h, l, s: sl };
     }
 
-    // Refer: https://en.wikipedia.org/wiki/HSL_and_HSV
+    // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
     hsl2hsv({ h, s, l }) {
         let v = l + s * Math.min(l, 1 - l);
         let sv = v === 0 ? 0 : 2 * (1 - l / v);
@@ -109,7 +110,7 @@ class Color {
         return { r, g, b };
     }
 
-    // Refer: https://zh.wikipedia.org/wiki/%E5%8D%B0%E5%88%B7%E5%9B%9B%E5%88%86%E8%89%B2%E6%A8%A1%E5%BC%8F
+    // Ref: https://zh.wikipedia.org/wiki/%E5%8D%B0%E5%88%B7%E5%9B%9B%E5%88%86%E8%89%B2%E6%A8%A1%E5%BC%8F
     rgb2cmyk({ r, g, b }) {
         let cmy = [r, g, b].map(x => 1 - x / 255);
         let k = Math.min(...cmy);
@@ -144,10 +145,10 @@ class Color {
         return { r, g, b };
     }
 
-    get markup() {
+    toMarkup(fmt) {
         let { l } = this.hsl;
         // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-        return ` <span fgcolor="${Math.round(l) ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText()}</span>`;
+        return ` <span fgcolor="${Math.round(l) ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(fmt)}</span>`;
     }
 }
 
@@ -217,18 +218,15 @@ class IconItem extends PopupMenu.PopupBaseMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(style, callbacks) {
+    constructor(style_class, cbs) {
         super({ activate: false });
-        this._style = style;
-        this._hbox = new St.BoxLayout({ x_align: St.Align.START, x_expand: true });
-        callbacks.forEach(xs => this.addButton(...xs));
-        this.add_child(this._hbox);
-    }
-
-    addButton(icon_name, callback) {
-        let btn = new St.Button({ x_expand: true, style_class: this._style, child: new St.Icon({ icon_name, style_class: 'popup-menu-icon' }) });
-        btn.connect('clicked', callback);
-        this._hbox.add_child(btn);
+        let hbox = new St.BoxLayout({ x_align: St.Align.START, x_expand: true });
+        cbs.map(([icon_name, callback]) => {
+            let btn = new St.Button({ x_expand: true, style_class, child: new St.Icon({ icon_name, style_class: 'popup-menu-icon' }) });
+            btn.connect('clicked', callback);
+            return btn;
+        }).forEach(x => hbox.add_child(x));
+        this.add_child(hbox);
     }
 }
 
@@ -245,13 +243,13 @@ class ColorItem extends PopupMenu.PopupBaseMenuItem {
         [this._label, this._button].forEach(x => this.add_child(x));
         this.setLabel(color);
         this.setButton(style, callback);
-        this.connect('activate', () => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._color.text));
+        this.connect('activate', () => setClipboard(this._color.text));
     }
 
     setLabel(text) {
         if(this._color?.text === text) return;
         this._color = new Color(text);
-        this._label.clutter_text.set_markup(this._color.markup);
+        this._label.clutter_text.set_markup(this._color.toMarkup());
     }
 
     setButton(style, callback) {
@@ -344,9 +342,9 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
         let label = new St.Label({ text, x_expand: false });
         this._slider = new ColorSlider(numb, base);
         this._slider.connect('notify::value', () => (this._slider._dragging || this.active) && callback(this._slider.numb));
-        this.connect('button-press-event', (a_, event) => this._slider.startDragging(event));
-        this.connect('key-press-event', (a_, event) => this._slider.emit('key-press-event', event));
-        this.connect('scroll-event', (a_, event) => this._slider.emit('scroll-event', event));
+        this.connect('button-press-event', (a, event) => this._slider.startDragging(event));
+        this.connect('key-press-event', (a, event) => this._slider.emit('key-press-event', event));
+        this.connect('scroll-event', (a, event) => this._slider.emit('scroll-event', event));
         [label, this._slider].forEach(x => this.add_child(x));
     }
 
@@ -392,8 +390,19 @@ class ColorMenu extends GObject.Object {
             other: new PopupMenu.PopupSeparatorMenuItem(_('Others')),
             hsv: new MenuItem('hsv', () => this._emitSelected(Format.HSV)),
             cmyk: new MenuItem('cmyk', () => this._emitSelected(Format.CMYK)),
+            clip: this._genClipItem(),
         };
         for(let p in this._menus) this._menu.addMenuItem(this._menus[p]);
+    }
+
+    _genClipItem() {
+        let item = new PopupMenu.PopupMenuItem(_('Read from clipboard'));
+        item.activate = () => St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) => {
+            this._menu.open(BoxPointer.PopupAnimation.NONE);
+            this.color = new Color(text, Format.HEX);
+            this.setHSL();
+        });
+        return item;
     }
 
     _genHEXItem() {
@@ -401,7 +410,7 @@ class ColorMenu extends GObject.Object {
         item.connect('activate', () => this._emitSelected(Format.HEX));
         ['RGB', 'HSL', 'hex'].forEach(x => {
             let btn = new St.Button({ x_expand: false, label: x, style_class: 'color-picker-button button' });
-            btn.connect('clicked', () => this._emitSelected(Format[x]));
+            btn.connect('clicked', () => { this._menu.close(); this._emitSelected(Format[x]); });
             item.add_child(btn);
         });
         item.label = new St.Label({ x_expand: true });
@@ -421,7 +430,7 @@ class ColorMenu extends GObject.Object {
     }
 
     _updateLabelText() {
-        this._menus.hex.label.clutter_text.set_markup(this.color.markup);
+        this._menus.hex.label.clutter_text.set_markup(this.color.toMarkup(Format.HEX));
         ['rgb', 'hsl', 'hsv', 'cmyk'].forEach(x => this._menus[x].label.set_text(this.color.toText(Format[x.toUpperCase()])));
     }
 
@@ -441,7 +450,6 @@ class ColorMenu extends GObject.Object {
     }
 
     _emitSelected(format) {
-        this._menu.close();
         this.color.format = format;
         this.emit('color-selected', this.color);
     }
@@ -745,7 +753,7 @@ class ColorButton extends PanelMenu.Button {
     }
 
     vfunc_event(event) {
-        if(event.type() === Clutter.EventType.BUTTON_PRESS && event.get_button() === 1) {
+        if(event.type() === Clutter.EventType.BUTTON_PRESS && event.get_button() === Clutter.BUTTON_PRIMARY) {
             this.emit('btn-left-click');
             return Clutter.EVENT_STOP;
         }
@@ -812,7 +820,7 @@ class ColorPicker {
 
     inform(actor, cl) {
         let color = cl.toText();
-        if(this.auto_copy) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, color);
+        if(this.auto_copy) setClipboard(color);
         if(this._button) this._addHistory(color);
         if(!this.enable_notify) return;
         if(this.notify_style === Notify.MSG) {
@@ -862,7 +870,7 @@ class ColorPicker {
 }
 
 class Extension {
-    static {
+    constructor() {
         ExtensionUtils.initTranslations();
     }
 
