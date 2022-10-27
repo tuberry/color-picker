@@ -16,7 +16,7 @@ The latest and supported version should only work on the most current stable ver
 ```bash
 git clone https://github.com/tuberry/color-picker.git && cd color-picker
 make && make install
-# make LANG=your_language_code mergepo # for translation
+# make LANG=your_language_code mergepo # for translators
 ```
 
 For older versions, it's necessary to switch the git tag before `make`:

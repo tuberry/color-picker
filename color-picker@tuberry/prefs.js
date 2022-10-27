@@ -29,7 +29,7 @@ class IconBtn extends UI.File {
     }
 
     constructor() {
-        super({ filter: 'image/svg+xml' });
+        super({ filter: 'image/svg+xml' }, Gio.FILE_ATTRIBUTE_STANDARD_NAME);
     }
 
     _checkIcon(path) {
@@ -37,27 +37,21 @@ class IconBtn extends UI.File {
         return Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon(name) ? name : '';
     }
 
-    async setFile(path) {
-        let prev = this._file;
-        try {
-            let file = Gio.File.new_for_path(path);
-            let info = await file.query_info_async(Gio.FILE_ATTRIBUTE_STANDARD_NAME, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
-            this._setLabel(info.get_name().replace(RegExp(/(-symbolic)*.svg$/), ''));
-            let icon = this._checkIcon(path);
-            icon ? this._icon.set_from_icon_name(icon) : this._icon.set_from_gicon(Gio.Icon.new_for_string(path));
-            if(!this.file) this.chooser.set_file(file);
-            this._file = path;
-            this._icon.show();
-        } catch(e) {
-            this._icon.hide();
-            this._setLabel(null);
-            this._file = null;
-        } finally {
-            if(prev !== undefined && prev !== this.file) {
-                this.notify('file');
-                this.emit('changed', this.file);
-            }
-        }
+    async _setFile(path) {
+        let file = Gio.File.new_for_path(path);
+        let info = await file.query_info_async(this._attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
+        this._setLabel(info.get_name().replace(RegExp(/(-symbolic)*.svg$/), ''));
+        let icon = this._checkIcon(path);
+        icon ? this._icon.set_from_icon_name(icon) : this._icon.set_from_gicon(Gio.Icon.new_for_string(path));
+        if(!this.file) this.chooser.set_file(file);
+        this._file = path;
+        this._icon.show();
+    }
+
+    _setEmpty() {
+        this._icon.hide();
+        this._setLabel(null);
+        this._file = null;
     }
 }
 
@@ -100,7 +94,6 @@ var KeyBtn = class extends Gtk.Box {
         this.key = Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask);
         this.emit('changed', this.key);
         this._editor.destroy();
-
         return Gdk.EVENT_STOP;
     }
 

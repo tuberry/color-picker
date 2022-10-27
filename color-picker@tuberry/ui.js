@@ -22,7 +22,7 @@ var File = class extends Gtk.Box {
         }, this);
     }
 
-    constructor(params) {
+    constructor(params, attr) {
         super({ valign: Gtk.Align.CENTER, css_classes: ['linked'] }); // no 'always-show-image'
         let box = new Gtk.Box({ spacing: 5 });
         this._icon = new Gtk.Image({ icon_name: 'document-open-symbolic' });
@@ -34,6 +34,7 @@ var File = class extends Gtk.Box {
         this._btn.connect('clicked', this._onClicked.bind(this));
         [this._btn, reset].forEach(x => this.append(x));
         this._buildChooser(params);
+        this._attr = attr ?? [Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME, Gio.FILE_ATTRIBUTE_STANDARD_ICON].join(',');
     }
 
     vfunc_mnemonic_activate() {
@@ -70,30 +71,30 @@ var File = class extends Gtk.Box {
         return this._file ?? '';
     }
 
-    async setFile(path) {
-        let prev = this._file;
-        try {
-            let file = Gio.File.new_for_path(path);
-            let info = await file.query_info_async([Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME, Gio.FILE_ATTRIBUTE_STANDARD_ICON].join(','),
-                Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
-            this._setLabel(info.get_display_name());
-            this._icon.set_from_gicon(info.get_icon());
-            if(!this.file) this.chooser.set_file(file);
-            this._file = path;
-        } catch(e) {
-            this._setLabel(null);
-            this._icon.icon_name = 'document-open-symbolic';
-            this._file = null;
-        } finally {
-            if(prev !== undefined && prev !== this.file) {
-                this.notify('file');
-                this.emit('changed', this.file);
-            }
-        }
+    async _setFile(path) {
+        let file = Gio.File.new_for_path(path);
+        let info = await file.query_info_async(this._attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
+        this._setLabel(info.get_display_name());
+        this._icon.set_from_gicon(info.get_icon());
+        if(!this.file) this.chooser.set_file(file);
+        this._file = path;
+    }
+
+    _setEmpty() {
+        this._setLabel(null);
+        this._icon.icon_name = 'document-open-symbolic';
+        this._file = null;
+    }
+
+    _emitChange(prev) {
+        if(prev === undefined || prev === this.file) return;
+        this.emit('changed', this.file);
+        this.notify('file');
     }
 
     set file(path) {
-        this.setFile(path);
+        let prev = this._file;
+        this._setFile(path).catch(() => this._setEmpty()).finally(() => this._emitChange(prev));
     }
 };
 
@@ -162,7 +163,6 @@ var Short = class extends Gtk.Button {
         this.emit('changed', this.shortcut);
         this._setting.set_strv(this._key, [this.shortcut]);
         this._editor.destroy();
-
         return Gdk.EVENT_STOP;
     }
 
@@ -260,8 +260,8 @@ var LazyEntry = class extends Gtk.Stack {
         this._entry = new Gtk.Entry({ hexpand: true, enable_undo: true, placeholder_text: holder || '' });
         this._edit = new Gtk.Button({ icon_name: 'document-edit-symbolic', tooltip_text: tip || '' });
         this._done = new Gtk.Button({ icon_name: 'object-select-symbolic', tooltip_text: _('Click or press ENTER to commit changes'), css_classes: ['suggested-action'] });
-        this.add_named(this._boxWrapper(this._label, this._edit), 'label');
-        this.add_named(this._boxWrapper(this._entry, this._done), 'entry');
+        this.add_named(this._mkBox(this._label, this._edit), 'label');
+        this.add_named(this._mkBox(this._entry, this._done), 'entry');
         this.bind_property('text', this._label, 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE);
         this._edit.connect('clicked', this._onEdit.bind(this));
         this._done.connect('clicked', this._onDone.bind(this));
@@ -294,7 +294,7 @@ var LazyEntry = class extends Gtk.Stack {
         this.get_visible_child_name() === 'label' ? this._edit.activate() : this._done.activate();
     }
 
-    _boxWrapper(w1, w2) {
+    _mkBox(w1, w2) {
         let box = new Gtk.Box({ css_classes: ['linked'], hexpand: true });
         [w1, w2].forEach(x => box.append(x));
         return box;

@@ -22,6 +22,32 @@ const setClipboard = x => St.Clipboard.get_default().set_text(St.ClipboardType.C
 const Notify = { MSG: 0, OSD: 1 };
 const Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 };
 
+class Field {
+    constructor(prop, gset, obj) {
+        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
+        this.prop = prop;
+        this.attach(obj);
+    }
+
+    _get(x) {
+        return this.gset[`get_${this.prop[x][1]}`](this.prop[x][0]);
+    }
+
+    _set(x, y) {
+        this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
+    }
+
+    attach(a) {
+        let fs = Object.entries(this.prop);
+        fs.forEach(([x]) => { a[x] = this._get(x); });
+        this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
+    }
+
+    detach(a) {
+        this.gset.disconnectObject(a);
+    }
+}
+
 class Color {
     constructor(text, format) {
         this.text = text || '#fff';
@@ -149,32 +175,6 @@ class Color {
         let { l } = this.hsl;
         // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
         return ` <span fgcolor="${Math.round(l) ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(fmt)}</span>`;
-    }
-}
-
-class Field {
-    constructor(prop, gset, obj) {
-        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
-        this.prop = prop;
-        this.bind(obj);
-    }
-
-    _get(x) {
-        return this.gset[`get_${this.prop[x][1]}`](this.prop[x][0]);
-    }
-
-    _set(x, y) {
-        this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
-    }
-
-    bind(a) {
-        let fs = Object.entries(this.prop);
-        fs.forEach(([x]) => { a[x] = this._get(x); });
-        this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
-    }
-
-    unbind(a) {
-        this.gset.disconnectObject(a);
     }
 }
 
@@ -312,7 +312,6 @@ class ColorSlider extends Slider.Slider {
             this.value = Math.max(0, Math.min(this._value + delta, this._maxValue));
             return Clutter.EVENT_STOP;
         }
-
         return super.vfunc_key_press_event(event);
     }
 
@@ -327,7 +326,6 @@ class ColorSlider extends Slider.Slider {
             }
         })(event.get_scroll_direction());
         this.value = Math.min(Math.max(0, this._value + delta * this.step), this._maxValue);
-
         return Clutter.EVENT_STOP;
     }
 }
@@ -353,24 +351,15 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
     }
 }
 
-class ColorMenu extends GObject.Object {
-    static {
-        GObject.registerClass({
-            Signals: {
-                color_selected: { param_types: [GObject.TYPE_JSOBJECT] },
-            },
-        }, this);
-    }
-
+class ColorMenu extends PopupMenu.PopupMenu {
     constructor(actor, area) {
-        super();
+        super(actor, 0.15, St.Side.LEFT);
         this.color = new Color();
-        this._menu = new PopupMenu.PopupMenu(actor, 0.15, St.Side.LEFT);
         this._manager = new PopupMenu.PopupMenuManager(area);
-        this._manager.addMenu(this._menu);
-        Main.layoutManager.addTopChrome(this._menu.actor);
-        this._menu.actor.add_style_class_name('color-picker-menu app-menu');
-        this._menu.actor.hide();
+        this._manager.addMenu(this);
+        Main.layoutManager.addTopChrome(this.actor);
+        this.actor.add_style_class_name('color-picker-menu app-menu');
+        this.actor.hide();
         this._addMenuItems();
     }
 
@@ -392,13 +381,13 @@ class ColorMenu extends GObject.Object {
             cmyk: new MenuItem('cmyk', () => this._emitSelected(Format.CMYK)),
             clip: this._genClipItem(),
         };
-        for(let p in this._menus) this._menu.addMenuItem(this._menus[p]);
+        for(let p in this._menus) this.addMenuItem(this._menus[p]);
     }
 
     _genClipItem() {
         let item = new PopupMenu.PopupMenuItem(_('Read from clipboard'));
         item.activate = () => St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) => {
-            this._menu.open(BoxPointer.PopupAnimation.NONE);
+            this.open(BoxPointer.PopupAnimation.NONE);
             this.color = new Color(text, Format.HEX);
             this.setHSL();
         });
@@ -410,7 +399,7 @@ class ColorMenu extends GObject.Object {
         item.connect('activate', () => this._emitSelected(Format.HEX));
         ['RGB', 'HSL', 'hex'].forEach(x => {
             let btn = new St.Button({ x_expand: false, label: x, style_class: 'color-picker-button button' });
-            btn.connect('clicked', () => { this._menu.close(); this._emitSelected(Format[x]); });
+            btn.connect('clicked', () => { this.close(); this._emitSelected(Format[x]); });
             item.add_child(btn);
         });
         item.label = new St.Label({ x_expand: true });
@@ -418,15 +407,11 @@ class ColorMenu extends GObject.Object {
         return item;
     }
 
-    get actor() {
-        return this._menu;
-    }
-
-    open(color) {
-        if(this._menu.isOpen) this._menu.close();
+    openWith(color) {
+        if(this.isOpen) this.close();
         this.color = color;
         this.setHSL();
-        this._menu.open(BoxPointer.PopupAnimation.NONE);
+        this.open(BoxPointer.PopupAnimation.NONE);
     }
 
     _updateLabelText() {
@@ -452,11 +437,6 @@ class ColorMenu extends GObject.Object {
     _emitSelected(format) {
         this.color.format = format;
         this.emit('color-selected', this.color);
-    }
-
-    destroy() {
-        this._menu.destroy();
-        this._menu = this._manager = null;
     }
 }
 
@@ -575,9 +555,9 @@ class ColorArea extends St.Widget {
             this._view = this.pvstyle ? new ColorLabel() : new ColorIcon();
             this._view.setCursor(true);
             this._menu = new ColorMenu(this._view, this);
-            this._menu.actor.connectObject('menu-closed', () => this._pick(),
-                'open-state-changed', (_m, open) => this._view?.setCursor(!open), this),
-            this._menu.connectObject('color-selected', (_m, color) => this._emitColor(color), this);
+            this._menu.connectObject('menu-closed', () => this._pick(),
+                'open-state-changed', (a, open) => this._view?.setCursor(!open),
+                'color-selected', (a, color) => this._emitColor(color), this);
         } else {
             if(!this._view) return;
             ['_view', '_menu'].forEach(x => { this[x].destroy(); this[x] = null; });
@@ -619,29 +599,27 @@ class ColorArea extends St.Widget {
     vfunc_key_press_event(event) {
         let { keyval } = event;
         if(this.menukey && keyval === Clutter[`KEY_${this.menukey}`]) {
-            this._menu?.open(this._color);
+            this._menu?.openWith(this._color);
         } else if(keyval === Clutter.KEY_Escape || this.quitkey && keyval === Clutter[`KEY_${this.quitkey}`]) {
             this.emit('end-pick');
             return Clutter.EVENT_PROPAGATE;
         } else {
             this._onMoveKeyPressed(keyval);
         }
-
         return super.vfunc_key_press_event(event);
     }
 
     vfunc_button_press_event(event) {
         switch(event.button) {
-        case 1:  this._view ? this._emitColor() : this._pick(true); break;
-        case 2:  this._menu?.open(this._color); break;
+        case Clutter.BUTTON_PRIMARY:  this._view ? this._emitColor() : this._pick(true); break;
+        case Clutter.BUTTON_MIDDLE:  this._menu?.openWith(this._color); break;
         default: this.emit('end-pick'); break;
         }
-
         return Clutter.EVENT_PROPAGATE;
     }
 
     destroy() {
-        this._field.unbind(this);
+        this._field.detach(this);
         this.preview = this._pointer = this._picker = null;
         setCursor('DEFAULT');
         super.destroy();
@@ -652,7 +630,7 @@ class ColorButton extends PanelMenu.Button {
     static {
         GObject.registerClass({
             Signals: {
-                btn_left_click: {},
+                left_click: {},
             },
         }, this);
     }
@@ -685,12 +663,12 @@ class ColorButton extends PanelMenu.Button {
 
     _addMenuItems() {
         this._menus = {
-            section: new DListSection(...this.section),
-            sep0: new PopupMenu.PopupSeparatorMenuItem(),
-            format: new RadioItem(_('Default format'), Format, this._format, x => this._field._set('format', x)),
-            sep1: new PopupMenu.PopupSeparatorMenuItem(),
+            format:   new RadioItem(_('Default format'), Format, this._format, x => this._field._set('format', x)),
+            sep0:     new PopupMenu.PopupSeparatorMenuItem(),
+            section:  new DListSection(...this.section),
+            sep1:     new PopupMenu.PopupSeparatorMenuItem(),
             settings: new IconItem('color-picker-setting', [
-                ['find-location-symbolic', () => { this.menu.close(); this.emit('btn-left-click'); }],
+                ['find-location-symbolic', () => { this.menu.close(); this.emit('left-click'); }],
                 ['face-cool-symbolic',     () => this._field._set('menu_style', !this._menu_style)],
                 ['emblem-system-symbolic', () => { this.menu.close(); ExtensionUtils.openPrefs(); }],
             ]),
@@ -754,14 +732,14 @@ class ColorButton extends PanelMenu.Button {
 
     vfunc_event(event) {
         if(event.type() === Clutter.EventType.BUTTON_PRESS && event.get_button() === Clutter.BUTTON_PRIMARY) {
-            this.emit('btn-left-click');
+            this.emit('left-click');
             return Clutter.EVENT_STOP;
         }
         return super.vfunc_event(event);
     }
 
     destroy() {
-        this._field.unbind(this);
+        this._field.detach(this);
         super.destroy();
     }
 }
@@ -791,7 +769,7 @@ class ColorPicker {
         if(systray) {
             if(this._button) return;
             this._button = new ColorButton(0.5, Me.metadata.uuid);
-            this._button.connect('btn-left-click', this.summon.bind(this));
+            this._button.connect('left-click', this.summon.bind(this));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         } else {
             if(!this._button) return;
@@ -863,7 +841,7 @@ class ColorPicker {
     }
 
     destroy() {
-        this._field.unbind(this);
+        this._field.detach(this);
         this.dispel();
         this.systray = this.shortcut = null;
     }
