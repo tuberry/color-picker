@@ -4,8 +4,8 @@
     min-width: 18em;
 }
 
-.color-picker-boxpointer {
-}
+/* .color-picker-boxpointer { */
+/* } */
 
 .color-picker-label {
     color: black;
@@ -21,14 +21,7 @@
     padding: 0 0.5em;
 }
 
-.color-picker-history:hover,
-.color-picker-collect {
-    color: pink;
-}
-
-.color-picker-systray:busy,
-.color-picker-setting:hover,
-.color-picker-collect:hover {
+.color-picker-setting:hover {
     color: deepskyblue;
 }
 

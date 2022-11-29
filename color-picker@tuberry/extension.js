@@ -13,7 +13,7 @@ const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { Fields } = Me.imports.fields;
+const { Fields, Field } = Me.imports.fields;
 const _ = ExtensionUtils.gettext;
 
 const setCursor = x => global.display.set_cursor(Meta.Cursor[x]);
@@ -21,32 +21,6 @@ const setClipboard = x => St.Clipboard.get_default().set_text(St.ClipboardType.C
 
 const Notify = { MSG: 0, OSD: 1 };
 const Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 };
-
-class Field {
-    constructor(prop, gset, obj) {
-        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
-        this.prop = prop;
-        this.attach(obj);
-    }
-
-    _get(x) {
-        return this.gset[`get_${this.prop[x][1]}`](this.prop[x][0]);
-    }
-
-    _set(x, y) {
-        this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
-    }
-
-    attach(a) {
-        let fs = Object.entries(this.prop);
-        fs.forEach(([x]) => { a[x] = this._get(x); });
-        this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
-    }
-
-    detach(a) {
-        this.gset.disconnectObject(a);
-    }
-}
 
 class Color {
     constructor(text, format) {
@@ -58,12 +32,12 @@ class Color {
         this._format = format;
     }
 
-    get text_format() {
-        return this._text_format ?? (this._text_format = this.toFormat(this.text));
-    }
-
     get format() {
         return this._format ?? this.text_format;
+    }
+
+    get text_format() {
+        return this._text_format ?? (this._text_format = this.toFormat(this.text));
     }
 
     toFormat(x) {
@@ -138,9 +112,9 @@ class Color {
 
     // Ref: https://zh.wikipedia.org/wiki/%E5%8D%B0%E5%88%B7%E5%9B%9B%E5%88%86%E8%89%B2%E6%A8%A1%E5%BC%8F
     rgb2cmyk({ r, g, b }) {
-        let cmy = [r, g, b].map(x => 1 - x / 255);
-        let k = Math.min(...cmy);
-        let [c, m, y, k1] = k === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - k) / (1 - k)).concat(k).map(x => Math.round(x * 255));
+        let cmy = [r, g, b].map(x => 1 - x / 255),
+            k = Math.min(...cmy),
+            [c, m, y, k1] = k === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - k) / (1 - k)).concat(k).map(x => Math.round(x * 255));
         return { c, m, y, k: k1 };
     }
 
@@ -235,54 +209,44 @@ class ColorItem extends PopupMenu.PopupBaseMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(color, style, callback) {
+    constructor(item, callback) {
         super();
+        this._call = callback;
         this._label = new St.Label({ x_expand: true });
-        this._button = new St.Button({ child: new St.Icon({ icon_name: 'emblem-favorite-symbolic', style_class: 'popup-menu-icon' }) });
+        this._button = new St.Button({ child: new St.Icon({ style_class: 'popup-menu-icon' }), style_class: 'color-picker-setting' });
         this._button.connect('clicked', () => this._call(this._color.text));
         [this._label, this._button].forEach(x => this.add_child(x));
-        this.setLabel(color);
-        this.setButton(style, callback);
         this.connect('activate', () => setClipboard(this._color.text));
+        this.setItem(item);
     }
 
-    setLabel(text) {
-        if(this._color?.text === text) return;
-        this._color = new Color(text);
-        this._label.clutter_text.set_markup(this._color.toMarkup());
-    }
-
-    setButton(style, callback) {
-        this._call = callback;
-        if(this._style === style) return;
-        if(this._style) this._button.remove_style_class_name(this._style);
-        this._button.add_style_class_name(this._style = style);
+    setItem(item) {
+        if(!item) return;
+        let [text, icon] = item;
+        if(this._icon !== icon) {
+            this._icon = icon;
+            this._button.child.set_icon_name(icon ? 'starred-symbolic' : 'non-starred-symbolic');
+        }
+        if(this._color?.text !== text) {
+            this._color = new Color(text);
+            this._label.clutter_text.set_markup(this._color.toMarkup());
+        }
     }
 }
 
-class DListSection extends PopupMenu.PopupMenuSection {
-    constructor(list, style, callback) {
+class ColorSection extends PopupMenu.PopupMenuSection {
+    constructor(list, callback) {
         super();
-        this.updateList(list, style, callback);
+        this._call = callback;
+        this.setList(list);
     }
 
     setList(list) {
-        let items = this._items;
+        let items = this._getMenuItems();
         let diff = list.length - items.length;
-        if(diff > 0) for(let a = 0; a < diff; a++) this.addMenuItem(new ColorItem(null, this._style, this._call));
+        if(diff > 0) for(let a = 0; a < diff; a++) this.addMenuItem(new ColorItem(null, this._call));
         else if(diff < 0) for(let a = 0; a > diff; a--) items.at(a - 1).destroy();
-        this._items.forEach((x, i) => x.setLabel(list[i]));
-    }
-
-    updateList(list, style, callback) {
-        this._style = style;
-        this._call = callback;
-        this.setList(list);
-        this._items.forEach(x => x.setButton(this._style, this._call));
-    }
-
-    get _items() {
-        return this._getMenuItems();
+        this._getMenuItems().forEach((x, i) => x.setItem(list[i]));
     }
 }
 
@@ -340,9 +304,9 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
         let label = new St.Label({ text, x_expand: false });
         this._slider = new ColorSlider(numb, base);
         this._slider.connect('notify::value', () => (this._slider._dragging || this.active) && callback(this._slider.numb));
-        this.connect('button-press-event', (a, event) => this._slider.startDragging(event));
-        this.connect('key-press-event', (a, event) => this._slider.emit('key-press-event', event));
-        this.connect('scroll-event', (a, event) => this._slider.emit('scroll-event', event));
+        this.connect('button-press-event', (_a, event) => this._slider.startDragging(event));
+        this.connect('key-press-event', (_a, event) => this._slider.emit('key-press-event', event));
+        this.connect('scroll-event', (_a, event) => this._slider.emit('scroll-event', event));
         [label, this._slider].forEach(x => this.add_child(x));
     }
 
@@ -386,7 +350,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
 
     _genClipItem() {
         let item = new PopupMenu.PopupMenuItem(_('Read from clipboard'));
-        item.activate = () => St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) => {
+        item.activate = () => St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (_clip, text) => {
             this.open(BoxPointer.PopupAnimation.NONE);
             this.color = new Color(text, Format.HEX);
             this.setHSL();
@@ -511,30 +475,26 @@ class ColorArea extends St.Widget {
         }, this);
     }
 
-    constructor(params) {
+    constructor({ field, once, format }) {
         super({ reactive: true });
         setCursor('CROSSHAIR');
-        this.once = params?.once ?? false;
+        this.once = once ?? false;
         this._picker = new Shell.Screenshot();
-        this._color = new Color(null, params?.format ?? Format.HEX);
+        this._color = new Color(null, format ?? Format.HEX);
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         this.connect('popup-menu', () => this._menu?.open(this._color));
         this.set_size(...global.display.get_size());
-        this._bindSettings();
+        this._bindSettings(field);
     }
 
-    _bindSettings() {
-        this._field = new Field({
+    _bindSettings(field) {
+        this._field = field.attach({
             pvstyle: [Fields.PREVIEW,        'uint'],
             menukey: [Fields.MENUKEY,        'string'],
             quitkey: [Fields.QUITKEY,        'string'],
             persist: [Fields.PERSISTENTMODE, 'boolean'],
             preview: [Fields.ENABLEPREVIEW,  'boolean'],
-        }, ExtensionUtils.getSettings(), this);
-    }
-
-    get _persist() {
-        return this.persist && !this.once;
+        }, this);
     }
 
     async _pick(emit) {
@@ -556,8 +516,8 @@ class ColorArea extends St.Widget {
             this._view.setCursor(true);
             this._menu = new ColorMenu(this._view, this);
             this._menu.connectObject('menu-closed', () => this._pick(),
-                'open-state-changed', (a, open) => this._view?.setCursor(!open),
-                'color-selected', (a, color) => this._emitColor(color), this);
+                'open-state-changed', (_a, open) => this._view?.setCursor(!open),
+                'color-selected', (_a, color) => this._emitColor(color), this);
         } else {
             if(!this._view) return;
             ['_view', '_menu'].forEach(x => { this[x].destroy(); this[x] = null; });
@@ -566,7 +526,7 @@ class ColorArea extends St.Widget {
 
     _emitColor(color) {
         this.emit('notify-color', color || this._color);
-        if(!this._persist) this.emit('end-pick');
+        if(!this.persist || this.once) this.emit('end-pick');
     }
 
     vfunc_motion_event() {
@@ -635,10 +595,10 @@ class ColorButton extends PanelMenu.Button {
         }, this);
     }
 
-    constructor(params) {
-        super(params);
+    constructor(field, ...params) {
+        super(...params);
         this._buildWidgets();
-        this._bindSettings();
+        this._bindSettings(field);
         this._addMenuItems();
     }
 
@@ -649,43 +609,22 @@ class ColorButton extends PanelMenu.Button {
         this.add_actor(this._icon);
     }
 
-    _bindSettings() {
-        this._field = new Field({
+    _bindSettings(field) {
+        this._field = field.attach({
             format:     [Fields.FORMAT,        'uint'],
-            fmt:        [Fields.ENABLEFORMAT,  'boolean'],
-            collect:    [Fields.COLORSCOLLECT, 'string'],
-            history:    [Fields.COLORSHISTORY, 'string'],
-            menu_size:  [Fields.MENUSIZE,      'uint'],
+            enable_fmt: [Fields.ENABLEFORMAT,  'boolean'],
             icon_name:  [Fields.SYSTRAYICON,   'string'],
+            menu_size:  [Fields.MENUSIZE,      'uint'],
+        }, this).attach({
+            collect:    [Fields.COLORSCOLLECT, 'string', x => x.split('|').filter(Boolean)],
+            history:    [Fields.COLORSHISTORY, 'string', x => x.split('|').filter(Boolean)],
             menu_style: [Fields.MENUSTYLE,     'boolean'],
-        }, ExtensionUtils.getSettings(), this);
+        }, this, 'section');
     }
 
-    _addMenuItems() {
-        this._menus = {
-            format:   new RadioItem(_('Default format'), Format, this._format, x => this._field._set('format', x)),
-            sep0:     new PopupMenu.PopupSeparatorMenuItem(),
-            section:  new DListSection(...this.section),
-            sep1:     new PopupMenu.PopupSeparatorMenuItem(),
-            settings: new IconItem('color-picker-setting', [
-                ['find-location-symbolic', () => { this.menu.close(); this.emit('left-click'); }],
-                ['face-cool-symbolic',     () => this._field._set('menu_style', !this._menu_style)],
-                ['emblem-system-symbolic', () => { this.menu.close(); ExtensionUtils.openPrefs(); }],
-            ]),
-        };
-        for(let p in this._menus) this.menu.addMenuItem(this._menus[p]);
-        this.fmt = this._fmt;
-    }
-
-    set fmt(fmt) {
-        this._fmt = fmt;
-        if(fmt) {
-            this._menus?.sep0.show();
-            this._menus?.format.show();
-        } else {
-            this._menus?.sep0.hide();
-            this._menus?.format.hide();
-        }
+    set section([k, v, out]) {
+        this[k] = out ? out(v) : v;
+        this._menus?.section.setList(this.getSection());
     }
 
     set format(format) {
@@ -697,37 +636,41 @@ class ColorButton extends PanelMenu.Button {
         path ? this._icon.set_gicon(Gio.Icon.new_for_string(path)) : this._icon.set_icon_name('color-select-symbolic');
     }
 
-    set history(history) {
-        this._history = history.split('|').filter(Boolean);
-        if(!this._menu_style) this._menus?.section.setList(this._history);
+    set enable_fmt(enable_fmt) {
+        this._enable_fmt = enable_fmt;
+        if(enable_fmt) ['sep0', 'format'].forEach(x => this._menus?.[x].show());
+        else ['sep0', 'format'].forEach(x => this._menus?.[x].hide());
     }
 
-    set collect(collect) {
-        this._collect = collect.split('|').filter(Boolean);
-        if(this._menu_style) this._menus?.section.setList(this._collect);
+    _addMenuItems() {
+        this._menus = {
+            format:  new RadioItem(_('Default format'), Format, this._format, x => this.setf('format', x)),
+            sep0:    new PopupMenu.PopupSeparatorMenuItem(),
+            section: new ColorSection(this.getSection(), x => this._starColor(x)),
+            sep1:    new PopupMenu.PopupSeparatorMenuItem(),
+            prefs:   new IconItem('color-picker-setting', [
+                ['find-location-symbolic', () => { this.menu.close(); this.emit('left-click'); }],
+                ['face-cool-symbolic',     () => this.setf('menu_style', !this.menu_style)],
+                ['emblem-system-symbolic', () => { this.menu.close(); ExtensionUtils.openPrefs(); }],
+            ]),
+        };
+        for(let p in this._menus) this.menu.addMenuItem(this._menus[p]);
+        this.enable_fmt = this._enable_fmt;
     }
 
-    set menu_style(menu_style) {
-        this._menu_style = menu_style;
-        this._menus?.section.updateList(...this.section);
+    getSection() {
+        return this.menu_style ? this.collect.map(x => [x, true]) : this.history.map(x => [x, this.collect.includes(x)]);
     }
 
-    get section() {
-        return this._menu_style
-            ? [this._collect ?? [], 'color-picker-collect', x => this._delCollect(x)]
-            : [this._history ?? [], 'color-picker-history', x => this._addCollect(x)];
-    }
-
-    _addCollect(color) {
-        if(this._collect.includes(color)) return;
-        let collect = [color, ...this._collect];
-        while(collect.length > this.menu_size) collect.pop();
-        this._field._set('collect', collect.join('|'));
-    }
-
-    _delCollect(color) {
-        this._collect.splice(this._collect.indexOf(color), 1);
-        this._field._set('collect', this._collect.join('|'));
+    _starColor(color) {
+        if(this.collect.includes(color)) {
+            this.collect.splice(this.collect.indexOf(color), 1);
+            this.setf('collect', this.collect.join('|'));
+        } else {
+            let collect = [color, ...this.collect];
+            while(collect.length > this.menu_size) collect.pop();
+            this.setf('collect', collect.join('|'));
+        }
     }
 
     vfunc_event(event) {
@@ -746,10 +689,10 @@ class ColorButton extends PanelMenu.Button {
 
 class ColorPicker {
     constructor() {
-        this.gset = ExtensionUtils.getSettings();
-        this._field = new Field({
+        this._field = new Field({}, ExtensionUtils.getSettings(), this);
+        this._field.attach({
             format:        [Fields.FORMAT,         'uint'],
-            fmt:           [Fields.ENABLEFORMAT,   'boolean'],
+            enable_fmt:    [Fields.ENABLEFORMAT,   'boolean'],
             history:       [Fields.COLORSHISTORY,  'string'],
             systray:       [Fields.ENABLESYSTRAY,  'boolean'],
             auto_copy:     [Fields.AUTOCOPY,       'boolean'],
@@ -757,19 +700,20 @@ class ColorPicker {
             menu_size:     [Fields.MENUSIZE,       'uint'],
             notify_style:  [Fields.NOTIFYSTYLE,    'uint'],
             enable_notify: [Fields.ENABLENOTIFY,   'boolean'],
-        }, this.gset, this);
+        }, this);
     }
 
     set shortcut(shortcut) {
         this._shortId && Main.wm.removeKeybinding(Fields.PICKSHORTCUT);
-        this._shortId = shortcut && Main.wm.addKeybinding(Fields.PICKSHORTCUT, this.gset, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this.summon.bind(this));
+        this._shortId = shortcut && Main.wm.addKeybinding(Fields.PICKSHORTCUT, this._field.gset,
+            Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this.summon());
     }
 
     set systray(systray) {
         if(systray) {
             if(this._button) return;
-            this._button = new ColorButton(0.5, Me.metadata.uuid);
-            this._button.connect('left-click', this.summon.bind(this));
+            this._button = new ColorButton(this._field, 0.5, Me.metadata.uuid);
+            this._button.connect('left-click', () => this.summon());
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         } else {
             if(!this._button) return;
@@ -780,23 +724,22 @@ class ColorPicker {
 
     summon() {
         if(this._area) return;
-        if(this._button) this._button.add_style_pseudo_class('busy');
-        this._area = this.fmt ? new ColorArea({ format: this.format }) : new ColorArea();
-        this._area.connectObject('end-pick', this.dispel.bind(this), 'notify-color', this.inform.bind(this), this);
+        if(this._button) this._button.add_style_class_name('screen-sharing-indicator');
+        this._area = this.enable_fmt ? new ColorArea({ format: this.format, field: this._field }) : new ColorArea({ field: this._field });
+        this._area.connectObject('end-pick', () => this.dispel(), 'notify-color', this.inform.bind(this), this);
         Main.layoutManager.addChrome(this._area);
         this._grab = Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
     }
 
     dispel() {
         if(!this._area) return;
-        if(this._button) this._button.remove_style_pseudo_class('busy');
+        if(this._button) this._button.remove_style_class_name('screen-sharing-indicator');
         Main.popModal(this._grab);
         this._area.destroy();
-        this._grab = null;
-        this._area = null;
+        this._grab = this._area = null;
     }
 
-    inform(actor, cl) {
+    inform(_a, cl) {
         let color = cl.toText();
         if(this.auto_copy) setClipboard(color);
         if(this._button) this._addHistory(color);
@@ -804,9 +747,9 @@ class ColorPicker {
         if(this.notify_style === Notify.MSG) {
             Main.notify(Me.metadata.name, _('%s is picked.').format(color));
         } else {
-            let index = global.display.get_current_monitor();
-            let icon = new Gio.ThemedIcon({ name: 'media-playback-stop-symbolic' });
-            let osd = Main.osdWindowManager._osdWindows[index];
+            let index = global.display.get_current_monitor(),
+                icon = new Gio.ThemedIcon({ name: 'media-playback-stop-symbolic' }),
+                osd = Main.osdWindowManager._osdWindows[index];
             osd._icon.set_style(`color: ${cl.toText(Format.HEX)};`);
             Main.osdWindowManager.show(index, icon, color, null, 2);
             osd._hbox.connectObject('notify::mapped', box => {
@@ -821,7 +764,7 @@ class ColorPicker {
     _addHistory(color) {
         let history = [color, ...this.history.split('|').filter(Boolean)];
         while(history.length > this.menu_size) history.pop();
-        this._field._set('history', history.join('|'));
+        this.setf('history', history.join('|'));
     }
 
     pickAsync() {
@@ -831,7 +774,7 @@ class ColorPicker {
                 if(this._button) this._button.add_style_pseudo_class('busy');
                 this._area = new ColorArea({ once: true });
                 this._area.connect('end-pick', () => { this.dispel(); throw new Error('Cancelled'); });
-                this._area.connect('notify-color', (actor, color) => resolve(color.toText(Format.HEX)));
+                this._area.connect('notify-color', (_a, color) => resolve(color.toText(Format.HEX)));
                 Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });
                 Main.layoutManager.addTopChrome(this._area);
             } catch(e) {

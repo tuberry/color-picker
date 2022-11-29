@@ -83,7 +83,7 @@ var File = class extends Gtk.Box {
     _setEmpty() {
         this._setLabel(null);
         this._icon.icon_name = 'document-open-symbolic';
-        this._file = null;
+        this._file = '';
     }
 
     _emitChange(prev) {
@@ -155,8 +155,7 @@ var Short = class extends Gtk.Button {
     }
 
     _onKeyPressed(_widget, keyval, keycode, state) {
-        let mask = state & Gtk.accelerator_get_default_mod_mask();
-        mask &= ~Gdk.ModifierType.LOCK_MASK;
+        let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
         if(!mask && keyval === Gdk.KEY_Escape) { this._editor.close(); return Gdk.EVENT_STOP; }
         if(!this.isValidBinding(mask, keycode, keyval) || !this.isValidAccel(mask, keyval)) return Gdk.EVENT_STOP;
         this.shortcut = Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask);
@@ -263,9 +262,9 @@ var LazyEntry = class extends Gtk.Stack {
         this.add_named(this._mkBox(this._label, this._edit), 'label');
         this.add_named(this._mkBox(this._entry, this._done), 'entry');
         this.bind_property('text', this._label, 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE);
-        this._edit.connect('clicked', this._onEdit.bind(this));
-        this._done.connect('clicked', this._onDone.bind(this));
-        this._entry.connect('activate', this._onDone.bind(this));
+        this._edit.connect('clicked', () => this._onEdit());
+        this._done.connect('clicked', () => this._onDone());
+        this._entry.connect('activate', () => this._onDone());
         this.set_visible_child_name('label');
     }
 
@@ -294,9 +293,9 @@ var LazyEntry = class extends Gtk.Stack {
         this.get_visible_child_name() === 'label' ? this._edit.activate() : this._done.activate();
     }
 
-    _mkBox(w1, w2) {
+    _mkBox(...ws) {
         let box = new Gtk.Box({ css_classes: ['linked'], hexpand: true });
-        [w1, w2].forEach(x => box.append(x));
+        ws.forEach(x => box.append(x));
         return box;
     }
 };
