@@ -724,7 +724,7 @@ class ColorPicker {
 
     summon() {
         if(this._area) return;
-        if(this._button) this._button.add_style_class_name('screen-sharing-indicator');
+        if(this._button) this._button.add_style_pseudo_class('busy');
         this._area = this.enable_fmt ? new ColorArea({ format: this.format, field: this._field }) : new ColorArea({ field: this._field });
         this._area.connectObject('end-pick', () => this.dispel(), 'notify-color', this.inform.bind(this), this);
         Main.layoutManager.addChrome(this._area);
@@ -733,7 +733,7 @@ class ColorPicker {
 
     dispel() {
         if(!this._area) return;
-        if(this._button) this._button.remove_style_class_name('screen-sharing-indicator');
+        if(this._button) this._button.remove_style_pseudo_class('busy');
         Main.popModal(this._grab);
         this._area.destroy();
         this._grab = this._area = null;
@@ -772,7 +772,7 @@ class ColorPicker {
             try {
                 if(this._area) throw new Error('Cannot start picking');
                 if(this._button) this._button.add_style_pseudo_class('busy');
-                this._area = new ColorArea({ once: true });
+                this._area = new ColorArea({ once: true, field: this._field });
                 this._area.connect('end-pick', () => { this.dispel(); throw new Error('Cancelled'); });
                 this._area.connect('notify-color', (_a, color) => resolve(color.toText(Format.HEX)));
                 Main.pushModal(this._area, { actionMode: Shell.ActionMode.NORMAL });

@@ -1,6 +1,6 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported File Color Short PrefRow Drop LazyEntry Spin */
+/* exported File Color Keys PrefRow Drop LazyEntry Spin */
 'use strict';
 
 const { Adw, Gtk, Gdk, GObject, Gio, GLib } = imports.gi;
@@ -122,7 +122,7 @@ var Color = class extends Gtk.ColorButton {
     }
 };
 
-var Short = class extends Gtk.Button {
+var Keys = class extends Gtk.Button {
     static {
         GObject.registerClass({
             Properties: {
@@ -207,13 +207,18 @@ var PrefRow = class extends Adw.ActionRow {
             let [prefix, title, ...suffix] = args;
             if(title.length) this.set_title(title[0]), this.set_subtitle(title[1] || '');
             this.add_prefix(prefix);
-            this.set_activatable_widget(prefix);
-            if(suffix.length) {
-                suffix.forEach(x => {
-                    this.add_suffix(x);
-                    prefix.bind_property('active', x, 'sensitive', GObject.BindingFlags.DEFAULT);
-                    x.set_sensitive(prefix.active);
-                });
+            if(prefix instanceof Gtk.CheckButton) {
+                this.set_activatable_widget(prefix);
+                if(suffix.length) {
+                    suffix.forEach(x => {
+                        this.add_suffix(x);
+                        prefix.bind_property('active', x, 'sensitive', GObject.BindingFlags.DEFAULT);
+                        x.set_sensitive(prefix.active);
+                    });
+                }
+            } else if(suffix.length) {
+                suffix.forEach(x => this.add_suffix(x));
+                this.set_activatable_widget(suffix[0]);
             }
         }
     }

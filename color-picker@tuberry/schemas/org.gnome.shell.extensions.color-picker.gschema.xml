@@ -3,7 +3,7 @@
     <schema path="/org/gnome/shell/extensions/color-picker/" id="org.gnome.shell.extensions.color-picker">
         <key type="b" name="enable-systray">
             <default>true</default>
-            <summary>enabe system tray</summary>
+            <summary>enable system tray</summary>
         </key>
         <key type="b" name="enable-shortcut">
             <default>false</default>

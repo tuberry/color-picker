@@ -1,11 +1,11 @@
 /* Add your custom extension styling here */
 
+.color-picker-boxpointer {
+}
+
 .color-picker-menu {
     min-width: 18em;
 }
-
-/* .color-picker-boxpointer { */
-/* } */
 
 .color-picker-label {
     color: black;
@@ -21,6 +21,7 @@
     padding: 0 0.5em;
 }
 
+.color-picker-systray:busy,
 .color-picker-setting:hover {
     color: deepskyblue;
 }

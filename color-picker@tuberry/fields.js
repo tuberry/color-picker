@@ -1,7 +1,10 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported Fields Field */
+/* exported Fields Field Block */
 'use strict';
+
+const { Gio } = imports.gi;
+const ExtensionUtils = imports.misc.extensionUtils;
 
 var Fields = {
     MENUKEY:        'menu-key',
@@ -27,7 +30,7 @@ var Fields = {
 var Field = class {
     constructor(prop, gset, obj, tie) {
         this.prop = new WeakMap();
-        this.gset = typeof gset === 'string' ? new imports.gi.Gio.Settings({ schema: gset }) : gset;
+        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
         this.attach(prop, obj, tie);
     }
 
@@ -52,5 +55,13 @@ var Field = class {
 
     detach(a) {
         this.gset.disconnectObject(a);
+    }
+};
+
+var Block = class {
+    constructor(ws) {
+        this.gset = ExtensionUtils.getSettings();
+        for(let x in ws) this[x] = ws[x][2];
+        Object.values(ws).forEach(([x, y, z]) => this.gset.bind(x, z, y, Gio.SettingsBindFlags.DEFAULT));
     }
 };
