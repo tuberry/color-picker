@@ -605,7 +605,10 @@ class ColorButton extends PanelMenu.Button {
     _buildWidgets() {
         this.menu.actor.add_style_class_name('app-menu');
         this.add_style_class_name('color-picker-systray');
-        this._icon = new St.Icon({ style_class: 'system-status-icon' });
+        this._icon = new St.Icon({
+            style_class: 'system-status-icon',
+            style: "padding-left: 0px; padding-right: 0px;"
+        });
         this.add_actor(this._icon);
     }
 
