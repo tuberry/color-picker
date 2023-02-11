@@ -543,16 +543,16 @@ class ColorArea extends St.Widget {
         switch(keyval) {
         case Clutter.KEY_a:
         case Clutter.KEY_h:
-        case Clutter.KEY_Left:   this._moveCursorTo(-1, 0); break;
+        case Clutter.KEY_Left:  this._moveCursorTo(-1, 0); break;
         case Clutter.KEY_w:
         case Clutter.KEY_k:
-        case Clutter.KEY_Up:     this._moveCursorTo(0, -1); break;
+        case Clutter.KEY_Up:    this._moveCursorTo(0, -1); break;
         case Clutter.KEY_d:
         case Clutter.KEY_l:
-        case Clutter.KEY_Right:  this._moveCursorTo(1, 0); break;
+        case Clutter.KEY_Right: this._moveCursorTo(1, 0); break;
         case Clutter.KEY_s:
         case Clutter.KEY_j:
-        case Clutter.KEY_Down:   this._moveCursorTo(0, 1); break;
+        case Clutter.KEY_Down:  this._moveCursorTo(0, 1); break;
         }
     }
 

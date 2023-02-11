@@ -15,16 +15,22 @@ The latest and supported version should only work on the most current stable ver
 
 ```bash
 git clone https://github.com/tuberry/color-picker.git && cd color-picker
-make && make install
-# make LANG=your_language_code mergepo # for translators
+meson setup build && meson install -C build
+# meson setup build -Dtarget=system && meson install -C build # system-wide, default --prefix=/usr/local
 ```
 
-For older versions, it's necessary to switch the git tag before `make`:
+For contributing translations:
 
 ```bash
-# git tag # to see available versions
-git checkout your_gnome_shell_version
+meson setup build && cat po/LINGUAS
+# echo your_lang_code >> po/LINGUAS #if your_lang_code is not in po/LINGUAS
+meson compile gnome-shell-extension-color-picker-update-po -C build
+nvim po/your_lang_code.po # edit with an editor
+# meson setup build --wipe && meson compile gnome-shell-extension-color-picker-gmo -C build # build mo
 ```
+
+For older versions, it's recommended to install via:
+
 ### E.G.O
 
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]

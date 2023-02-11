@@ -1,0 +1,139 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# Onno Giesmann <nutzer3105@gmail.com>, 2020-2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-02-10 05:36+0800\n"
+"PO-Revision-Date: 2021-04-30 11:31+0200\n"
+"Last-Translator: Onno Giesmann <nutzer3105@gmail.com>\n"
+"Language-Team: \n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.4.2\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/ui.js:32 src/prefs.js:75
+msgid "Clear"
+msgstr ""
+
+#: src/ui.js:266
+msgid "Click or press ENTER to commit changes"
+msgstr ""
+
+#. no 'always-show-image'
+#: src/prefs.js:72
+msgid "(Key)"
+msgstr ""
+
+#: src/prefs.js:83
+msgid "Press any keys."
+msgstr ""
+
+#: src/prefs.js:128
+msgid "MSG"
+msgstr "MSG"
+
+#: src/prefs.js:128
+msgid "OSD"
+msgstr "OSD"
+
+#: src/prefs.js:129
+msgid "history size"
+msgstr "Verlaufsgröße"
+
+#: src/prefs.js:131
+msgid "Icon"
+msgstr ""
+
+#: src/prefs.js:131
+msgid "Label"
+msgstr ""
+
+#: src/prefs.js:131
+msgid "preview style"
+msgstr ""
+
+#: src/prefs.js:138
+msgid "Automatically copy"
+msgstr "Automatisch kopieren"
+
+#: src/prefs.js:138
+msgid "copy the color to clipboard after picking"
+msgstr "Farbe nach Auswahl automatisch in Zwischenablage kopieren"
+
+#: src/prefs.js:139 src/extension.js:647
+msgid "Default format"
+msgstr ""
+
+#: src/prefs.js:139
+msgid "hex here means poundless HEX such as “8fd0da”"
+msgstr ""
+
+#: src/prefs.js:140
+msgid "Shortcut to pick"
+msgstr "Tastenkürzel zum Auswählen"
+
+#: src/prefs.js:140
+#, fuzzy
+msgid "press arrow keys / wasd / hjkl to move by pixel"
+msgstr "Pfeiltasten für pixelgenaue Bewegung"
+
+#: src/prefs.js:141
+msgid "Notification style"
+msgstr "Art der Benachrichtigung"
+
+#: src/prefs.js:141
+#, fuzzy
+msgid "notify the color after picking"
+msgstr "Farbe nach Auswahl automatisch in Zwischenablage kopieren"
+
+#: src/prefs.js:142
+msgid "Persistent mode"
+msgstr "Dauerhafter Modus"
+
+#: src/prefs.js:142
+#, fuzzy
+msgid "right click or press Esc key to quit"
+msgstr "Zum Beenden Rechtsklick oder ESC-Taste drücken"
+
+#: src/prefs.js:143
+msgid "Enable preview"
+msgstr "Vorschau anzeigen"
+
+#: src/prefs.js:143
+#, fuzzy
+msgid "middle click or press Menu key to open menu"
+msgstr "Mittelklick oder MENÜ-Taste, um das Menü zu öffnen"
+
+#: src/prefs.js:144
+msgid "Enable systray"
+msgstr "Im Infobereich anzeigen"
+
+#: src/prefs.js:144
+msgid "right click to open menu"
+msgstr "Rechtsklick, um das Menü zu öffnen"
+
+#: src/extension.js:343
+msgid "Others"
+msgstr ""
+
+#: src/extension.js:352
+msgid "Read from clipboard"
+msgstr ""
+
+#: src/extension.js:748
+#, javascript-format
+msgid "%s is picked."
+msgstr "%s wurde ausgewählt."
+
+#~ msgid "Choose a symbolic icon"
+#~ msgstr "Wählen Sie ein Symbol aus"
+
+#~ msgid "Persistent mode (right click to exit)"
+#~ msgstr "Dauerhafte Auswahl (Rechtsklick zum Beenden)"

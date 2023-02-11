@@ -1,0 +1,134 @@
+# Dutch translations for gnome-shell-extension-color-picker package.
+# Copyright (C) 2021 THE gnome-shell-extension-color-picker'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-color-picker package.
+# Automatically generated, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extension-color-picker\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-02-10 05:36+0800\n"
+"PO-Revision-Date: 2021-09-16 13:50+0200\n"
+"Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
+"Language-Team: none\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0\n"
+
+#: src/ui.js:32 src/prefs.js:75
+msgid "Clear"
+msgstr ""
+
+#: src/ui.js:266
+msgid "Click or press ENTER to commit changes"
+msgstr ""
+
+#. no 'always-show-image'
+#: src/prefs.js:72
+msgid "(Key)"
+msgstr ""
+
+#: src/prefs.js:83
+msgid "Press any keys."
+msgstr ""
+
+#: src/prefs.js:128
+msgid "MSG"
+msgstr "Bericht"
+
+#: src/prefs.js:128
+msgid "OSD"
+msgstr "Melding"
+
+#: src/prefs.js:129
+msgid "history size"
+msgstr "Geschiedenisomvang"
+
+#: src/prefs.js:131
+msgid "Icon"
+msgstr ""
+
+#: src/prefs.js:131
+msgid "Label"
+msgstr ""
+
+#: src/prefs.js:131
+msgid "preview style"
+msgstr ""
+
+#: src/prefs.js:138
+msgid "Automatically copy"
+msgstr "Automatisch kopiëren"
+
+#: src/prefs.js:138
+msgid "copy the color to clipboard after picking"
+msgstr "Kopieer de gekozen kleur automatisch naar het klembord"
+
+#: src/prefs.js:139 src/extension.js:647
+msgid "Default format"
+msgstr ""
+
+#: src/prefs.js:139
+msgid "hex here means poundless HEX such as “8fd0da”"
+msgstr ""
+
+#: src/prefs.js:140
+msgid "Shortcut to pick"
+msgstr "Te gebruiken sneltoets"
+
+#: src/prefs.js:140
+#, fuzzy
+msgid "press arrow keys / wasd / hjkl to move by pixel"
+msgstr "Gebruik de pijltjestoetsen om per pixel te verplaatsen"
+
+#: src/prefs.js:141
+msgid "Notification style"
+msgstr "Meldingsstijl"
+
+#: src/prefs.js:141
+#, fuzzy
+msgid "notify the color after picking"
+msgstr "Kopieer de gekozen kleur automatisch naar het klembord"
+
+#: src/prefs.js:142
+msgid "Persistent mode"
+msgstr "Permanente modus"
+
+#: src/prefs.js:142
+#, fuzzy
+msgid "right click or press Esc key to quit"
+msgstr "Klik met de rechtermuisknop of druk op Esc om af te sluiten"
+
+#: src/prefs.js:143
+msgid "Enable preview"
+msgstr "Kleuren voorvertonen"
+
+#: src/prefs.js:143
+#, fuzzy
+msgid "middle click or press Menu key to open menu"
+msgstr ""
+"Klik met de middelste muisknop of druk op de menutoets om het menu te openen"
+
+#: src/prefs.js:144
+msgid "Enable systray"
+msgstr "Systeemvakpictogram tonen"
+
+#: src/prefs.js:144
+msgid "right click to open menu"
+msgstr "Klik met de rechtermuisknop om het menu te openen"
+
+#: src/extension.js:343
+msgid "Others"
+msgstr ""
+
+#: src/extension.js:352
+msgid "Read from clipboard"
+msgstr ""
+
+#: src/extension.js:748
+#, javascript-format
+msgid "%s is picked."
+msgstr "U heeft ‘%s’ gekozen."

@@ -1,0 +1,3 @@
+[submodule "res/styles/gnome-shell-sass"]
+	path = res/styles/gnome-shell-sass
+	url = https://gitlab.gnome.org/GNOME/gnome-shell-sass.git

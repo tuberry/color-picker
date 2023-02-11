@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-17 15:41+0100\n"
+"POT-Creation-Date: 2023-02-10 05:36+0800\n"
 "PO-Revision-Date: 2022-09-17 15:59+0100\n"
 "Last-Translator: Miguel Vila <miguelovila@gmail.com>\n"
 "Language-Team: none\n"
@@ -16,99 +16,119 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:656
+#: src/ui.js:32 src/prefs.js:75
+msgid "Clear"
+msgstr "Apagar"
+
+#: src/ui.js:266
+msgid "Click or press ENTER to commit changes"
+msgstr "Clique ou pressione ENTER para aplicar as alterações"
+
+#. no 'always-show-image'
+#: src/prefs.js:72
+msgid "(Key)"
+msgstr "(Chave)"
+
+#: src/prefs.js:83
+msgid "Press any keys."
+msgstr "Pressione qualquer tecla."
+
+#: src/prefs.js:128
+msgid "MSG"
+msgstr "MSG"
+
+#: src/prefs.js:128
+msgid "OSD"
+msgstr "OSD"
+
+#: src/prefs.js:129
+msgid "history size"
+msgstr "tamanho do histórico"
+
+#: src/prefs.js:131
+msgid "Icon"
+msgstr "Icone"
+
+#: src/prefs.js:131
+msgid "Label"
+msgstr "Etiqueta"
+
+#: src/prefs.js:131
+msgid "preview style"
+msgstr "pré-visualizar estilo"
+
+#: src/prefs.js:138
+msgid "Automatically copy"
+msgstr "Copiar automaticamente"
+
+#: src/prefs.js:138
+msgid "copy the color to clipboard after picking"
+msgstr "copiar para a área de transferência após escolher a cor"
+
+#: src/prefs.js:139 src/extension.js:647
+msgid "Default format"
+msgstr ""
+
+#: src/prefs.js:139
+msgid "hex here means poundless HEX such as “8fd0da”"
+msgstr ""
+
+#: src/prefs.js:140
+msgid "Shortcut to pick"
+msgstr "Atalho para selecionar"
+
+#: src/prefs.js:140
+msgid "press arrow keys / wasd / hjkl to move by pixel"
+msgstr "pressiona as teclas de direção para mover pixel a pixel"
+
+#: src/prefs.js:141
+msgid "Notification style"
+msgstr "Estilo de notificação"
+
+#: src/prefs.js:141
+#, fuzzy
+msgid "notify the color after picking"
+msgstr "copiar para a área de transferência após escolher a cor"
+
+#: src/prefs.js:142
+msgid "Persistent mode"
+msgstr "Modo persistente"
+
+#: src/prefs.js:142
+msgid "right click or press Esc key to quit"
+msgstr "botão direito ou tecla Esc para sair"
+
+#: src/prefs.js:143
+msgid "Enable preview"
+msgstr "Ativar pré-visualização"
+
+#: src/prefs.js:143
+msgid "middle click or press Menu key to open menu"
+msgstr "botão central ou tecla Menú para abrir o menu"
+
+#: src/prefs.js:144
+msgid "Enable systray"
+msgstr "Ativar tray do sistema"
+
+#: src/prefs.js:144
+msgid "right click to open menu"
+msgstr "botão direiro para abrir o menú"
+
+#: src/extension.js:343
+msgid "Others"
+msgstr ""
+
+#: src/extension.js:352
+msgid "Read from clipboard"
+msgstr ""
+
+#: src/extension.js:748
 #, javascript-format
 msgid "%s is picked."
 msgstr "Cor %s selecionada."
 
-#: prefs.js:87
-msgid "(Key)"
-msgstr "(Chave)"
+#~ msgid "Add # prefix"
+#~ msgstr "Adicionar # como prefixo"
 
-#: prefs.js:90 ui.js:30
-msgid "Clear"
-msgstr "Apagar"
-
-#: prefs.js:98
-msgid "Press any keys."
-msgstr "Pressione qualquer tecla."
-
-#: prefs.js:146
-msgid "MSG"
-msgstr "MSG"
-
-#: prefs.js:146
-msgid "OSD"
-msgstr "OSD"
-
-#: prefs.js:147
-msgid "Icon"
-msgstr "Icone"
-
-#: prefs.js:147
-msgid "Label"
-msgstr "Etiqueta"
-
-#: prefs.js:147
-msgid "preview style"
-msgstr "pré-visualizar estilo"
-
-#: prefs.js:148
-msgid "history size"
-msgstr "tamanho do histórico"
-
-#: prefs.js:155
-msgid "Automatically copy"
-msgstr "Copiar automaticamente"
-
-#: prefs.js:155
-msgid "copy the color to clipboard after picking"
-msgstr "copiar para a área de transferência após escolher a cor"
-
-#: prefs.js:156
-msgid "Add # prefix"
-msgstr "Adicionar # como prefixo"
-
-#: prefs.js:156
-msgid "prefix copied color with a pound sign"
-msgstr "copiar a cor com o prefixo $"
-
-#: prefs.js:157
-msgid "Shortcut to pick"
-msgstr "Atalho para selecionar"
-
-#: prefs.js:157
-msgid "press arrow keys / wasd / hjkl to move by pixel"
-msgstr "pressiona as teclas de direção para mover pixel a pixel"
-
-#: prefs.js:158
-msgid "Notification style"
-msgstr "Estilo de notificação"
-
-#: prefs.js:159
-msgid "Persistent mode"
-msgstr "Modo persistente"
-
-#: prefs.js:159
-msgid "right click or press Esc key to quit"
-msgstr "botão direito ou tecla Esc para sair"
-
-#: prefs.js:160
-msgid "Enable preview"
-msgstr "Ativar pré-visualização"
-
-#: prefs.js:160
-msgid "middle click or press Menu key to open menu"
-msgstr "botão central ou tecla Menú para abrir o menu"
-
-#: prefs.js:161
-msgid "Enable systray"
-msgstr "Ativar tray do sistema"
-
-#: prefs.js:161
-msgid "right click to open menu"
-msgstr "botão direiro para abrir o menú"
-
-#: ui.js:258
-msgid "Click or press ENTER to commit changes"
-msgstr "Clique ou pressione ENTER para aplicar as alterações"
+#~ msgid "prefix copied color with a pound sign"
+#~ msgstr "copiar a cor com o prefixo $"
