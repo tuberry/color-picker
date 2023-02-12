@@ -7,9 +7,9 @@ configure_file(
     'gettext': GETTEXT,
     'schemas': SCHEMAS,
     'version': VERSION,
-    'description': DESCRIPTION,
     'url': 'https://github.com/tuberry' / EID,
-    'shell': meson.project_version().split('.')[0]
+    'shell': meson.project_version().split('.')[0],
+    'description': INFO + '\\n\\nFor support, please report any issues via the homepage link below.'
   },
   install_dir: TARGET_DIR
 )

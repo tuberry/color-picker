@@ -22,11 +22,7 @@ meson setup build && meson install -C build
 For contributing translations:
 
 ```bash
-meson setup build && cat po/LINGUAS
-# echo your_lang_code >> po/LINGUAS #if your_lang_code is not in po/LINGUAS
-meson compile gnome-shell-extension-color-picker-update-po -C build
-nvim po/your_lang_code.po # edit with an editor
-# meson setup build --wipe && meson compile gnome-shell-extension-color-picker-gmo -C build # build mo
+bash ./cli/update-po.sh your_lang_code # default to $LANG
 ```
 
 For older versions, it's recommended to install via:

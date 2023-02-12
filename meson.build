@@ -6,7 +6,7 @@ project(
 )
 
 NAME = 'Color Picker'
-DESCRIPTION = 'Simple color picker for gnome shell\\n\\nFor support, please report any issues via the homepage link below.'
+INFO = 'Simple color picker for gnome shell'
 EID = meson.project_name().replace('gnome-shell-extension-', '')
 UUID = EID + '@tuberry'
 EGO = 'EGO=3396' / EID
