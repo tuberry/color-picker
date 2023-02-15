@@ -16,6 +16,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const { Fields, Field } = Me.imports.fields;
 const _ = ExtensionUtils.gettext;
 
+const xnor = (x, y) => !x === !y;
 const setCursor = x => global.display.set_cursor(Meta.Cursor[x]);
 const setClipboard = x => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, x);
 
@@ -509,8 +510,8 @@ class ColorArea extends St.Widget {
     }
 
     set preview(preview) {
+        if(xnor(preview, this._view)) return;
         if(preview) {
-            if(this._view) return;
             this._pick();
             this._view = this.pvstyle ? new ColorLabel() : new ColorIcon();
             this._view.setCursor(true);
@@ -519,7 +520,6 @@ class ColorArea extends St.Widget {
                 'open-state-changed', (_a, open) => this._view?.setCursor(!open),
                 'color-selected', (_a, color) => this._emitColor(color), this);
         } else {
-            if(!this._view) return;
             ['_view', '_menu'].forEach(x => { this[x].destroy(); this[x] = null; });
         }
     }
@@ -616,8 +616,8 @@ class ColorButton extends PanelMenu.Button {
             icon_name:  [Fields.SYSTRAYICON,   'string'],
             menu_size:  [Fields.MENUSIZE,      'uint'],
         }, this).attach({
-            collect:    [Fields.COLORSCOLLECT, 'string', x => x.split('|').filter(Boolean)],
-            history:    [Fields.COLORSHISTORY, 'string', x => x.split('|').filter(Boolean)],
+            collect:    [Fields.COLORSCOLLECT, 'string', x => x.split('|').filter(x => x)],
+            history:    [Fields.COLORSHISTORY, 'string', x => x.split('|').filter(x => x)],
             menu_style: [Fields.MENUSTYLE,     'boolean'],
         }, this, 'section');
     }
@@ -710,13 +710,12 @@ class ColorPicker {
     }
 
     set systray(systray) {
+        if(xnor(systray, this._button)) return;
         if(systray) {
-            if(this._button) return;
             this._button = new ColorButton(this._field, 0.5, Me.metadata.uuid);
             this._button.connect('left-click', () => this.summon());
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         } else {
-            if(!this._button) return;
             this._button.destroy();
             this._button = null;
         }
@@ -762,7 +761,7 @@ class ColorPicker {
     }
 
     _addHistory(color) {
-        let history = [color, ...this.history.split('|').filter(Boolean)];
+        let history = [color, ...this.history.split('|').filter(x => x)];
         while(history.length > this.menu_size) history.pop();
         this.setf('history', history.join('|'));
     }
