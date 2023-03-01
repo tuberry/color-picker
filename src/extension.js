@@ -304,7 +304,7 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
         super({ activate: false });
         let label = new St.Label({ text, x_expand: false });
         this._slider = new ColorSlider(numb, base);
-        this._slider.connect('notify::value', () => (this._slider._dragging || this.active) && callback(this._slider.numb));
+        this._slider.connect('notify::value', () => { if(this._slider._dragging || this.active) callback(this._slider.numb); });
         this.connect('button-press-event', (_a, event) => this._slider.startDragging(event));
         this.connect('key-press-event', (_a, event) => this._slider.emit('key-press-event', event));
         this.connect('scroll-event', (_a, event) => this._slider.emit('scroll-event', event));
@@ -616,8 +616,8 @@ class ColorButton extends PanelMenu.Button {
             icon_name:  [Fields.SYSTRAYICON,   'string'],
             menu_size:  [Fields.MENUSIZE,      'uint'],
         }, this).attach({
-            collect:    [Fields.COLORSCOLLECT, 'string', x => x.split('|').filter(x => x)],
-            history:    [Fields.COLORSHISTORY, 'string', x => x.split('|').filter(x => x)],
+            collect:    [Fields.COLORSCOLLECT, 'string', x => x.split('|').filter(y => y)],
+            history:    [Fields.COLORSHISTORY, 'string', x => x.split('|').filter(y => y)],
             menu_style: [Fields.MENUSTYLE,     'boolean'],
         }, this, 'section');
     }
@@ -704,8 +704,8 @@ class ColorPicker {
     }
 
     set shortcut(shortcut) {
-        this._shortId && Main.wm.removeKeybinding(Fields.PICKSHORTCUT);
-        this._shortId = shortcut && Main.wm.addKeybinding(Fields.PICKSHORTCUT, this._field.gset,
+        if(this._keysId) Main.wm.removeKeybinding(Fields.PICKSHORTCUT);
+        this._keysId = shortcut && Main.wm.addKeybinding(Fields.PICKSHORTCUT, this._field.gset,
             Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this.summon());
     }
 

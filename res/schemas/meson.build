@@ -1,6 +1,6 @@
 if(TARGET == 'system')
   gnome.compile_schemas()
-else
+elif(TARGET == 'local')
   custom_target(
     'gschemas',
     build_by_default: true,

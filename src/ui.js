@@ -30,7 +30,7 @@ var File = class extends Gtk.Box {
         [this._icon, this._label].forEach(x => box.append(x));
         this._btn = new Gtk.Button({ child: box });
         let reset = new Gtk.Button({ icon_name: 'edit-clear-symbolic', tooltip_text: _('Clear') });
-        reset.connect('clicked', () => (this.file = ''));
+        reset.connect('clicked', () => { this.file = ''; });
         this._btn.connect('clicked', this._onClicked.bind(this));
         [this._btn, reset].forEach(x => this.append(x));
         this._buildChooser(params);
