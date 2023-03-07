@@ -1,14 +1,19 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported File Color Keys PrefRow Drop LazyEntry Spin */
+/* exported Block File Color Keys PrefRow Drop LazyEntry Spin */
 'use strict';
 
-const { Adw, Gtk, Gdk, GObject, Gio, GLib } = imports.gi;
-const _GTK = imports.gettext.domain('gtk40').gettext;
-const _ = imports.misc.extensionUtils.gettext;
-const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
+const { Adw, Gtk, Gdk, GObject, Gio } = imports.gi;
+const ExtensionUtils = imports.misc.extensionUtils;
+const Me = ExtensionUtils.getCurrentExtension();
+const { _, _GTK, fl, genParam, fquery } = Me.imports.util;
 
-Gio._promisify(Gio.File.prototype, 'query_info_async');
+var Block = class {
+    constructor(ws) {
+        this.gset = ExtensionUtils.getSettings();
+        for(let [k, [x, y, z]] of Object.entries(ws)) { this[k] = z; this.gset.bind(x, z, y, Gio.SettingsBindFlags.DEFAULT); }
+    }
+};
 
 var File = class extends Gtk.Box {
     static {
@@ -72,8 +77,8 @@ var File = class extends Gtk.Box {
     }
 
     async _setFile(path) {
-        let file = Gio.File.new_for_path(path);
-        let info = await file.query_info_async(this._attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
+        let file = fl(path);
+        let info = await fquery(file, this._attr);
         this._setLabel(info.get_display_name());
         this._icon.set_from_gicon(info.get_icon());
         if(!this.file) this.chooser.set_file(file);
