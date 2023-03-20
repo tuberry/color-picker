@@ -2,7 +2,7 @@ project(
   'gnome-shell-extension-color-picker',
   subproject_dir: 'submodules',
   license: 'GPL3+',
-  version: '44.rc',
+  version: '44.0',
 )
 
 NAME = 'Color Picker'

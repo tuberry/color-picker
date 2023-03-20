@@ -21,5 +21,5 @@ if fs.is_dir('styles')
 endif
 
 if fs.is_dir('icons')
-  install_subdir('icons', install_dir: TARGET_DIR)
+  subdir('icons')
 endif

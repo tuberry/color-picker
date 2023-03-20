@@ -1,14 +1,33 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported DEventEmitter Extension Symbiont Fulu */
+/* exported DEventEmitter Extension Fulu symbiose omit onus */
 'use strict';
 
 const { Gio } = imports.gi;
 const { EventEmitter } = imports.misc.signals;
+const { TransientSignalHolder } = imports.misc.signalTracker;
 const ExtensionUtils = imports.misc.extensionUtils;
+const Me = ExtensionUtils.getCurrentExtension();
+const { omap } = Me.imports.util;
+
+var onus = o => o instanceof DEventEmitter ? o.$scapegoat : o;
+var omit = (o, ...ks) => ks.forEach(k => { o[k]?.destroy?.(); o[k] = null; });
+
+function symbiose(host, doom, obj) {
+    if(doom) new Symbiont(host, doom);
+    if(obj) return omap(obj, ([k, v]) => [[k, new Symbiont(host, ...v)]]);
+}
 
 var DEventEmitter = class extends EventEmitter {
-    destroy = () => this.emit('destroy');
+    constructor() {
+        super();
+        this.$scapegoat = new TransientSignalHolder(this);
+    }
+
+    destroy() {
+        this.emit('destroy');
+        omit(this, '$scapegoat');
+    }
 };
 
 var Extension = class {
@@ -22,21 +41,20 @@ var Extension = class {
     }
 
     disable() {
-        this._delegate.destroy();
-        this._delegate = null;
+        omit(this, '_delegate');
     }
 };
 
 var Symbiont = class {
-    constructor(dispel, obj, summon) {
+    constructor(host, dispel, summon) {
+        host.connectObject('destroy', () => this.dispel(), onus(host));
+        this.summon = (...args) => (this._delegate = summon?.(...args));
         this.dispel = () => { dispel(this._delegate); this._delegate = null; };
-        obj.connectObject('destroy', () => { this.dispel(); obj.disconnectObject(this); }, this);
-        this.summon = (...argv) => (this._delegate = summon?.(...argv));
     }
 
-    reset(...argv) {
+    revive(...args) {
         this.dispel();
-        return this.summon(...argv);
+        return this.summon(...args);
     }
 };
 
@@ -56,18 +74,16 @@ var Fulu = class {
     }
 
     attach(ps, a, n) { // n && ps <- { fulu: [key, type, output] }
-        a.setf ??= (k, v, f) => a[`_fulu${f ? `_${f}` : ''}`].set(k, v, a);
-        a._sbt_detach ??= new Symbiont(() => this.detach(a), a);
         if(!this.prop.has(a)) this.prop.set(a, ps);
-        else  Object.assign(this.prop.get(a), ps);
+        else Object.assign(this.prop.get(a), ps);
         let cb = n ? x => { a[n] = [x, this.get(x, a), this.prop.get(a)[x][2]]; } : x => { a[x] = this.get(x, a); };
         let fs = Object.entries(ps);
         fs.forEach(([k]) => cb(k));
-        this.gset.connectObject(...fs.flatMap(([k, [x]]) => [`changed::${x}`, () => cb(k)]), a);
+        this.gset.connectObject(...fs.flatMap(([k, [x]]) => [`changed::${x}`, () => cb(k)]), onus(a));
         return this;
     }
 
     detach(a) {
-        this.gset.disconnectObject(a);
+        this.gset.disconnectObject(onus(a));
     }
 };
