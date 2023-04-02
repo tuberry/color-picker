@@ -99,7 +99,7 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
             [this._blk.KEY,  [_('Shortcut to pick'), _('press arrow keys / wasd / hjkl to move by pixel')], this._blk.KEYS],
             [this._blk.NTF,  [_('Notification style'), _('notify the color after picking')], this._blk.NTFS],
             [this._blk.PRST, [_('Persistent mode'), _('right click or press Esc key to quit')], this._blk.QKEY],
-            [this._blk.PVW,  [_('Enable preview'), _('middle click or press Menu key to open menu')], this._blk.PVW, this._blk.MKEY],
+            [this._blk.PVW,  [_('Enable preview'), _('middle click or press Menu key to open menu')], this._blk.PVWS, this._blk.MKEY],
             [this._blk.STRY, [_('Enable systray'), _('right click to open menu')], this._blk.TICN, this._blk.MSIZ],
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));
     }

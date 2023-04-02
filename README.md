@@ -25,7 +25,7 @@ For contributing translations:
 bash ./cli/update-po.sh your_lang_code # default to $LANG
 ```
 
-For older versions, it's recommended to install via:
+For older versions (< 44), it's recommended to install via:
 
 ### E.G.O
 

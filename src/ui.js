@@ -9,11 +9,11 @@
 const { Adw, Gtk, Gdk, GObject, Gio, Pango, GLib } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { _, _GTK, fl, omap, noop, gparam, fquery } = Me.imports.util;
+const { _, _GTK, fl, raise, omap, noop, gparam, fquery } = Me.imports.util;
 const { Field } = Me.imports.const;
 
 var grgba = x => (c => [c.parse(x ?? ''), c])(new Gdk.RGBA());
-var conns = (a, ...o) => o.forEach(([k, v]) => a.connect(k, v));
+var conns = (o, ...a) => a.forEach(([k, v]) => o.connect(k, v));
 var block = (o, s = ExtensionUtils.getSettings()) => omap(o, ([k, [x, y]]) => [[k, (s.bind(Field[k], y, x, Gio.SettingsBindFlags.DEFAULT), y)]]);
 
 Gio._promisify(Gtk.FileDialog.prototype, 'open');
@@ -24,8 +24,8 @@ var Box = class extends Gtk.Box {
         GObject.registerClass(this);
     }
 
-    constructor(children, params) {
-        super(Object.assign({ valign: Gtk.Align.CENTER }, params));
+    constructor(children, param) {
+        super({ valign: Gtk.Align.CENTER, ...param });
         children?.forEach(x => this.append(x));
         this.add_css_class('linked');
     }
@@ -61,8 +61,8 @@ var Font = class extends Gtk.FontDialogButton {
         }, this);
     }
 
-    constructor(params) {
-        super(Object.assign({ valign: Gtk.Align.CENTER, dialog: new Gtk.FontDialog() }, params));
+    constructor(param) {
+        super({ valign: Gtk.Align.CENTER, dialog: new Gtk.FontDialog(), ...param });
         this.connect('notify::font-desc', () => this.notify('value'));
     }
 
@@ -84,8 +84,8 @@ var Color = class extends Gtk.ColorDialogButton {
         }, this);
     }
 
-    constructor(params) {
-        super({ tooltip_text: params?.title ?? '', valign: Gtk.Align.CENTER, dialog: new Gtk.ColorDialog(params) });
+    constructor(param) {
+        super({ tooltip_text: param?.title ?? '', valign: Gtk.Align.CENTER, dialog: new Gtk.ColorDialog(param) });
         this.connect('notify::rgba', () => this.notify('value'));
     }
 
@@ -128,17 +128,17 @@ var AppDialog = class extends Adw.Window {
         }, this);
     }
 
-    constructor(params) {
+    constructor(param) {
         super({ title: _GTK('Select Application'), modal: true, hide_on_close: true, width_request: 280, height_request: 320 });
-        this._buildContent(params);
+        this._buildContent(param);
     }
 
-    _buildList(params) {
+    _buildList(param) {
         let factory = new Gtk.SignalListItemFactory();
-        conns(factory, ['setup', (_f, x) => { x.set_child(new IconLabel('application-x-executable-symbolic')); }],
+        conns(factory, ['setup', (_f, x) => x.set_child(new IconLabel('application-x-executable-symbolic'))],
             ['bind', (_f, x) => x.get_child().set_info(...(y => [y.get_icon() || '', y.get_display_name()])(x.get_item()))]);
         let model = new Gio.ListStore({ item_type: Gio.DesktopAppInfo });
-        if(params?.no_display) Gio.AppInfo.get_all().forEach(x => model.append(x));
+        if(param?.no_display) Gio.AppInfo.get_all().forEach(x => model.append(x));
         else Gio.AppInfo.get_all().filter(x => x.should_show()).forEach(x => model.append(x));
         this._filter = new Gtk.StringFilter({ expression: new Gtk.PropertyExpression(Gio.DesktopAppInfo, null, 'filename') }); // TODO: `get_id()` instead of filename
         this._select = new Gtk.SingleSelection({ model: new Gtk.FilterListModel({ model, filter: this._filter }) });
@@ -147,7 +147,7 @@ var AppDialog = class extends Adw.Window {
         return new Gtk.ScrolledWindow({ child: list });
     }
 
-    _buildContent(params) {
+    _buildContent(param) {
         let eck = new Gtk.EventControllerKey(),
             close = Gtk.Button.new_with_mnemonic(_GTK('_Close')),
             select = Gtk.Button.new_with_mnemonic(_GTK('_Select')),
@@ -156,6 +156,7 @@ var AppDialog = class extends Adw.Window {
             bar = new Gtk.SearchBar({ show_close_button: false, child: entry }),
             header = new Adw.HeaderBar({ show_end_title_buttons: false, show_start_title_buttons: false });
         this._search = new Gtk.ToggleButton({ icon_name: 'system-search-symbolic' });
+
         select.add_css_class('suggested-action');
         close.connect('clicked', () => this.close());
         select.connect('clicked', () => this._onSelect());
@@ -165,10 +166,11 @@ var AppDialog = class extends Adw.Window {
         this.connect('close-request', () => this._search.set_active(false));
         bar.set_key_capture_widget(this);
         bar.connect_entry(entry);
+
         this.add_controller(eck);
         header.pack_start(close);
         [select, this._search].forEach(x => header.pack_end(x));
-        [header, bar, this._buildList(params)].forEach(x => box.append(x));
+        [header, bar, this._buildList(param)].forEach(x => box.append(x));
         this.set_content(box);
     }
 
@@ -274,25 +276,25 @@ var File = class extends DlgBtnBase {
         GObject.registerClass(this);
     }
 
-    constructor(params) {
+    constructor(param) {
         super(new IconLabel('document-open-symbolic'), Gio.File.$gtype, true);
-        if(params?.select_folder) params.filter = { mime_types:  ['inode/directory'] };
-        if(params?.filter) this._filter = new Gtk.FileFilter(params.filter);
-        this._params = params;
+        if(param?.select_folder) param.filter = { mime_types:  ['inode/directory'] };
+        if(param?.filter) this._filter = new Gtk.FileFilter(param.filter);
+        this._param = param;
     }
 
     _buildDialog() {
         this._dlg = new Gtk.FileDialog({ modal: true });
-        if(this._params?.title) this._dlg.set_title(this._params.title);
+        if(this._param?.title) this._dlg.set_title(this._param.title);
         if(this._filter) this._dlg.set_default_filter(this._filter);
     }
 
-    _onDrop(_t, x) {
+    _onDrop(_t, value) {
         if(!this._filter) {
-            this.value = x;
+            this.value = value;
         } else {
-            fquery(x, Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME, Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE).then(y => {
-                if(this._filter.match(y)) this.value = x; else throw new Error();
+            fquery(value, Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME, Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE).then(y => {
+                if(this._filter.match(y)) this.value = value; else raise();
             }).catch(() => { // NOTE: issue for folder - https://gitlab.gnome.org/GNOME/gtk/-/issues/5348
                 this.get_root().add_toast(new Adw.Toast({ title: _('Mismatched filetype'), timeout: 5 }));
             });
@@ -313,7 +315,7 @@ var File = class extends DlgBtnBase {
 
     _onClick() {
         if(!this._dlg) this._buildDialog();
-        return this._dlg[this._params?.select_folder ? 'select_folder' : 'open'](this.get_root(), null);
+        return this._dlg[this._param?.select_folder ? 'select_folder' : 'open'](this.get_root(), null);
     }
 
     _setInfo(icon, text, value) {
@@ -333,9 +335,9 @@ var Icon = class extends File {
 
     _showValue(v) {
         fquery(this._gvalue, Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME, Gio.FILE_ATTRIBUTE_STANDARD_ICON).then(x => {
-            let name = GLib.basename(x.get_display_name()).replace('.svg', '');
+            let name = GLib.basename(x.get_display_name()).replace(/\.svg$/, '');
             let icon = Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon(name) ? name : '';
-            this._setInfo(icon || x.get_icon(), x.get_display_name().replace(RegExp(/(-symbolic)*.svg$/), ''), v);
+            this._setInfo(icon || x.get_icon(), x.get_display_name().replace(RegExp(/(-symbolic)*\.svg$/), ''), v);
         }).catch(() => this._setInfo('', null, v));
     }
 };
@@ -358,9 +360,9 @@ var Keys = class extends Gtk.Button {
     _buildDialog() {
         let content = new Adw.StatusPage({ title: _GTK('New accelerator…'), icon_name: 'preferences-desktop-keyboard-shortcuts-symbolic' });
         this._dlg = new Adw.Window({ modal: true, hide_on_close: true, width_request: 480, height_request: 320, content });
-        let ctl = new Gtk.EventControllerKey();
-        ctl.connect('key-pressed', this._onKeyPressed.bind(this));
-        this._dlg.add_controller(ctl);
+        let eck = new Gtk.EventControllerKey();
+        eck.connect('key-pressed', this._onKeyPressed.bind(this));
+        this._dlg.add_controller(eck);
     }
 
     _onClick() {

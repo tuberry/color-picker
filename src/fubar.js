@@ -5,13 +5,13 @@
 
 const { Gio } = imports.gi;
 const { EventEmitter } = imports.misc.signals;
-const { TransientSignalHolder } = imports.misc.signalTracker;
+const SignalTracker = imports.misc.signalTracker;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { omap } = Me.imports.util;
+const { omap, raise } = Me.imports.util;
 
-var onus = o => o instanceof DEventEmitter ? o.$scapegoat : o;
 var omit = (o, ...ks) => ks.forEach(k => { o[k]?.destroy?.(); o[k] = null; });
+var onus = o => [o, o.$scapegoat].find(x => SignalTracker._hasDestroySignal(x)) ?? raise('undestroyable');
 
 function symbiose(host, doom, obj) {
     if(doom) new Symbiont(host, doom);
@@ -21,7 +21,7 @@ function symbiose(host, doom, obj) {
 var DEventEmitter = class extends EventEmitter {
     constructor() {
         super();
-        this.$scapegoat = new TransientSignalHolder(this);
+        this.$scapegoat = new SignalTracker.TransientSignalHolder(this);
     }
 
     destroy() {
@@ -74,12 +74,9 @@ var Fulu = class {
     }
 
     attach(ps, a, n) { // n && ps <- { fulu: [key, type, output] }
-        if(!this.prop.has(a)) this.prop.set(a, ps);
-        else Object.assign(this.prop.get(a), ps);
+        this.prop.has(a) ? Object.assign(this.prop.get(a), ps) : this.prop.set(a, ps);
         let cb = n ? x => { a[n] = [x, this.get(x, a), this.prop.get(a)[x][2]]; } : x => { a[x] = this.get(x, a); };
-        let fs = Object.entries(ps);
-        fs.forEach(([k]) => cb(k));
-        this.gset.connectObject(...fs.flatMap(([k, [x]]) => [`changed::${x}`, () => cb(k)]), onus(a));
+        Object.entries(ps).forEach(([k, [x]]) => { cb(k); this.gset.connectObject(`changed::${x}`, () => cb(k), onus(a)); });
         return this;
     }
 

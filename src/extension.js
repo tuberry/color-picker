@@ -45,12 +45,12 @@ class Color {
         return this._text_format ?? (this._text_format = this.toFormat(this.text));
     }
 
-    toFormat(x) {
-        if(x.startsWith('#')) return Format.HEX;
-        else if(x.startsWith('rgb')) return Format.RGB;
-        else if(x.startsWith('hsl')) return Format.HSL;
-        else if(x.startsWith('hsv')) return Format.HSV;
-        else if(x.startsWith('cmyk')) return Format.CMYK;
+    toFormat(text) {
+        if(text.startsWith('#')) return Format.HEX;
+        else if(text.startsWith('rgb')) return Format.RGB;
+        else if(text.startsWith('hsl')) return Format.HSL;
+        else if(text.startsWith('hsv')) return Format.HSV;
+        else if(text.startsWith('cmyk')) return Format.CMYK;
         else return Format.hex;
     }
 
@@ -65,26 +65,26 @@ class Color {
         }
     }
 
-    toColor(t, f) {
-        switch(f) {
+    toColor(text, format) {
+        switch(format) {
         case Format.HEX:
         case Format.RGB:
-            return Clutter.Color.from_string(t).at(1);
+            return Clutter.Color.from_string(text).at(1);
         case Format.HSL: {
-            let [h, s, l] = t.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
+            let [h, s, l] = text.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
             return Clutter.Color.from_hls(h, l, s);
         }
         case Format.HSV: {
-            let [h, s, v] = t.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
+            let [h, s, v] = text.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
             let { h: hue, s: sat, l } = this.hsv2hsl({ h, s, v });
             return Clutter.Color.from_hls(hue, l, sat);
         }
         case Format.CMYK: {
-            let [c, m, y, k] = t.slice(5, -1).split(',').map(v => parseInt(v));
+            let [c, m, y, k] = text.slice(5, -1).split(',').map(v => parseInt(v));
             let { r, g, b } = this.cmyk2rgb({ c, m, y, k });
             return new Clutter.Color({ red: r, green: g, blue: b });
         }
-        default: return Clutter.Color.from_string(`#${t}`).at(1);
+        default: return Clutter.Color.from_string(`#${text}`).at(1);
         }
     }
 

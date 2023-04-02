@@ -10,7 +10,7 @@ const PopupMenu = imports.ui.popupMenu;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 
-var gicon = x => Gio.Icon.new_for_string('%s/icons/hicolor/scalable/status/%s.svg'.format(Me.dir.get_path(), x));
+var gicon = x => Gio.Icon.new_for_string(`${Me.dir.get_path()}/icons/hicolor/scalable/status/${x}.svg`);
 
 var TrayIcon = class extends St.Icon {
     static {
@@ -28,8 +28,8 @@ var StButton = class extends St.Button {
         GObject.registerClass(this);
     }
 
-    constructor(params, callback) {
-        super(params);
+    constructor(param, callback) {
+        super(param);
         this.connect('clicked', callback);
     }
 };
@@ -39,8 +39,8 @@ var SwitchItem = class extends PopupMenu.PopupSwitchMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(text, active, callback, params) {
-        super(text, active, params);
+    constructor(text, active, callback, param) {
+        super(text, active, param);
         this.connect('toggled', (_x, y) => callback(y));
     }
 };
@@ -50,10 +50,10 @@ var IconItem = class extends PopupMenu.PopupBaseMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(style_class, cbs) {
+    constructor(style_class, callbacks) {
         super({ activate: false });
         this._box = new St.BoxLayout({ x_align: St.Align.START, x_expand: true });
-        cbs.forEach(([icon_name, callback]) => this._box.add_child(new StButton({
+        callbacks.forEach(([icon_name, callback]) => this._box.add_child(new StButton({
             child: new St.Icon({ icon_name, style_class: 'popup-menu-icon' }), x_expand: true, style_class,
         }, callback)));
         this.add_child(this._box);
@@ -69,8 +69,8 @@ var MenuItem = class extends PopupMenu.PopupMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(text, callback, params) {
-        super(text, params);
+    constructor(text, callback, param) {
+        super(text, param);
         this.connect('activate', callback);
     }
 
@@ -84,12 +84,12 @@ var RadioItem = class extends PopupMenu.PopupSubMenuMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(name, ms, m, cb) {
+    constructor(name, enums, enum_, callback) {
         super('');
-        this._enum = ms;
+        this._enum = enums;
         this._name = name;
-        Object.entries(ms).forEach(([k, v]) => this.menu.addMenuItem(new MenuItem(v, () => cb(k))));
-        this.setSelected(m);
+        Object.entries(enums).forEach(([k, v]) => this.menu.addMenuItem(new MenuItem(v, () => callback(k))));
+        this.setSelected(enum_);
     }
 
     setSelected(m) {
@@ -104,24 +104,24 @@ var DRadioItem = class extends PopupMenu.PopupSubMenuMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(name, list, index, cb1, cb2) {
+    constructor(name, list, index, click, select) {
         super('');
         this._name = name;
-        this._cb1 = cb1;
-        this._cb2 = cb2 || (x => this._list[x]);
+        this._onClick = click;
+        this._onSelect = select || (x => this._list[x]);
         this.setList(list, index);
     }
 
     setSelected(index) {
         this._index = index;
-        this.label.set_text(`${this._name}：${this._cb2(this._index) || ''}`);
+        this.label.set_text(`${this._name}：${this._onSelect(this._index) || ''}`);
         this.menu._getMenuItems().forEach((y, i) => y.setOrnament(index === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
     }
 
     setList(list, index) {
         let items = this.menu._getMenuItems();
         let diff = list.length - items.length;
-        if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => this._cb1(items.length + a)));
+        if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => this._onClick(items.length + a)));
         else if(diff < 0) for(let a = 0; a > diff; a--) items.at(a - 1).destroy();
         this._list = list;
         this.menu._getMenuItems().forEach((x, i) => x.setLabel(list[i]));
