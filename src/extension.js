@@ -3,6 +3,7 @@
 /* exported init */
 'use strict';
 
+const Cairo = imports.cairo;
 const Main = imports.ui.main;
 const Slider = imports.ui.slider;
 const PanelMenu = imports.ui.panelMenu;
@@ -15,7 +16,7 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const { Fulu, Extension: Ext, DEventEmitter, symbiose, omit, onus } = Me.imports.fubar;
 const { StButton, MenuItem, RadioItem, IconItem, TrayIcon } = Me.imports.menu;
-const { _, id, ec, omap, bmap, xnor, gerror } = Me.imports.util;
+const { _, id, ec, omap, bmap, array, xnor, gerror } = Me.imports.util;
 const { Field } = Me.imports.const;
 
 const setCursor = x => global.display.set_cursor(Meta.Cursor[x]);
@@ -24,7 +25,9 @@ const genSVG = x => ec(`<svg xmlns="http://www.w3.org/2000/svg" width="16" heigh
   <rect x="2" y="2" width="12" height="12" rx="2" fill="${x}" />
 </svg>`);
 
+const Hsl = { h: 0, s: 2, l: 1 };
 const Notify = { MSG: 0, OSD: 1 };
+const Rgb = { r: 'red', g: 'green', b: 'blue' };
 const Format = bmap({ HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 });
 
 class Color {
@@ -88,8 +91,42 @@ class Color {
         }
     }
 
+    toMarkup(format) { // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
+        let { l } = this.hsl;
+        return ` <span face="monospace" fgcolor="${l > 0.5 ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(format)}</span>`;
+    }
+
+    toStop(type) { // linear gradient color stop
+        let swatch = new Color();
+        swatch.color = this.color.copy();
+        let stop = n => array(n, i => i / n).concat(1); // `n` is the steps
+        switch(type) {
+        case 'r': case 'g': case 'b': return stop(1).map(x => [x].concat(swatch.update(type, x * 255).toRGBA()));
+        case 'h': return stop(12).map(x => [x].concat(swatch.update(type, x * 360).toRGBA()));
+        case 's': return stop(1).reverse().map(x => [x].concat(swatch.update(type, x).toRGBA())); // `s` starts from the end
+        case 'l': return stop(4).sort((a, b) => Math.abs(a - 0.5) - Math.abs(b - 0.5)).map(x => [x].concat(swatch.update(type, x).toRGBA())); // `l` starts from the middle
+        }
+    }
+
+    update(type, value) {
+        switch(type) {
+        case 'r': case 'g': case 'b': this.rgb = { [Rgb[type]]: value }; break;
+        case 'h': case 's': case 'l': this.hsl = { [Hsl[type]]: value }; break;
+        }
+        return this;
+    }
+
+    toRGBA(alpha = 1) {
+        let { red, green, blue } = this.color;
+        return [red, green, blue].map(x => x / 255).concat(alpha);
+    }
+
     get color() {
         return this._color ?? (this._color = this.toColor(this.text, this.text_format));
+    }
+
+    set color(color) {
+        this._color = color;
     }
 
     hsv2hsl({ h, s, v }) {
@@ -119,30 +156,16 @@ class Color {
     rgb2cmyk({ r, g, b }) {
         let cmy = [r, g, b].map(x => 1 - x / 255),
             k = Math.min(...cmy),
-            [c, m, y, k1] = k === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - k) / (1 - k)).concat(k).map(x => Math.round(x * 255));
-        return { c, m, y, k: k1 };
+            [c, m, y, k_] = k === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - k) / (1 - k)).concat(k).map(x => Math.round(x * 255));
+        return { c, m, y, k: k_ };
     }
 
     get cmyk() {
         return this.rgb2cmyk(this.rgb);
     }
 
-    set color(color) {
-        this._color = color;
-    }
-
     set rgb(color) {
-        Object.assign(this._color, color);
-    }
-
-    set hsl(color) { // [h, l, s]
-        let hls = this.color.to_hls();
-        this._color = Clutter.Color.from_hls(...Object.assign(hls, color));
-    }
-
-    get hsl() {
-        let [h, l, s] = this.color.to_hls();
-        return { h, s, l };
+        Object.assign(this.color, color);
     }
 
     get rgb() {
@@ -150,10 +173,14 @@ class Color {
         return { r, g, b };
     }
 
-    toMarkup(fmt) {
-        let { l } = this.hsl;
-        // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-        return ` <span face="monospace" fgcolor="${Math.round(l) ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(fmt)}</span>`;
+    set hsl(color) { // [h, l, s]
+        let hls = this.color.to_hls();
+        this.color = Clutter.Color.from_hls(...Object.assign(hls, color));
+    }
+
+    get hsl() {
+        let [h, l, s] = this.color.to_hls();
+        return { h, s, l };
     }
 }
 
@@ -202,9 +229,10 @@ class ColorSlider extends Slider.Slider {
         GObject.registerClass(this);
     }
 
-    constructor(number, base, callback) {
+    constructor(number, base, callback, getSource) {
         super(number / base);
         this.base = base;
+        this.getSource = getSource;
         this.step = base > 1 ? 1 / base : 0.01;
         this.connect('notify::value', () => (this._dragging || this.get_parent().active) && callback(this.number));
     }
@@ -214,7 +242,39 @@ class ColorSlider extends Slider.Slider {
     }
 
     set number(number) {
-        this.value = number / this.base;
+        let value = number / this.base;
+        if(value === this.value) this.queue_repaint();
+        else this.value = value;
+    }
+
+    vfunc_repaint() { // ignore border on colorful bg
+        let cr = this.get_context(),
+            [rgba, stop] = this.getSource(),
+            themeNode = this.get_theme_node(),
+            [width, height] = this.get_surface_size(),
+            gradient = new Cairo.LinearGradient(0, 0, width, 0),
+            barLevelHeight = themeNode.get_length('-barlevel-height'),
+            barLevelRadius = Math.min(width, barLevelHeight) / 2;
+        // draw background
+        cr.arc(barLevelRadius, height / 2, barLevelRadius, Math.PI * (1 / 2), Math.PI * (3 / 2));
+        cr.arc(width - barLevelRadius, height / 2, barLevelRadius, Math.PI * 3 / 2, Math.PI / 2);
+        stop.forEach(x => gradient.addColorStopRGBA(...x));
+        cr.setSource(gradient);
+        cr.fill();
+
+        let handleRadius = themeNode.get_length('-slider-handle-radius'),
+            ceiledHandleRadius = Math.ceil(handleRadius),
+            handleX = ceiledHandleRadius + (width - 2 * ceiledHandleRadius) * this._value / this._maxValue,
+            handleY = height / 2;
+        // draw handle
+        cr.setSourceRGBA(...rgba);
+        cr.arc(handleX, handleY, handleRadius, 0, 2 * Math.PI);
+        cr.fill();
+        Clutter.cairo_set_source_color(cr, themeNode.get_foreground_color());
+        cr.arc(handleX, handleY, barLevelRadius, 0, 2 * Math.PI);
+        cr.fill();
+
+        cr.$dispose();
     }
 
     vfunc_key_press_event(event) {
@@ -247,10 +307,10 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(text, number, base, callback) {
+    constructor(text, number, base, callback, getSource) {
         super({ activate: false });
         let label = new St.Label({ text, x_expand: false });
-        this._slider = new ColorSlider(number, base, callback);
+        this._slider = new ColorSlider(number, base, callback, getSource);
         this.connect('button-press-event', (_a, event) => this._slider.startDragging(event));
         this.connect('key-press-event', (_a, event) => this._slider.emit('key-press-event', event));
         this.connect('scroll-event', (_a, event) => this._slider.emit('scroll-event', event));
@@ -280,13 +340,13 @@ class ColorMenu extends PopupMenu.PopupMenu {
         this._menus = {
             HEX: this._genHEXItem(),
             RGB: new PopupMenu.PopupSeparatorMenuItem(),
-            r: new SliderItem('R', r, 255, red => this.setRGB({ red })),
-            g: new SliderItem('G', g, 255, green => this.setRGB({ green })),
-            b: new SliderItem('B', b, 255, blue => this.setRGB({ blue })),
+            r: this._genSliderItem({ r }, 255),
+            g: this._genSliderItem({ g }, 255),
+            b: this._genSliderItem({ b }, 255),
             HSL: new PopupMenu.PopupSeparatorMenuItem(),
-            h: new SliderItem('H', h, 360, x => this.setHSL({ 0: x })),
-            s: new SliderItem('S', s, 1, x => this.setHSL({ 2: x })),
-            l: new SliderItem('L', l, 1, x => this.setHSL({ 1: x })),
+            h: this._genSliderItem({ h }, 360),
+            s: this._genSliderItem({ s }, 1),
+            l: this._genSliderItem({ l }, 1),
             other: new PopupMenu.PopupSeparatorMenuItem(_('Others')),
             HSV: new MenuItem('hsv', () => this._emitSelected(Format.HSV)),
             CMYK: new MenuItem('cmyk', () => this._emitSelected(Format.CMYK)),
@@ -295,12 +355,31 @@ class ColorMenu extends PopupMenu.PopupMenu {
         for(let p in this._menus) this.addMenuItem(this._menus[p]);
     }
 
+    _genSliderItem(initial, base) {
+        let [[type, value]] = Object.entries(initial);
+        let getSource = () => [this.color.toRGBA(), this.color.toStop(type)];
+        return new SliderItem(type.toUpperCase(), value, base, x => this.updateSlider(type, x), getSource);
+    }
+
+    updateSlider(type, value) {
+        this.color.update(type, value);
+        let { rgb, hsl } = this.color;
+        ['r', 'g', 'b'].forEach(x => x === type || this._menus[x].setNumber(rgb[x]));
+        ['h', 'l', 's'].forEach(x => x === type || this._menus[x].setNumber(hsl[x]));
+        this._updateLabelText();
+    }
+
+    _updateLabelText() {
+        this._menus.HEX.label.clutter_text.set_markup(this.color.toMarkup(Format.HEX));
+        ['RGB', 'HSL', 'HSV', 'CMYK'].forEach(x => this._menus[x].label.set_text(this.color.toText(Format[x])));
+    }
+
     _genClipItem() {
         let item = new PopupMenu.PopupMenuItem(_('Read from clipboard'));
         item.activate = () => St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (_c, text) => {
             this.color = new Color(text, Format.HEX);
             this.open(BoxPointer.PopupAnimation.NONE);
-            this.setHSL();
+            this.updateSlider();
         });
         return item;
     }
@@ -316,28 +395,8 @@ class ColorMenu extends PopupMenu.PopupMenu {
     openWith(color) {
         if(this.isOpen) this.close();
         this.color = color;
-        this.setHSL();
+        this.updateSlider();
         this.open(BoxPointer.PopupAnimation.NONE);
-    }
-
-    _updateLabelText() {
-        this._menus.HEX.label.clutter_text.set_markup(this.color.toMarkup(Format.HEX));
-        ['RGB', 'HSL', 'HSV', 'CMYK'].forEach(x => this._menus[x].label.set_text(this.color.toText(Format[x])));
-    }
-
-    setHSL(color = {}) {
-        this.color.hsl = color;
-        let  { rgb, hsl } = this.color;
-        ['r', 'g', 'b'].forEach(x => this._menus[x].setNumber(rgb[x]));
-        ['h', 'l', 's'].forEach((x, i) => !(i in color) && this._menus[x].setNumber(hsl[x]));
-        this._updateLabelText();
-    }
-
-    setRGB(color) {
-        this.color.rgb = color;
-        let { hsl } = this.color;
-        ['h', 'l', 's'].forEach(x => this._menus[x].setNumber(hsl[x]));
-        this._updateLabelText();
     }
 
     _emitSelected(format) {

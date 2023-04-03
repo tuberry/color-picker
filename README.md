@@ -5,7 +5,7 @@ Simple color picker for GNOME Shell.
 [![license]](/LICENSE)
 </br>
 
-![picker](https://user-images.githubusercontent.com/17917040/109381547-08dee980-7916-11eb-8b7f-10f1cf090e8e.png)
+![color-picker-menu](https://user-images.githubusercontent.com/17917040/229520114-8e023786-fe8a-47bc-952e-263b8bf20b69.png)
 
 ## Installation
 

@@ -2,7 +2,7 @@
 // by tuberry
 /* exported fcheck fquery execute noop xnor omap gerror
    gparam _GTK _ fl fn ec dc id fwrite fexist grect lot
-   fread fdelete fcopy denum dtouch access bmap scap
+   fread fdelete fcopy denum dtouch access bmap scap array
  */
 'use strict';
 imports.gi.versions.Soup = '3.0'; // suppress warning in prefs.js
@@ -33,6 +33,7 @@ var fl = (...xs) => Gio.File.new_for_path(fn(...xs));
 var _GTK = imports.gettext.domain('gtk40').gettext;
 var lot = x => x[Math.floor(Math.random() * x.length)];
 var bmap = o => ({ ...o, ...omap(o, ([k, v]) => [[v, k]]) });
+var array = (n, f = id) => Array.from({ length: n }, (_x, i) => f(i));
 var omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
 var scap = s => [...s].map((x, i) => i ? x.toLowerCase() : x.toUpperCase()).join('');
 var gerror = (x, y = '') => new Gio.IOErrorEnum({ code: Gio.IOErrorEnum[x] ?? x, message: y });
