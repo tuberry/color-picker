@@ -443,7 +443,8 @@ class ColorIcon extends St.Icon {
 
     constructor() {
         let effect = new Screenshot.RecolorEffect({ chroma: new Clutter.Color({ red: 80, green: 219, blue: 181 }), threshold: 0.03, smoothing: 0.3 });
-        super({ visible: false, icon_name: 'color-pick', effect, icon_size: Meta.prefs_get_cursor_size() * 1.45 });
+        let gicon = new Gio.FileIcon({ file: Gio.File.new_for_uri('resource:///org/gnome/shell/icons/scalable/actions/color-pick.svg') });
+        super({ visible: false, gicon, effect, icon_size: Meta.prefs_get_cursor_size() * 1.45 });
         Main.layoutManager.addTopChrome(this);
         this._effect = effect;
         this.setCursor(true);
