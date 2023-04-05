@@ -1,6 +1,6 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported fcheck fquery execute noop xnor omap gerror
+/* exported fcheck fquery execute noop xnor omap gerror amap
    gparam _GTK _ fl fn ec dc id fwrite fexist grect lot
    fread fdelete fcopy denum dtouch access bmap scap array
  */
@@ -31,6 +31,7 @@ var ec = x => new TextEncoder().encode(x);
 var fn = (...xs) => GLib.build_filenamev(xs);
 var fl = (...xs) => Gio.File.new_for_path(fn(...xs));
 var _GTK = imports.gettext.domain('gtk40').gettext;
+var amap = (o, f) => omap(o, ([k, v]) => [[k, f(v)]]);
 var lot = x => x[Math.floor(Math.random() * x.length)];
 var bmap = o => ({ ...o, ...omap(o, ([k, v]) => [[v, k]]) });
 var array = (n, f = id) => Array.from({ length: n }, (_x, i) => f(i));

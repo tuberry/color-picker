@@ -8,14 +8,14 @@ const { EventEmitter } = imports.misc.signals;
 const SignalTracker = imports.misc.signalTracker;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { omap, raise } = Me.imports.util;
+const { amap, raise } = Me.imports.util;
 
 var omit = (o, ...ks) => ks.forEach(k => { o[k]?.destroy?.(); o[k] = null; });
 var onus = o => [o, o.$scapegoat].find(x => SignalTracker._hasDestroySignal(x)) ?? raise('undestroyable');
 
 function symbiose(host, doom, obj) {
     if(doom) new Symbiont(host, doom);
-    if(obj) return omap(obj, ([k, v]) => [[k, new Symbiont(host, ...v)]]);
+    if(obj) return amap(obj, v => new Symbiont(host, ...v));
 }
 
 var DEventEmitter = class extends EventEmitter {

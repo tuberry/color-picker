@@ -1,7 +1,9 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported Field */
+/* exported Field Format */
 'use strict';
+
+var Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 };
 
 var Field = {
     MKEY: 'menu-key',
@@ -11,15 +13,15 @@ var Field = {
     MSTL: 'menu-style',
     NTFS: 'notify-style',
     FMT:  'enable-format',
+    HIST: 'color-history',
     NTF:  'enable-notify',
     PVWS: 'preview-style',
-    HIST: 'colors-history',
+    FMTS: 'default-format',
     PVW:  'enable-preview',
     STRY: 'enable-systray',
-    FMTS: 'default-format',
     KEY:  'enable-shortcut',
     PRST: 'persistent-mode',
-    CLCT: 'colors-collection',
+    CLCT: 'color-collection',
     TICN: 'systray-dropper-icon',
     KEYS: 'color-picker-shortcut',
 };

@@ -10,14 +10,15 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const BoxPointer = imports.ui.boxpointer;
 const Screenshot = imports.ui.screenshot;
-const { Gio, St, Shell, GObject, Clutter, Meta } = imports.gi;
+const { Gio, St, Shell, GObject, Clutter, Meta, GLib } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const { Fulu, Extension: Ext, DEventEmitter, symbiose, omit, onus } = Me.imports.fubar;
 const { StButton, MenuItem, RadioItem, IconItem, TrayIcon } = Me.imports.menu;
-const { _, id, ec, omap, bmap, array, xnor, gerror } = Me.imports.util;
-const { Field } = Me.imports.const;
+const { _, ec, omap, bmap, xnor, gerror } = Me.imports.util;
+const { Field, Format: Formats } = Me.imports.const;
+const { Color } = Me.imports.color;
 
 const setCursor = x => global.display.set_cursor(Meta.Cursor[x]);
 const setClipboard = x => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, x);
@@ -25,186 +26,30 @@ const genSVG = x => ec(`<svg xmlns="http://www.w3.org/2000/svg" width="16" heigh
   <rect x="2" y="2" width="12" height="12" rx="2" fill="${x}" />
 </svg>`);
 
-const Hsl = { h: 0, s: 2, l: 1 };
+const Format = bmap(Formats);
 const Notify = { MSG: 0, OSD: 1 };
-const Rgb = { r: 'red', g: 'green', b: 'blue' };
-const Format = bmap({ HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 });
-
-class Color {
-    constructor(text, format) {
-        this.text = text || '#fff';
-        this.format = format;
-    }
-
-    set format(format) {
-        this._format = format;
-    }
-
-    get format() {
-        return this._format ?? this.text_format;
-    }
-
-    get text_format() {
-        return this._text_format ?? (this._text_format = this.toFormat(this.text));
-    }
-
-    toFormat(text) {
-        if(text.startsWith('#')) return Format.HEX;
-        else if(text.startsWith('rgb')) return Format.RGB;
-        else if(text.startsWith('hsl')) return Format.HSL;
-        else if(text.startsWith('hsv')) return Format.HSV;
-        else if(text.startsWith('cmyk')) return Format.CMYK;
-        else return Format.hex;
-    }
-
-    toText(format) {
-        switch(format ?? this.format) {
-        case Format.RGB: return (({ r, g, b }) => `rgb(${r}, ${g}, ${b})`)(this.rgb);
-        case Format.HSL: return (({ h, s, l }) => `hsl(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`)(this.hsl);
-        case Format.HSV: return (({ h, s, v }) => `hsv(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(v * 100)}%)`)(this.hsv);
-        case Format.CMYK: return (({ c, m, y, k }) => `cmyk(${c}, ${m}, ${y}, ${k})`)(this.cmyk);
-        case Format.hex: return this.color.to_string().slice(1, 7);
-        default: return this.color.to_string().slice(0, 7);
-        }
-    }
-
-    toColor(text, format) {
-        switch(format) {
-        case Format.HEX:
-        case Format.RGB:
-            return Clutter.Color.from_string(text).at(1);
-        case Format.HSL: {
-            let [h, s, l] = text.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
-            return Clutter.Color.from_hls(h, l, s);
-        }
-        case Format.HSV: {
-            let [h, s, v] = text.slice(4, -1).split(',').map((x, i) => parseInt(x) / (i ? 100 : 1));
-            let { h: hue, s: sat, l } = this.hsv2hsl({ h, s, v });
-            return Clutter.Color.from_hls(hue, l, sat);
-        }
-        case Format.CMYK: {
-            let [c, m, y, k] = text.slice(5, -1).split(',').map(v => parseInt(v));
-            let { r, g, b } = this.cmyk2rgb({ c, m, y, k });
-            return new Clutter.Color({ red: r, green: g, blue: b });
-        }
-        default: return Clutter.Color.from_string(`#${text}`).at(1);
-        }
-    }
-
-    toMarkup(format) { // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-        let { l } = this.hsl;
-        return ` <span face="monospace" fgcolor="${l > 0.5 ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(format)}</span>`;
-    }
-
-    toStop(type) { // linear gradient color stop
-        let swatch = new Color();
-        swatch.color = this.color.copy();
-        let stop = n => array(n, i => i / n).concat(1); // `n` is the steps
-        switch(type) {
-        case 'r': case 'g': case 'b': return stop(1).map(x => [x].concat(swatch.update(type, x * 255).toRGBA()));
-        case 'h': return stop(12).map(x => [x].concat(swatch.update(type, x * 360).toRGBA()));
-        case 's': return stop(1).reverse().map(x => [x].concat(swatch.update(type, x).toRGBA())); // `s` starts from the end
-        case 'l': return stop(4).sort((a, b) => Math.abs(a - 0.5) - Math.abs(b - 0.5)).map(x => [x].concat(swatch.update(type, x).toRGBA())); // `l` starts from the middle
-        }
-    }
-
-    update(type, value) {
-        switch(type) {
-        case 'r': case 'g': case 'b': this.rgb = { [Rgb[type]]: value }; break;
-        case 'h': case 's': case 'l': this.hsl = { [Hsl[type]]: value }; break;
-        }
-        return this;
-    }
-
-    toRGBA(alpha = 1) {
-        let { red, green, blue } = this.color;
-        return [red, green, blue].map(x => x / 255).concat(alpha);
-    }
-
-    get color() {
-        return this._color ?? (this._color = this.toColor(this.text, this.text_format));
-    }
-
-    set color(color) {
-        this._color = color;
-    }
-
-    hsv2hsl({ h, s, v }) {
-        let l = v * (1 - s / 2);
-        let sl = l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l);
-        return { h, l, s: sl };
-    }
-
-    // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
-    hsl2hsv({ h, s, l }) {
-        let v = l + s * Math.min(l, 1 - l);
-        let sv = v === 0 ? 0 : 2 * (1 - l / v);
-        return { h, s: sv, v };
-    }
-
-    get hsv() {
-        return this.hsl2hsv(this.hsl);
-    }
-
-    cmyk2rgb({ c, m, y, k }) {
-        [c, m, y, k] = [c, m, y, k].map(x => x / 255);
-        let [r, g, b] = [c, m, y].map(x => Math.round((1 - x * (1 - k) - k) * 255));
-        return { r, g, b };
-    }
-
-    // Ref: https://zh.wikipedia.org/wiki/%E5%8D%B0%E5%88%B7%E5%9B%9B%E5%88%86%E8%89%B2%E6%A8%A1%E5%BC%8F
-    rgb2cmyk({ r, g, b }) {
-        let cmy = [r, g, b].map(x => 1 - x / 255),
-            k = Math.min(...cmy),
-            [c, m, y, k_] = k === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - k) / (1 - k)).concat(k).map(x => Math.round(x * 255));
-        return { c, m, y, k: k_ };
-    }
-
-    get cmyk() {
-        return this.rgb2cmyk(this.rgb);
-    }
-
-    set rgb(color) {
-        Object.assign(this.color, color);
-    }
-
-    get rgb() {
-        let { red: r, green: g, blue: b } = this.color;
-        return { r, g, b };
-    }
-
-    set hsl(color) { // [h, l, s]
-        let hls = this.color.to_hls();
-        this.color = Clutter.Color.from_hls(...Object.assign(hls, color));
-    }
-
-    get hsl() {
-        let [h, l, s] = this.color.to_hls();
-        return { h, s, l };
-    }
-}
 
 class ColorItem extends MenuItem {
     static {
         GObject.registerClass(this);
     }
 
-    constructor(item, callback) {
-        super('', () => setClipboard(this._color.text));
+    constructor(callback, item) {
+        super('', () => setClipboard(this._color.toText()));
         this.label.set_x_expand(true);
         this._btn = new StButton({
             child: new St.Icon({ style_class: 'popup-menu-icon' }), style_class: 'color-picker-setting',
-        }, () => callback(this._color.text));
+        }, () => callback(this._color.pixel));
         this.add_child(this._btn);
         this.setItem(item);
     }
 
     setItem(item) {
         if(!item) return;
-        let [text, icon] = item;
+        let [icon, pixel] = item;
         this._btn.child.set_icon_name(icon ? 'starred-symbolic' : 'non-starred-symbolic');
-        if(this._color?.text === text) return;
-        this._color = new Color(text);
+        if(this._color?.equal(pixel)) return;
+        this._color = new Color(pixel);
         this.label.clutter_text.set_markup(this._color.toMarkup());
     }
 }
@@ -218,7 +63,7 @@ class ColorSection extends PopupMenu.PopupMenuSection {
     setList(list, callback) {
         let items = this._getMenuItems();
         let diff = list.length - items.length;
-        if(diff > 0) for(let a = 0; a < diff; a++) this.addMenuItem(new ColorItem(null, callback));
+        if(diff > 0) for(let a = 0; a < diff; a++) this.addMenuItem(new ColorItem(callback));
         else if(diff < 0) for(let a = 0; a > diff; a--) items.at(a - 1).destroy();
         this._getMenuItems().forEach((x, i) => x.setItem(list[i]));
     }
@@ -455,7 +300,7 @@ class ColorIcon extends St.Icon {
     }
 
     setColor(x, y, color) {
-        this._effect.color = color.color;
+        this._effect.color = color;
         this.set_position(x, y);
         this.show();
     }
@@ -476,7 +321,7 @@ class ColorArea extends St.Widget {
         setCursor('CROSSHAIR');
         this.once = once ?? false;
         this._picker = new Shell.Screenshot();
-        this._color = new Color(null, format ?? Format.HEX);
+        this._color = new Color(format);
         this._pointer = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         symbiose(this, () => { setCursor('DEFAULT'); omit(this, 'preview', '_pointer', '_picker'); });
         this.connect('popup-menu', () => this._menu?.open(this._color));
@@ -497,8 +342,9 @@ class ColorArea extends St.Widget {
     async _pick(emit) {
         try {
             let [x, y] = global.get_pointer();
-            [this._color.color] = await this._picker.pick_color(x, y);
-            this._view?.setColor(x, y, this._color);
+            let [color] = await this._picker.pick_color(x, y);
+            this._color.fromClutter(color);
+            this._view?.setColor(x, y, this.pvstyle ? this._color : color);
             if(emit) this._emitColor();
         } catch(e) {
             this.emit('end-pick');
@@ -602,15 +448,15 @@ class ColorButton extends PanelMenu.Button {
             icon_name:  [Field.TICN, 'string'],
             menu_size:  [Field.MSIZ, 'uint'],
         }, this).attach({
-            collect:    [Field.CLCT, 'string', x => x.split('|').filter(id)],
-            history:    [Field.HIST, 'string', x => x.split('|').filter(id)],
+            collect:    [Field.CLCT, 'value', x => x.deepUnpack()],
+            history:    [Field.HIST, 'value', x => x.deepUnpack()],
             menu_style: [Field.MSTL, 'boolean'],
         }, this, 'section');
     }
 
     set section([k, v, out]) {
         this[k] = out ? out(v) : v;
-        this._menus?.section.setList(this.getSection());
+        this._menus?.section.setList(...this.getSection());
     }
 
     set format(format) {
@@ -630,9 +476,9 @@ class ColorButton extends PanelMenu.Button {
 
     _addMenuItems() {
         this._menus = {
-            format:  new RadioItem(_('Default format'), omap(Format, ([k, v]) => [[v, k]]), this._format, x => this._fulu.set('format', x, this)),
+            format:  new RadioItem(_('Default format'), omap(Format, ([k, v]) => isNaN(k) ? [[v, k]] : []), this._format, x => this._fulu.set('format', x, this)),
             sep0:    new PopupMenu.PopupSeparatorMenuItem(),
-            section: new ColorSection(this.getSection(), x => this._starColor(x)),
+            section: new ColorSection(...this.getSection()),
             sep1:    new PopupMenu.PopupSeparatorMenuItem(),
             prefs:   new IconItem('color-picker-setting', [
                 ['find-location-symbolic', () => { this.menu.close(); this._callback(); }],
@@ -645,18 +491,22 @@ class ColorButton extends PanelMenu.Button {
     }
 
     getSection() {
-        return this.menu_style ? this.collect.map(x => [x, true]) : this.history.map(x => [x, this.collect.includes(x)]);
+        return [this.menu_style ? this.collect.map(x => [true, x]) : this.history.map(x => [this.collect.includes(x), x]), x => this._starColor(x)];
     }
 
     _starColor(color) {
         if(this.collect.includes(color)) {
             this.collect.splice(this.collect.indexOf(color), 1);
-            this._fulu.set('collect', this.collect.join('|'), this);
+            this._fulu.set('collect', new GLib.Variant('at', this.collect), this);
         } else {
-            let collect = [color, ...this.collect];
-            while(collect.length > this.menu_size) collect.pop();
-            this._fulu.set('collect', collect.join('|'), this);
+            let collect = [color, ...this.collect].slice(0, this.menu_size);
+            this._fulu.set('collect', new GLib.Variant('at', collect), this);
         }
+    }
+
+    _addHistory(color) {
+        let history = [color, ...this.history].slice(0, this.menu_size);
+        this._fulu.set('history', new GLib.Variant('at', history), this);
     }
 
     vfunc_event(event) {
@@ -688,7 +538,6 @@ class ColorPicker extends DEventEmitter {
         this._fulu.attach({
             format:        [Field.FMTS, 'uint'],
             enable_fmt:    [Field.FMT,  'boolean'],
-            history:       [Field.HIST, 'string'],
             systray:       [Field.STRY, 'boolean'],
             auto_copy:     [Field.COPY, 'boolean'],
             shortcut:      [Field.KEY,  'boolean'],
@@ -724,23 +573,17 @@ class ColorPicker extends DEventEmitter {
         omit(this, '_area');
     }
 
-    inform(_a, cl) {
-        let color = cl.toText();
-        this._picked.push(color);
-        if(this._btn) this._addHistory(color);
+    inform(_a, color) {
+        let text = color.toText();
+        this._picked.push(text);
+        this._btn?._addHistory(color.pixel);
         if(!this.enable_notify) return;
         if(this.notify_style === Notify.MSG) {
-            Main.notify(Me.metadata.name, _('%s is picked.').format(color));
+            Main.notify(Me.metadata.name, _('%s is picked.').format(text));
         } else {
-            let icon = Gio.BytesIcon.new(genSVG(cl.toText(Format.HEX)));
-            Main.osdWindowManager.show(global.display.get_current_monitor(), icon, color, null, 2);
+            let icon = Gio.BytesIcon.new(genSVG(color.toText(Format.HEX)));
+            Main.osdWindowManager.show(global.display.get_current_monitor(), icon, text, null, 2);
         }
-    }
-
-    _addHistory(color) {
-        let history = [color, ...this.history.split('|').filter(id)];
-        while(history.length > this.menu_size) history.pop();
-        this._fulu.set('history', history.join('|'), this);
     }
 
     pickAsync() {

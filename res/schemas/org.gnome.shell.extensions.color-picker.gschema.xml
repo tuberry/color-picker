@@ -41,13 +41,13 @@
             <default>""</default>
             <summary>key to quit picking</summary>
         </key>
-        <key type="s" name="colors-history">
-            <default>""</default>
-            <summary>picked colors history</summary>
+        <key type="at" name="color-history">
+            <default>[]</default>
+            <summary>picked color history</summary>
         </key>
-        <key type="s" name="colors-collection">
-            <default>""</default>
-            <summary>picked colors collection</summary>
+        <key type="at" name="color-collection">
+            <default>[]</default>
+            <summary>picked color collection</summary>
         </key>
         <key type="s" name="systray-dropper-icon">
             <default>""</default>
