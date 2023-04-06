@@ -476,7 +476,7 @@ class ColorButton extends PanelMenu.Button {
 
     _addMenuItems() {
         this._menus = {
-            format:  new RadioItem(_('Default format'), omap(Format, ([k, v]) => isNaN(k) ? [[v, k]] : []), this._format, x => this._fulu.set('format', x, this)),
+            format:  new RadioItem(_('Default format'), omap(Formats, ([k, v]) => [[v, k]]), this._format, x => this._fulu.set('format', x, this)),
             sep0:    new PopupMenu.PopupSeparatorMenuItem(),
             section: new ColorSection(...this.getSection()),
             sep1:    new PopupMenu.PopupSeparatorMenuItem(),

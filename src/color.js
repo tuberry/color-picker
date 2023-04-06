@@ -6,8 +6,8 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
 const { array, amap } = Me.imports.util;
 const { Format } = Me.imports.const;
 
-const luminate = ({ r, g, b }) =>  Math.sqrt(0.299 * r * r  + 0.587 * g * g + 0.114 * b * b) / 255;
-const rgb2hex = ({ r, g, b }) => [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+const f2cent = x => `${Math.round(x * 100)}%`; // 0.111 => '11%'
+const luminate = ({ r, g, b }) => Math.sqrt(0.299 * r * r  + 0.587 * g * g + 0.114 * b * b) / 255;
 
 // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
 function rgb2hsv(rgb) {
@@ -51,15 +51,14 @@ function hsv2hsl({ h, s, v }) {
 }
 
 // Ref: http://www.easyrgb.com/en/math.php
-function cmyk2rgb(cmyk) {
-    let { c, m, y, k } = amap(cmyk, x => x / 255);
+function cmyk2rgb({ c, m, y, k }) {
     return amap({ r: c, g: m, b: y }, x => (1 - x * (1 - k) - k) * 255);
 }
 
 function rgb2cmyk({ r, g, b }) {
     let cmy = [r, g, b].map(x => 1 - x / 255),
         n = Math.min(...cmy.values()),
-        [c, m, y, k] = n === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - n) / (1 - n)).concat(n).map(x => x * 255);
+        [c, m, y, k] = n === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - n) / (1 - n)).concat(n);
     return { c, m, y, k };
 }
 
@@ -93,7 +92,7 @@ var Color = class {
     }
 
     get rgb() {
-        return { r: this.#pixel >> 24 & 0xff, g: this.#pixel >> 16 & 0xff, b: this.#pixel >> 8 & 0xff };
+        return { r: this.#pixel >>> 24 & 0xff, g: this.#pixel >>> 16 & 0xff, b: this.#pixel >>> 8 & 0xff };
     }
 
     set hsv(hsv) {
@@ -139,11 +138,11 @@ var Color = class {
     toText(format) {
         switch(format ?? this.format) {
         case Format.RGB: return (({ r, g, b }) => `rgb(${r}, ${g}, ${b})`)(this.rgb);
-        case Format.HSL: return (({ h, s, l }) => `hsl(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`)(this.hsl);
-        case Format.HSV: return (({ h, s, v }) => `hsv(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(v * 100)}%)`)(this.hsv);
-        case Format.CMYK: return (({ c, m, y, k }) => `cmyk(${c}, ${m}, ${y}, ${k})`)(amap(this.cmyk, Math.round));
-        case Format.hex: return rgb2hex(this.rgb);
-        default: return `#${rgb2hex(this.rgb)}`;
+        case Format.HSL: return (({ h, s, l }) => `hsl(${Math.round(h)}, ${f2cent(s)}, ${f2cent(l)})`)(this.hsl);
+        case Format.HSV: return (({ h, s, v }) => `hsv(${Math.round(h)}, ${f2cent(s)}, ${f2cent(v)})`)(this.hsv);
+        case Format.CMYK: return (({ c, m, y, k }) => `cmyk(${c}, ${m}, ${y}, ${k})`)(amap(this.cmyk, f2cent));
+        case Format.hex: return (this.#pixel >>> 8).toString(16).padStart(6, '0');
+        default: return `#${(this.#pixel >>> 8).toString(16).padStart(6, '0')}`;
         }
     }
 
