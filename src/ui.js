@@ -9,7 +9,7 @@
 const { Adw, Gtk, Gdk, GObject, Gio, Pango, GLib } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { _, _GTK, fl, raise, omap, noop, gparam, fquery } = Me.imports.util;
+const { _, _GTK, fl, raise, omap, noop, gprops, fquery } = Me.imports.util;
 const { Field } = Me.imports.const;
 
 var grgba = x => (c => [c.parse(x ?? ''), c])(new Gdk.RGBA());
@@ -52,12 +52,12 @@ var Drop = class extends Gtk.DropDown {
     }
 };
 
-var Font = class extends Gtk.FontDialogButton {
+var Font = class extends Gtk.FontDialogButton { // FIXME: ?? not activatable by upstream design
     static {
         GObject.registerClass({
-            Properties: {
-                value: gparam('string', 'value', ''),
-            },
+            Properties: gprops({
+                value: ['string', ''],
+            }),
         }, this);
     }
 
@@ -75,12 +75,12 @@ var Font = class extends Gtk.FontDialogButton {
     }
 };
 
-var Color = class extends Gtk.ColorDialogButton {
+var Color = class extends Gtk.ColorDialogButton { // FIXME: ?? not activatable by upstream design
     static {
         GObject.registerClass({
-            Properties: {
-                value: gparam('string', 'value', ''),
-            },
+            Properties: gprops({
+                value: ['string', ''],
+            }),
         }, this);
     }
 
@@ -183,9 +183,9 @@ var AppDialog = class extends Adw.Window {
 var DlgBtnBase = class extends Box {
     static {
         GObject.registerClass({
-            Properties: {
-                value: gparam('string', 'value', ''),
-            },
+            Properties: gprops({
+                value: ['string', ''],
+            }),
             Signals: {
                 changed: { param_types: [GObject.TYPE_STRING] },
             },
@@ -441,9 +441,9 @@ var PrefRow = class extends Adw.ActionRow {
 var LazyEntry = class extends Gtk.Stack {
     static {
         GObject.registerClass({
-            Properties: {
-                text: gparam('string', 'text', ''),
-            },
+            Properties: gprops({
+                text: ['string', ''],
+            }),
             Signals: {
                 changed: { param_types: [GObject.TYPE_STRING] },
             },

@@ -14,7 +14,7 @@ const { Gio, St, Shell, GObject, Clutter, Meta, GLib } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { Fulu, Extension: Ext, DEventEmitter, symbiose, omit, onus } = Me.imports.fubar;
+const { Fulu, Extension: Ext, DummyActor, symbiose, omit, onus } = Me.imports.fubar;
 const { StButton, MenuItem, RadioItem, IconItem, TrayIcon } = Me.imports.menu;
 const { _, ec, omap, bmap, xnor, gerror } = Me.imports.util;
 const { Field, Format: Formats } = Me.imports.const;
@@ -518,7 +518,7 @@ class ColorButton extends PanelMenu.Button {
     }
 }
 
-class ColorPicker extends DEventEmitter {
+class ColorPicker extends DummyActor {
     constructor() {
         super();
         this._buildWidgets();

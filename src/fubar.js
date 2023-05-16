@@ -1,6 +1,6 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported DEventEmitter Extension Fulu symbiose omit onus */
+/* exported DummyActor Extension Fulu symbiose omit onus */
 'use strict';
 
 const { Gio } = imports.gi;
@@ -18,7 +18,7 @@ function symbiose(host, doom, obj) {
     if(obj) return amap(obj, v => new Symbiont(host, ...v));
 }
 
-var DEventEmitter = class extends EventEmitter {
+var DummyActor = class extends EventEmitter {
     constructor() {
         super();
         this.$scapegoat = new SignalTracker.TransientSignalHolder(this);
@@ -65,12 +65,12 @@ var Fulu = class {
         this.attach(prop, obj, tie);
     }
 
-    get(k, a) {
-        return this.gset[`get_${this.prop.get(a)[k][1]}`](this.prop.get(a)[k][0]);
+    get(p, a) {
+        return (([k, t]) => this.gset[`get_${t}`](k))(this.prop.get(a)[p]);
     }
 
-    set(k, v, a) {
-        this.gset[`set_${this.prop.get(a)[k][1]}`](this.prop.get(a)[k][0], v);
+    set(p, v, a) {
+        (([k, t]) => this.gset[`set_${t}`](k, v))(this.prop.get(a)[p]);
     }
 
     attach(ps, a, n) { // n && ps <- { fulu: [key, type, output] }

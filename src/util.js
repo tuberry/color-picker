@@ -1,8 +1,8 @@
 // vim:fdm=syntax
 // by tuberry
 /* exported fcheck fquery execute noop xnor omap gerror amap
-   gparam _GTK _ fl fn ec dc id fwrite fexist grect lot
-   fread fdelete fcopy denum dtouch access bmap scap array
+   gprops _GTK _ fl fn ec dc id fwrite fexist grect lot
+   fread fdelete fcopy denum dtouch access bmap array scap
  */
 'use strict';
 imports.gi.versions.Soup = '3.0'; // suppress warning in prefs.js
@@ -38,8 +38,8 @@ var array = (n, f = id) => Array.from({ length: n }, (_x, i) => f(i));
 var omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
 var scap = s => [...s].map((x, i) => i ? x.toLowerCase() : x.toUpperCase()).join('');
 var gerror = (x, y = '') => new Gio.IOErrorEnum({ code: Gio.IOErrorEnum[x] ?? x, message: y });
-var gparam = (x, y, ...zs) => GObject.ParamSpec[x](y, y, y, GObject.ParamFlags.READWRITE, ...zs);
-var grect = (width, height, x = 0, y = 0) => new Graphene.Rect({ origin: new Graphene.Point({ x, y }), size: new Graphene.Size({ width, height }) });
+var gprops = o => omap(o, ([k, [x, ...ys]]) => [[k, GObject.ParamSpec[x](k, k, k, GObject.ParamFlags.READWRITE, ...ys)]]);
+var grect = (w, h, x = 0, y = 0) => new Graphene.Rect({ origin: new Graphene.Point({ x, y }), size: new Graphene.Size({ width: w, height: h }) });
 var fquery = (x, ...ys) => x.query_info_async(ys.join(','), Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 var denum = (x, y = STDN) => x.enumerate_children_async(y, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 var fwrite = (x, y) => x.replace_contents_async(ec(y), null, false, Gio.FileCreateFlags.NONE, null);

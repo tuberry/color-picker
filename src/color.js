@@ -7,6 +7,7 @@ const { array, amap } = Me.imports.util;
 const { Format } = Me.imports.const;
 
 const f2cent = x => `${Math.round(x * 100)}%`; // 0.111 => '11%'
+const stop = n => array(n, i => i / n).concat(1); // `n` is the steps
 const luminate = ({ r, g, b }) => Math.sqrt(0.299 * r * r  + 0.587 * g * g + 0.114 * b * b) / 255;
 
 // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
@@ -157,7 +158,6 @@ var Color = class {
 
     toStop(type) { // linear gradient color stop
         let color = new Color(this.#pixel);
-        let stop = n => array(n, i => i / n).concat(1); // `n` is the steps
         switch(type) {
         case 'r': case 'g': case 'b': return stop(1).map(x => [x].concat(color.update(type, x * 255).toRGBA()));
         case 'h': return stop(12).map(x => [x].concat(color.update(type, x * 360).toRGBA()));
