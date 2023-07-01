@@ -15,7 +15,7 @@ const { Gio, St, Shell, GObject, Clutter, Meta, GLib } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const { Fulu, Extension: Ext, DummyActor, symbiose, omit, onus } = Me.imports.fubar;
-const { StButton, MenuItem, RadioItem, IconItem, TrayIcon } = Me.imports.menu;
+const { StButton, IconButton, MenuItem, RadioItem, IconItem, TrayIcon } = Me.imports.menu;
 const { _, ec, omap, bmap, xnor, gerror } = Me.imports.util;
 const { Field, Format: Formats } = Me.imports.const;
 const { Color } = Me.imports.color;
@@ -37,9 +37,7 @@ class ColorItem extends MenuItem {
     constructor(callback, item) {
         super('', () => setClipboard(this._color.toText()));
         this.label.set_x_expand(true);
-        this._btn = new StButton({
-            child: new St.Icon({ style_class: 'popup-menu-icon' }), style_class: 'color-picker-setting',
-        }, () => callback(this._color.pixel));
+        this._btn = new IconButton({ style_class: 'color-picker-setting' }, () => callback(this._color.pixel));
         this.add_child(this._btn);
         this.setItem(item);
     }
@@ -47,7 +45,7 @@ class ColorItem extends MenuItem {
     setItem(item) {
         if(!item) return;
         let [icon, pixel] = item;
-        this._btn.child.set_icon_name(icon ? 'starred-symbolic' : 'non-starred-symbolic');
+        this._btn.setIcon(icon ? 'starred-symbolic' : 'non-starred-symbolic');
         if(this._color?.equal(pixel)) return;
         this._color = new Color(pixel);
         this.label.clutter_text.set_markup(this._color.toMarkup());
@@ -266,11 +264,6 @@ class ColorLabel extends BoxPointer.BoxPointer {
         this._cursor = new Clutter.Actor({ opacity: 0, width: s, height: s });
         symbiose(this, () => omit(this, '_cursor'));
         Main.uiGroup.add_actor(this._cursor);
-        this.setCursor(true);
-    }
-
-    setCursor(cur) {
-        setCursor(cur ? 'CROSSHAIR' : 'DEFAULT');
     }
 
     setColor(x, y, color) {
@@ -287,16 +280,12 @@ class ColorIcon extends St.Icon {
     }
 
     constructor() {
-        let effect = new Screenshot.RecolorEffect({ chroma: new Clutter.Color({ red: 80, green: 219, blue: 181 }), threshold: 0.03, smoothing: 0.3 });
+        let effect = new Screenshot.RecolorEffect({ chroma: new Clutter.Color({ red: 80, green: 219, blue: 181 }), threshold: 0.03, smoothing: 0.2 });
         let gicon = new Gio.FileIcon({ file: Gio.File.new_for_uri('resource:///org/gnome/shell/icons/scalable/actions/color-pick.svg') });
         super({ visible: false, gicon, effect, icon_size: Meta.prefs_get_cursor_size() * 1.45 });
         Main.layoutManager.addTopChrome(this);
         this._effect = effect;
-        this.setCursor(true);
-    }
-
-    setCursor(cur) {
-        setCursor(cur ? 'BLANK' : 'DEFAULT');
+        setCursor('BLANK');
     }
 
     setColor(x, y, color) {
@@ -354,13 +343,12 @@ class ColorArea extends St.Widget {
     set preview(preview) {
         if(xnor(preview, this._view)) return;
         if(preview) {
-            this._pick();
             this._view = this.pvstyle ? new ColorLabel() : new ColorIcon();
-            this._view.setCursor(true);
             this._menu = new ColorMenu(this._view, this);
             this._menu.connectObject('menu-closed', () => this._pick(),
                 'open-state-changed', (_a, open) => this._view?.setCursor(!open),
                 'color-selected', (_a, color) => this._emitColor(color), onus(this));
+            this._pick();
         } else {
             omit(this, '_view', '_menu');
         }
@@ -480,11 +468,11 @@ class ColorButton extends PanelMenu.Button {
             sep0:    new PopupMenu.PopupSeparatorMenuItem(),
             section: new ColorSection(...this.getSection()),
             sep1:    new PopupMenu.PopupSeparatorMenuItem(),
-            prefs:   new IconItem('color-picker-setting', [
-                ['find-location-symbolic', () => { this.menu.close(); this._callback(); }],
-                ['face-cool-symbolic',     () => this._fulu.set('menu_style', !this.menu_style, this)],
-                ['emblem-system-symbolic', () => { this.menu.close(); ExtensionUtils.openPrefs(); }],
-            ]),
+            prefs:   new IconItem('color-picker-setting', {
+                pick: [() => { this.menu.close(); this._callback(); }, 'find-location-symbolic'],
+                star: [() => this._fulu.set('menu_style', !this.menu_style, this), this.menu_style, 'semi-starred-symbolic', 'starred-symbolic'],
+                gear: [() => { this.menu.close(); ExtensionUtils.openPrefs(); }, 'emblem-system-symbolic'],
+            }),
         };
         for(let p in this._menus) this.menu.addMenuItem(this._menus[p]);
         this.enable_fmt = this._enable_fmt;

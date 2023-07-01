@@ -1,7 +1,7 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported TrayIcon StButton IconItem MenuItem
-   DRadioItem RadioItem SwitchItem gicon
+/* exported TrayIcon IconButton IconItem MenuItem
+   DRadioItem RadioItem SwitchItem gicon StatusButton
  */
 'use strict';
 
@@ -9,6 +9,7 @@ const { St, GObject, Gio } = imports.gi;
 const PopupMenu = imports.ui.popupMenu;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
+const { amap } = Me.imports.util;
 
 var gicon = x => Gio.Icon.new_for_string(`${Me.dir.get_path()}/icons/hicolor/scalable/status/${x}.svg`);
 
@@ -31,6 +32,51 @@ var StButton = class extends St.Button {
     constructor(param, callback) {
         super(param);
         this.connect('clicked', callback);
+        this.set_can_focus(true);
+    }
+};
+
+var IconButton = class extends StButton {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(param, callback, icon_name = '') {
+        super(param, callback);
+        this.set_child(new St.Icon({ style_class: 'popup-menu-icon', icon_name }));
+    }
+
+    setIcon(icon) {
+        this.child.set_icon_name(icon);
+    }
+};
+
+var StatusButton = class extends IconButton {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(param, callback, status, on, off) {
+        super(param, callback, status ? on : off);
+        this.connect('clicked', () => this.setIcon({ [on]: off, [off]: on }[this.child.get_icon_name()]));
+    }
+};
+
+var IconItem = class extends PopupMenu.PopupBaseMenuItem {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(style_class, icons) {
+        super({ activate: false });
+        this._icons = amap(icons, x => new (x.length > 2 ? StatusButton : IconButton)({ x_expand: true, style_class }, ...x));
+        let box = new St.BoxLayout({ x_align: St.Align.START, x_expand: true });
+        Object.values(this._icons).forEach(x => box.add_child(x));
+        this.add_child(box);
+    }
+
+    setViz(icon, viz) {
+        this._icons[icon]?.[viz ? 'show' : 'hide']();
     }
 };
 
@@ -42,25 +88,6 @@ var SwitchItem = class extends PopupMenu.PopupSwitchMenuItem {
     constructor(text, active, callback, param) {
         super(text, active, param);
         this.connect('toggled', (_x, y) => callback(y));
-    }
-};
-
-var IconItem = class extends PopupMenu.PopupBaseMenuItem {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(style_class, callbacks) {
-        super({ activate: false });
-        this._box = new St.BoxLayout({ x_align: St.Align.START, x_expand: true });
-        callbacks.forEach(([icon_name, callback]) => this._box.add_child(new StButton({
-            child: new St.Icon({ icon_name, style_class: 'popup-menu-icon' }), x_expand: true, style_class,
-        }, callback)));
-        this.add_child(this._box);
-    }
-
-    setViz(icon, viz) {
-        this._box.get_children().find(x => x.child.gicon.to_string().includes(icon))?.[viz ? 'show' : 'hide']();
     }
 };
 
