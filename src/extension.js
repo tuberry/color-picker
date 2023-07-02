@@ -346,7 +346,7 @@ class ColorArea extends St.Widget {
             this._view = this.pvstyle ? new ColorLabel() : new ColorIcon();
             this._menu = new ColorMenu(this._view, this);
             this._menu.connectObject('menu-closed', () => this._pick(),
-                'open-state-changed', (_a, open) => this._view?.setCursor(!open),
+                'open-state-changed', (_a, open) => setCursor(open ? 'DEFAULT' : this.pvstyle ? 'CROSSHAIR' : 'BLANK'),
                 'color-selected', (_a, color) => this._emitColor(color), onus(this));
             this._pick();
         } else {
@@ -401,8 +401,8 @@ class ColorArea extends St.Widget {
 
     vfunc_button_press_event(event) {
         switch(event.button) {
-        case Clutter.BUTTON_PRIMARY:  this._view ? this._emitColor() : this._pick(true); break;
-        case Clutter.BUTTON_MIDDLE:  this._menu?.openWith(this._color); break;
+        case Clutter.BUTTON_PRIMARY: this._view ? this._emitColor() : this._pick(true); break;
+        case Clutter.BUTTON_MIDDLE: this._menu?.openWith(this._color); break;
         default: this.emit('end-pick'); break;
         }
         return Clutter.EVENT_PROPAGATE;
