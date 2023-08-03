@@ -1,11 +1,10 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported fcheck fquery execute noop xnor omap gerror amap
-   gprops _GTK _ fl fn ec dc id fwrite fexist grect lot
+/* exported fcheck fquery execute noop xnor omap gerror amap lot
+   gprops _GTK _ fopen fname encode decode id fwrite fexist grect
    fread fdelete fcopy denum dtouch access bmap array scap
  */
 'use strict';
-imports.gi.versions.Soup = '3.0'; // suppress warning in prefs.js
 
 const { GObject, Gio, GLib, Soup, Graphene } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -26,13 +25,13 @@ var noop = () => {};
 var xnor = (x, y) => !x === !y;
 var _ = ExtensionUtils.gettext;
 var raise = x => { throw new Error(x); };
-var dc = x => new TextDecoder().decode(x);
-var ec = x => new TextEncoder().encode(x);
-var fn = (...xs) => GLib.build_filenamev(xs);
-var fl = (...xs) => Gio.File.new_for_path(fn(...xs));
+var decode = x => new TextDecoder().decode(x);
+var encode = x => new TextEncoder().encode(x);
+var fname = (...xs) => GLib.build_filenamev(xs);
 var _GTK = imports.gettext.domain('gtk40').gettext;
 var amap = (o, f) => omap(o, ([k, v]) => [[k, f(v)]]);
 var lot = x => x[Math.floor(Math.random() * x.length)];
+var fopen = (...xs) => Gio.File.new_for_path(fname(...xs));
 var bmap = o => ({ ...o, ...omap(o, ([k, v]) => [[v, k]]) });
 var array = (n, f = id) => Array.from({ length: n }, (_x, i) => f(i));
 var omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
@@ -42,9 +41,9 @@ var gprops = o => omap(o, ([k, [x, ...ys]]) => [[k, GObject.ParamSpec[x](k, k, k
 var grect = (w, h, x = 0, y = 0) => new Graphene.Rect({ origin: new Graphene.Point({ x, y }), size: new Graphene.Size({ width: w, height: h }) });
 var fquery = (x, ...ys) => x.query_info_async(ys.join(','), Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 var denum = (x, y = STDN) => x.enumerate_children_async(y, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
-var fwrite = (x, y) => x.replace_contents_async(ec(y), null, false, Gio.FileCreateFlags.NONE, null);
+var fwrite = (x, y) => x.replace_contents_async(encode(y), null, false, Gio.FileCreateFlags.NONE, null);
 var fcopy = (x, y) => x.copy_async(y, Gio.FileCopyFlags.NONE, GLib.PRIORITY_DEFAULT, null, null);
-var fcheck = (...xs) => fquery(xs[0] instanceof Gio.File ? xs[0] : fl(...xs), STDN);
+var fcheck = (...xs) => fquery(xs[0] instanceof Gio.File ? xs[0] : fopen(...xs), STDN);
 var dtouch = x => x.make_directory_async(GLib.PRIORITY_DEFAULT, null);
 var fdelete = x => x.delete_async(GLib.PRIORITY_DEFAULT, null);
 var fexist = (...xs) => fcheck(...xs).catch(noop);
@@ -54,7 +53,7 @@ async function access(method, url, param, session = new Soup.Session()) {
     let msg = param ? Soup.Message.new_from_encoded_form(method, url, Soup.form_encode_hash(param)) : Soup.Message.new(method, url);
     let byt = await session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, null);
     if(msg.statusCode !== Soup.Status.OK) raise(`Unexpected response: ${msg.get_reason_phrase()}`);
-    return dc(byt.get_data());
+    return decode(byt.get_data());
 }
 
 async function execute(cmd) {

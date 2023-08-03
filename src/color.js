@@ -8,7 +8,7 @@ const { Format } = Me.imports.const;
 
 const f2cent = x => `${Math.round(x * 100)}%`; // 0.111 => '11%'
 const stop = n => array(n, i => i / n).concat(1); // `n` is the steps
-const luminate = ({ r, g, b }) => Math.sqrt(0.299 * r * r  + 0.587 * g * g + 0.114 * b * b) / 255;
+const luminate = ({ r, g, b }) => Math.sqrt(0.299 * r * r  + 0.587 * g * g + 0.114 * b * b); // Ref: https://stackoverflow.com/a/596243
 
 // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
 function rgb2hsv(rgb) {
@@ -148,7 +148,7 @@ var Color = class {
     }
 
     toMarkup(format) { // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-        return ` <span face="monospace" fgcolor="${luminate(this.rgb) > 0.5 ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(format)}</span>`;
+        return ` <span face="monospace" fgcolor="${luminate(this.rgb) > 127 ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(format)}</span>`;
     }
 
     toRGBA(alpha = 1) {

@@ -5,7 +5,7 @@ $variant: 'dark';
 $pfx: 'color-picker';
 
 .#{$pfx}-menu {
-    min-width: 18em;
+    .popup-menu-ornament { width: 0 !important; }
 }
 
 .#{$pfx}-label {

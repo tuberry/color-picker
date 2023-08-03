@@ -9,7 +9,7 @@
 const { Adw, Gtk, Gdk, GObject, Gio, Pango, GLib } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { _, _GTK, fl, raise, omap, noop, gprops, fquery } = Me.imports.util;
+const { _, _GTK, fopen, raise, omap, noop, gprops, fquery } = Me.imports.util;
 const { Field } = Me.imports.const;
 
 var grgba = x => (c => [c.parse(x ?? ''), c])(new Gdk.RGBA());
@@ -303,7 +303,7 @@ var File = class extends DlgBtnBase {
 
     _setValue(v) {
         let type = typeof v === 'string';
-        this._gvalue = type ? fl(v) : v;
+        this._gvalue = type ? fopen(v) : v;
         this._value = type ? v : v.get_path() ?? '';
         this._showValue(this._value);
     }
