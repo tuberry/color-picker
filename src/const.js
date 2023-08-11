@@ -1,11 +1,9 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported Field Format */
-'use strict';
 
-var Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 };
+export const Format = { HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5 };
 
-var Field = {
+export const Field = {
     MKEY: 'menu-key',
     QKEY: 'quit-key',
     COPY: 'auto-copy',

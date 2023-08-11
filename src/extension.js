@@ -1,24 +1,26 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported init */
-'use strict';
 
-const Cairo = imports.cairo;
-const Main = imports.ui.main;
-const Slider = imports.ui.slider;
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
-const BoxPointer = imports.ui.boxpointer;
-const Screenshot = imports.ui.screenshot;
-const { Gio, St, Shell, GObject, Clutter, Meta, GLib } = imports.gi;
+import St from 'gi://St';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
+import Cairo from 'gi://cairo';
+import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
+import GObject from 'gi://GObject';
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const { Fulu, Extension, Destroyable, symbiose, omit } = Me.imports.fubar;
-const { StButton, IconButton, MenuItem, RadioItem, IconItem, TrayIcon } = Me.imports.menu;
-const { _, encode, omap, bmap, xnor, gerror } = Me.imports.util;
-const { Field, Format: Formats } = Me.imports.const;
-const { Color } = Me.imports.color;
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
+
+import { Color } from './color.js';
+import { Field, Format as Formats } from './const.js';
+import { encode, omap, bmap, xnor, gerror, gprops, raise } from './util.js';
+import { StButton, IconButton, MenuItem, RadioItem, IconItem, TrayIcon } from './menu.js';
+import { Fulu, BaseExtension, Destroyable, symbiose, omit, onus, _, getSelf } from './fubar.js';
 
 const setCursor = x => global.display.set_cursor(Meta.Cursor[x]);
 const setClipboard = x => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, x);
@@ -121,7 +123,7 @@ class ColorSlider extends Slider.Slider {
     }
 
     vfunc_key_press_event(event) {
-        let key = event.keyval;
+        let key = event.get_key_symbol();
         if(key === Clutter.KEY_Right || key === Clutter.KEY_Left) {
             let delta = key === Clutter.KEY_Right ? this.step : -this.step;
             this.value = Math.clamp(this._value + delta, 0, this._maxValue);
@@ -274,13 +276,74 @@ class ColorLabel extends BoxPointer.BoxPointer {
     }
 }
 
+class RecolorEffect extends Shell.GLSLEffect {
+    // copy from js/ui/screenshot.js since it's private since 45.beta
+    static {
+        GObject.registerClass({
+            Properties: gprops({
+                threshold: ['float', 0, 1, 0],
+                smoothing: ['float', 0, 1, 0],
+                color: ['boxed', Clutter.Color.$gtype],
+                chroma: ['boxed', Clutter.Color.$gtype],
+            }), // chroma -> color
+        }, this);
+    }
+
+    constructor(param) {
+        super(param); // need { threshold, smoothing, chroma }
+        this.color ??= this.chroma.copy();
+        ['color', 'chroma', 'threshold', 'smoothing'].forEach(x => {
+            let _x = `_${x}`;
+            let location = this.get_uniform_location(x);
+            this._updateUniform(x, _x, location);
+            this.connect(`notify::${x}`, () => this._updateUniform(x, _x, location));
+        });
+    }
+
+    _updateUniform(key, _key, location) {
+        if(isNaN(this[key])) {
+            if(this[_key]?.equal(this[key])) return;
+            let { red, green, blue } = this[_key] = this[key].copy();
+            this.set_uniform_float(location, 3, [red / 255, green / 255, blue / 255]);
+        } else {
+            if(this[_key] === this[key]) return;
+            this.set_uniform_float(location, 1, [this[_key] = this[key]]);
+        }
+        this.queue_repaint();
+    }
+
+    vfunc_build_pipeline() {
+        // Conversion parameters from https://en.wikipedia.org/wiki/YCbCr
+        let dcl = `
+            vec3 rgb2yCrCb(vec3 c) {                                \n
+                float y = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;  \n
+                float cr = 0.7133 * (c.r - y);                      \n
+                float cb = 0.5643 * (c.b - y);                      \n
+                return vec3(y, cr, cb);                             \n
+            }                                                       \n
+            uniform vec3 chroma;                                    \n
+            uniform vec3 color;                                     \n
+            uniform float threshold;                                \n
+            uniform float smoothing;                                \n`;
+        let src = `
+            vec3 mask = rgb2yCrCb(chroma.rgb);                      \n
+            vec3 yCrCb = rgb2yCrCb(cogl_color_out.rgb);             \n
+            float blend = smoothstep(threshold,                     \n
+                                    threshold + smoothing,          \n
+                                    distance(yCrCb.gb, mask.gb));   \n
+            cogl_color_out.rgb =                                    \n
+              mix(color, cogl_color_out.rgb, blend);                \n`;
+        this.add_glsl_snippet(Shell.SnippetHook.FRAGMENT, dcl, src, false);
+    }
+}
+
 class ColorIcon extends St.Icon {
     static {
         GObject.registerClass(this);
     }
 
     constructor() {
-        let effect = new Screenshot.RecolorEffect({ chroma: new Clutter.Color({ red: 80, green: 219, blue: 181 }), threshold: 0.03, smoothing: 0.2 });
+        let effect = new RecolorEffect({ chroma: new Clutter.Color({ red: 80, green: 219, blue: 181 }), threshold: 0.03, smoothing: 0.2 });
         let gicon = new Gio.FileIcon({ file: Gio.File.new_for_uri('resource:///org/gnome/shell/icons/scalable/actions/color-pick.svg') });
         super({ visible: false, gicon, effect, icon_size: Meta.prefs_get_cursor_size() * 1.45 });
         Main.layoutManager.addTopChrome(this);
@@ -299,7 +362,7 @@ class ColorArea extends St.Widget {
     static {
         GObject.registerClass({
             Signals: {
-                end_pick: {},
+                end_pick: { param_types: [GObject.TYPE_BOOLEAN] },
                 notify_color: { param_types: [GObject.TYPE_JSOBJECT] },
             },
         }, this);
@@ -331,13 +394,13 @@ class ColorArea extends St.Widget {
         }, this);
     }
 
-    async _pick(x, y) {
+    async _pickAt([x, y]) {
         try {
             let [color] = await this._picker.pick_color(x, y);
             this._color.fromClutter(color);
             this._view?.setColor(x, y, this.pvstyle ? this._color : color);
         } catch(e) {
-            this.emit('end-pick');
+            this.emit('end-pick', true);
         }
     }
 
@@ -346,8 +409,8 @@ class ColorArea extends St.Widget {
         if(preview) {
             this._view = this.pvstyle ? new ColorLabel() : new ColorIcon();
             this._menu = new ColorMenu(this._view, this);
-            this._menu.connectObject('open-state-changed', (_a, open) => setCursor(open ? 'DEFAULT' : this.pvstyle ? 'CROSSHAIR' : 'BLANK'),
-                'color-selected', (_a, color) => this._emitColor(color), this);
+            this._menu.connectObject('color-selected', (_a, color) => this._emitColor(color),
+                'open-state-changed', (_a, open) => setCursor(open ? 'DEFAULT' : this.pvstyle ? 'CROSSHAIR' : 'BLANK'), onus(this));
         } else {
             omit(this, '_view', '_menu');
         }
@@ -355,16 +418,16 @@ class ColorArea extends St.Widget {
 
     _emitColor(color) {
         this.emit('notify-color', color || this._color);
-        if(!this.persist || this.once) this.emit('end-pick');
+        if(!this.persist || this.once) this.emit('end-pick', false);
     }
 
     vfunc_enter_event(event) {
-        this._pick(event.x, event.y);
+        this._pickAt(event.get_coords());
         return Clutter.EVENT_PROPAGATE;
     }
 
     vfunc_motion_event(event) {
-        this._pick(event.x, event.y);
+        this._pickAt(event.get_coords());
         return Clutter.EVENT_PROPAGATE;
     }
 
@@ -388,23 +451,23 @@ class ColorArea extends St.Widget {
     }
 
     vfunc_key_press_event(event) {
-        let { keyval } = event;
-        if(this.menukey && keyval === Clutter[`KEY_${this.menukey}`]) {
+        let key = event.get_key_symbol();
+        if(this.menukey && key === Clutter[`KEY_${this.menukey}`]) {
             this._menu?.openWith(this._color);
-        } else if(keyval === Clutter.KEY_Escape || this.quitkey && keyval === Clutter[`KEY_${this.quitkey}`]) {
-            this.emit('end-pick');
+        } else if(key === Clutter.KEY_Escape || this.quitkey && key === Clutter[`KEY_${this.quitkey}`]) {
+            this.emit('end-pick', true);
             return Clutter.EVENT_PROPAGATE;
         } else {
-            this._onMoveKeyPressed(keyval);
+            this._onMoveKeyPressed(key);
         }
         return super.vfunc_key_press_event(event);
     }
 
     vfunc_button_press_event(event) {
-        switch(event.button) {
+        switch(event.get_button()) {
         case Clutter.BUTTON_PRIMARY: this._emitColor(); break;
         case Clutter.BUTTON_MIDDLE: this._menu?.openWith(this._color); break;
-        default: this.emit('end-pick'); break;
+        default: this.emit('end-pick', true); break;
         }
         return Clutter.EVENT_PROPAGATE;
     }
@@ -472,7 +535,7 @@ class ColorButton extends PanelMenu.Button {
             prefs:   new IconItem('color-picker-setting', {
                 pick: [() => { this.menu.close(); this._callback(); }, 'find-location-symbolic'],
                 star: [() => this._fulu.set('menu_style', !this.menu_style, this), this.menu_style, 'semi-starred-symbolic', 'starred-symbolic'],
-                gear: [() => { this.menu.close(); ExtensionUtils.openPrefs(); }, 'emblem-system-symbolic'],
+                gear: [() => { this.menu.close(); getSelf().openPreferences(); }, 'emblem-system-symbolic'],
             }),
         };
         for(let p in this._menus) this.menu.addMenuItem(this._menus[p]);
@@ -508,15 +571,15 @@ class ColorButton extends PanelMenu.Button {
 }
 
 class ColorPicker extends Destroyable {
-    constructor() {
+    constructor(gset) {
         super();
-        this._buildWidgets();
+        this._buildWidgets(gset);
         this._bindSettings();
     }
 
-    _buildWidgets() {
+    _buildWidgets(gset) {
         this._picked = [];
-        this._fulu = new Fulu({}, ExtensionUtils.getSettings(), this);
+        this._fulu = new Fulu({}, gset, this);
         this._sbt = symbiose(this, () => omit(this, 'systray', '_area'), {
             keys: [x => x && Main.wm.removeKeybinding(Field.KEYS), x => x && Main.wm.addKeybinding(Field.KEYS,
                 this._fulu.gset, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this.summon())],
@@ -542,7 +605,7 @@ class ColorPicker extends Destroyable {
 
     set systray(systray) {
         if(xnor(systray, this._btn)) return;
-        if(systray) this._btn = Main.panel.addToStatusArea(Me.metadata.uuid, new ColorButton(this._fulu, () => this.summon(), 0.5, Me.metadata.uuid));
+        if(systray) this._btn = Main.panel.addToStatusArea(getSelf().uuid, new ColorButton(this._fulu, () => this.summon(), 0.5));
         else omit(this, '_btn');
     }
 
@@ -550,7 +613,7 @@ class ColorPicker extends Destroyable {
         if(this._area) return;
         this._btn?.add_style_pseudo_class('busy');
         this._area = new ColorArea({ format: this.enable_fmt ? this.format : null, fulu: this._fulu });
-        this._area.connectObject('end-pick', () => this.dispel(), 'notify-color', this.inform.bind(this), this);
+        this._area.connectObject('end-pick', () => this.dispel(), 'notify-color', this.inform.bind(this), onus(this));
     }
 
     dispel() {
@@ -567,10 +630,10 @@ class ColorPicker extends Destroyable {
         this._btn?._addHistory(color.pixel);
         if(!this.enable_notify) return;
         if(this.notify_style === Notify.MSG) {
-            Main.notify(Me.metadata.name, _('%s is picked.').format(text));
+            Main.notify(getSelf().metadata.name, _('%s is picked.').format(text));
         } else {
             let icon = Gio.BytesIcon.new(genColorSwatch(color.toText(Format.HEX)));
-            Main.osdWindowManager.show(global.display.get_current_monitor(), icon, text, null, 2);
+            Main.osdWindowManager.show(global.display.get_current_monitor(), icon, text);
         }
     }
 
@@ -580,8 +643,8 @@ class ColorPicker extends Destroyable {
                 if(this._area) throw gerror('FAILED', 'Cannot start picking');
                 this._btn?.add_style_pseudo_class('busy');
                 this._area = new ColorArea({ once: true, fulu: this._fulu });
-                this._area.connectObject('end-pick', () => { this.dispel(); throw gerror('CANCELLED', 'Cancelled'); },
-                    'notify-color', (_a, color) => resolve(color.toText(Format.HEX)), this);
+                this._area.connectObject('end-pick', (_a, except) => { this.dispel(); if(except) raise('aborted'); },
+                    'notify-color', (_a, color) => resolve(color.toText(Format.HEX)), onus(this));
             } catch(e) {
                 reject(e);
             }
@@ -589,9 +652,11 @@ class ColorPicker extends Destroyable {
     }
 }
 
-function init() {
-    let ext = new Extension(ColorPicker);
+export default class Extension extends BaseExtension {
+    $klass = ColorPicker;
     // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
-    ext.pickAsync = () => ext._delegate?.pickAsync();
-    return ext;
+    pickAsync() {
+        if(!this.$delegate) raise('disabled');
+        return this.$delegate.pickAsync();
+    }
 }

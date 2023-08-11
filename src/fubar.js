@@ -1,39 +1,43 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported Destroyable Extension Fulu symbiose omit initLightProxy */
-'use strict';
 
-const { Gio, GLib } = imports.gi;
-const { EventEmitter } = imports.misc.signals;
-const SignalTracker = imports.misc.signalTracker;
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 
-const { loadInterfaceXML } = imports.misc.fileUtils;
-const { amap } = Me.imports.util;
+import { EventEmitter } from 'resource:///org/gnome/shell/misc/signals.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import { loadInterfaceXML } from 'resource:///org/gnome/shell/misc/fileUtils.js';
+import { TransientSignalHolder } from 'resource:///org/gnome/shell/misc/signalTracker.js';
 
-var omit = (o, ...ks) => ks.forEach(k => { o[k]?.destroy?.(); o[k] = null; });
+import { amap, raise } from './util.js';
 
-if(!SignalTracker.hasOwnProperty('_Destroyable')) {
-    SignalTracker._Destroyable = class _Destroyable extends EventEmitter {
-        connect_after(...args) {
-            return this.connectAfter(...args);
-        }
+const { gettext: _ } = Extension.defineTranslationFunctions(import.meta.url);
 
-        destroy() {
-            this.emit('destroy');
-        }
-    };
-    let _hasDestroySignal = SignalTracker._hasDestroySignal;
-    SignalTracker._hasDestroySignal = x => _hasDestroySignal(x) || x instanceof SignalTracker._Destroyable;
+// roll back to the previous workaround for the read-only signalTracker since 45.beta
+// TODO: wait for https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/2542
+const _isDestroyable = x => GObject.type_is_a(x, GObject.Object) && GObject.signal_lookup('destroy', x);
+
+export { _ };
+export const getSelf = () => Extension.lookupByURL(import.meta.url);
+export const omit = (o, ...ks) => ks.forEach(k => { o[k]?.destroy?.(); o[k] = null; });
+export const onus = o => [o, o.$scapegoat].find(x => _isDestroyable(x)) ?? raise('undestroyable');
+
+export class Destroyable extends EventEmitter {
+    $scapegoat = new TransientSignalHolder(this);
+
+    destroy() {
+        this.emit('destroy');
+        omit(this, '$scapegoat');
+    }
 }
 
-function symbiose(host, doom, obj) {
+export function symbiose(host, doom, obj) {
     if(doom) new Symbiont(host, doom);
     if(obj) return amap(obj, v => new Symbiont(host, ...v));
 }
 
-function initLightProxy(callback, obj) {
+export function lightProxy(callback, obj) {
     let BUS_NAME = 'org.gnome.SettingsDaemon.Color',
         colorInfo = Gio.DBusInterfaceInfo.new_for_xml(loadInterfaceXML(BUS_NAME)),
         proxy = new Gio.DBusProxy({
@@ -43,32 +47,25 @@ function initLightProxy(callback, obj) {
             g_interface_name: colorInfo.name,
             g_interface_info: colorInfo,
         });
-    proxy.connectObject('g-properties-changed', callback.bind(obj), obj);
+    proxy.connectObject('g-properties-changed', callback, onus(obj));
     proxy.init_async(GLib.PRIORITY_DEFAULT, null).catch(logError);
 
     return proxy;
 }
 
-var Destroyable = SignalTracker._Destroyable;
-
-var Extension = class {
-    constructor(klass) {
-        this._klass = klass;
-        ExtensionUtils.initTranslations();
-    }
-
+export class BaseExtension extends Extension {
     enable() {
-        this._delegate = new this._klass();
+        this.$delegate = new this.$klass(this.getSettings());
     }
 
     disable() {
-        omit(this, '_delegate');
+        omit(this, '$delegate');
     }
-};
+}
 
-var Symbiont = class {
+export class Symbiont {
     constructor(host, dispel, summon) {
-        host.connectObject('destroy', () => this.dispel(), host);
+        host.connectObject('destroy', () => this.dispel(), onus(host));
         this.summon = (...args) => (this._delegate = summon?.(...args));
         this.dispel = () => { dispel(this._delegate); this._delegate = null; };
     }
@@ -77,9 +74,9 @@ var Symbiont = class {
         this.dispel();
         return this.summon(...args);
     }
-};
+}
 
-var Fulu = class {
+export class Fulu {
     constructor(prop, gset, obj, tie) {
         this.prop = new WeakMap();
         this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
@@ -96,12 +93,12 @@ var Fulu = class {
 
     attach(props, obj, cluster) { // cluster && props <- { fulu: [key, type, output] }
         this.prop.has(obj) ? Object.assign(this.prop.get(obj), props) : this.prop.set(obj, props);
-        let cb = cluster ? x => { obj[cluster] = [x, this.get(x, obj), this.prop.get(obj)[x][2]]; } : x => { obj[x] = this.get(x, obj); };
-        Object.entries(props).forEach(([k, [x]]) => { cb(k); this.gset.connectObject(`changed::${x}`, () => cb(k), obj); });
+        let callback = cluster ? x => { obj[cluster] = [x, this.get(x, obj), this.prop.get(obj)[x][2]]; } : x => { obj[x] = this.get(x, obj); };
+        Object.entries(props).forEach(([k, [x]]) => { callback(k); this.gset.connectObject(`changed::${x}`, () => callback(k), onus(obj)); });
         return this;
     }
 
     detach(obj) {
-        this.gset.disconnectObject(obj);
+        this.gset.disconnectObject(onus(obj));
     }
-};
+}

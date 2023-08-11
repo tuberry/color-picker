@@ -1,25 +1,17 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported init buildPrefsWidget */
-'use strict';
 
-const { Adw, Gtk, GObject, Gdk } = imports.gi;
+import Adw from 'gi://Adw';
+import Gtk from 'gi://Gtk';
+import Gdk from 'gi://Gdk';
+import GObject from 'gi://GObject';
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const { _ } = Me.imports.util;
-const { Field } = Me.imports.const;
-const UI = Me.imports.ui;
+import * as UI from './ui.js';
+import { Field } from './const.js';
 
-function buildPrefsWidget() {
-    return new ColorPickerPrefs();
-}
+const { _ } = UI;
 
-function init() {
-    ExtensionUtils.initTranslations();
-}
-
-var KeyBtn = class extends UI.DlgBtnBase {
+class KeyBtn extends UI.DlgBtnBase {
     static {
         GObject.registerClass(this);
     }
@@ -58,21 +50,20 @@ var KeyBtn = class extends UI.DlgBtnBase {
         if(mask || keyval !== Gdk.KEY_Escape) this.value = Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask);
         this._dlg.close();
     }
-};
+}
 
 class ColorPickerPrefs extends Adw.PreferencesGroup {
     static {
         GObject.registerClass(this);
     }
 
-    constructor() {
+    constructor(gset) {
         super();
-        this._buildWidgets();
+        this._buildWidgets(gset);
         this._buildUI();
     }
 
-    _buildWidgets() {
-        let gset = ExtensionUtils.getSettings();
+    _buildWidgets(gset) {
         this._blk = UI.block({
             MKEY: ['value',    new KeyBtn()],
             QKEY: ['value',    new KeyBtn()],
@@ -104,3 +95,5 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));
     }
 }
+
+export default class PrefsWidget extends UI.Prefs { $klass = ColorPickerPrefs; }

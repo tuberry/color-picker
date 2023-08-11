@@ -1,10 +1,8 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported Color */
 
-const Me = imports.misc.extensionUtils.getCurrentExtension();
-const { array, amap } = Me.imports.util;
-const { Format } = Me.imports.const;
+import { Format } from './const.js';
+import { array, amap } from './util.js';
 
 const f2cent = x => `${Math.round(x * 100)}%`; // 0.111 => '11%'
 const stop = n => array(n, i => i / n).concat(1); // `n` is the steps
@@ -63,7 +61,7 @@ function rgb2cmyk({ r, g, b }) {
     return { c, m, y, k };
 }
 
-var Color = class {
+export class Color {
     #pixel;
 
     constructor(pixel) { // pixel: 0xRRGGBBFF, ignore alpha for unpickable
@@ -165,4 +163,4 @@ var Color = class {
         case 'l': return stop(4).sort((a, b) => Math.abs(a - 0.5) - Math.abs(b - 0.5)).map(x => [x].concat(color.update(type, x).toRGBA())); // `l` starts from the middle
         }
     }
-};
+}

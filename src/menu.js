@@ -1,19 +1,18 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported TrayIcon IconButton IconItem MenuItem
-   DRadioItem RadioItem SwitchItem gicon StatusButton
- */
-'use strict';
 
-const { St, GObject, Gio } = imports.gi;
-const PopupMenu = imports.ui.popupMenu;
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const { amap } = Me.imports.util;
+import St from 'gi://St';
+import Gio from 'gi://Gio';
+import GObject from 'gi://GObject';
 
-var gicon = x => Gio.Icon.new_for_string(`${Me.dir.get_path()}/icons/hicolor/scalable/status/${x}.svg`);
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-var TrayIcon = class extends St.Icon {
+import { amap } from './util.js';
+import { getSelf } from './fubar.js';
+
+export const gicon = x => Gio.Icon.new_for_string(`${getSelf().path}/icons/hicolor/scalable/status/${x}.svg`);
+
+export class TrayIcon extends St.Icon {
     static {
         GObject.registerClass(this);
     }
@@ -22,9 +21,9 @@ var TrayIcon = class extends St.Icon {
         super({ style_class: 'system-status-icon', icon_name });
         if(fallback) this.set_fallback_gicon(gicon(icon_name));
     }
-};
+}
 
-var StButton = class extends St.Button {
+export class StButton extends St.Button {
     static {
         GObject.registerClass(this);
     }
@@ -34,9 +33,9 @@ var StButton = class extends St.Button {
         this.connect('clicked', callback);
         this.set_can_focus(true);
     }
-};
+}
 
-var IconButton = class extends StButton {
+export class IconButton extends StButton {
     static {
         GObject.registerClass(this);
     }
@@ -49,9 +48,9 @@ var IconButton = class extends StButton {
     setIcon(icon) {
         this.child.set_icon_name(icon);
     }
-};
+}
 
-var StatusButton = class extends IconButton {
+export class StatusButton extends IconButton {
     static {
         GObject.registerClass(this);
     }
@@ -60,9 +59,9 @@ var StatusButton = class extends IconButton {
         super(param, callback, status ? on : off);
         this.connect('clicked', () => this.setIcon({ [on]: off, [off]: on }[this.child.get_icon_name()]));
     }
-};
+}
 
-var IconItem = class extends PopupMenu.PopupBaseMenuItem {
+export class IconItem extends PopupMenu.PopupBaseMenuItem {
     static {
         GObject.registerClass(this);
     }
@@ -78,9 +77,9 @@ var IconItem = class extends PopupMenu.PopupBaseMenuItem {
     setViz(icon, viz) {
         this._icons[icon]?.[viz ? 'show' : 'hide']();
     }
-};
+}
 
-var SwitchItem = class extends PopupMenu.PopupSwitchMenuItem {
+export class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
     static {
         GObject.registerClass(this);
     }
@@ -89,9 +88,9 @@ var SwitchItem = class extends PopupMenu.PopupSwitchMenuItem {
         super(text, active, param);
         this.connect('toggled', (_x, y) => callback(y));
     }
-};
+}
 
-var MenuItem = class extends PopupMenu.PopupMenuItem {
+export class MenuItem extends PopupMenu.PopupMenuItem {
     static {
         GObject.registerClass(this);
     }
@@ -104,9 +103,9 @@ var MenuItem = class extends PopupMenu.PopupMenuItem {
     setLabel(label) {
         this.label.set_text(label);
     }
-};
+}
 
-var RadioItem = class extends PopupMenu.PopupSubMenuMenuItem {
+export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
     static {
         GObject.registerClass(this);
     }
@@ -124,9 +123,9 @@ var RadioItem = class extends PopupMenu.PopupSubMenuMenuItem {
         this.label.set_text(`${this._name}：${this._enum[m]}`);
         this.menu._getMenuItems().forEach(x => x.setOrnament(x.label.text === this._enum[m] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
     }
-};
+}
 
-var DRadioItem = class extends PopupMenu.PopupSubMenuMenuItem {
+export class DRadioItem extends PopupMenu.PopupSubMenuMenuItem {
     static {
         GObject.registerClass(this);
     }
@@ -149,9 +148,9 @@ var DRadioItem = class extends PopupMenu.PopupSubMenuMenuItem {
         let items = this.menu._getMenuItems();
         let diff = list.length - items.length;
         if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => this._onClick(items.length + a)));
-        else if(diff < 0) for(let a = 0; a > diff; a--) items.at(a - 1).destroy();
+        else if(diff < 0) do items.at(diff).destroy(); while(++diff < 0);
         this._list = list;
         this.menu._getMenuItems().forEach((x, i) => x.setLabel(list[i]));
         this.setSelected(index ?? this._index);
     }
-};
+}

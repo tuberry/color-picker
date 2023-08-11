@@ -1,25 +1,39 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported Block Box DlgBtnBase File Keys PrefRow
-   Drop LazyEntry Spin AppDialog App Font Color Icon
-   grgba block conns
- */
-'use strict';
 
-const { Adw, Gtk, Gdk, GObject, Gio, Pango, GLib } = imports.gi;
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const { _, _GTK, fopen, raise, omap, noop, gprops, fquery } = Me.imports.util;
-const { Field } = Me.imports.const;
+import Adw from 'gi://Adw';
+import Gdk from 'gi://Gdk';
+import Gio from 'gi://Gio';
+import Gtk from 'gi://Gtk';
+import GLib from 'gi://GLib';
+import Pango from 'gi://Pango';
+import GObject from 'gi://GObject';
 
-var grgba = x => (c => [c.parse(x ?? ''), c])(new Gdk.RGBA());
-var conns = (o, ...a) => a.forEach(([k, v]) => o.connect(k, v));
-var block = (o, s = ExtensionUtils.getSettings()) => omap(o, ([k, [x, y]]) => [[k, (s.bind(Field[k], y, x, Gio.SettingsBindFlags.DEFAULT), y)]]);
+import * as Gettext from 'gettext';
+import { Field } from './const.js';
+
+import { fopen, raise, omap, noop, gprops, fquery } from './util.js';
+import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+
+const { gettext: _ } = ExtensionPreferences.defineTranslationFunctions(import.meta.url);
+
+export { _ };
+export const _GTK = Gettext.domain('gtk40').gettext;
+export const grgba = x => (c => [c.parse(x ?? ''), c])(new Gdk.RGBA());
+export const conns = (o, ...a) => a.forEach(([k, v]) => o.connect(k, v));
+export const getSelf = () => ExtensionPreferences.lookupByURL(import.meta.url);
+export const block = (o, s) => omap(o, ([k, [x, y]]) => [[k, (s.bind(Field[k], y, x, Gio.SettingsBindFlags.DEFAULT), y)]]);
+
+export class Prefs extends ExtensionPreferences {
+    getPreferencesWidget() {
+        if(this.$klass) return new this.$klass(this.getSettings());
+    }
+}
 
 Gio._promisify(Gtk.FileDialog.prototype, 'open');
 Gio._promisify(Gtk.FileDialog.prototype, 'select_folder');
 
-var Box = class extends Gtk.Box {
+export class Box extends Gtk.Box {
     static {
         GObject.registerClass(this);
     }
@@ -29,9 +43,9 @@ var Box = class extends Gtk.Box {
         children?.forEach(x => this.append(x));
         this.add_css_class('linked');
     }
-};
+}
 
-var Spin = class extends Gtk.SpinButton {
+export class Spin extends Gtk.SpinButton {
     static {
         GObject.registerClass(this);
     }
@@ -40,9 +54,9 @@ var Spin = class extends Gtk.SpinButton {
         super({ tooltip_text: tip || '', valign: Gtk.Align.CENTER });
         this.set_adjustment(new Gtk.Adjustment({ lower: l, upper: u, step_increment: s }));
     }
-};
+}
 
-var Drop = class extends Gtk.DropDown {
+export class Drop extends Gtk.DropDown {
     static {
         GObject.registerClass(this);
     }
@@ -50,9 +64,9 @@ var Drop = class extends Gtk.DropDown {
     constructor(args, tip) {
         super({ model: Gtk.StringList.new(args), valign: Gtk.Align.CENTER, tooltip_text: tip || '' });
     }
-};
+}
 
-var Font = class extends Gtk.FontDialogButton { // FIXME: ?? not activatable by upstream design
+export class Font extends Gtk.FontDialogButton { // FIXME: ?? not activatable by upstream design
     static {
         GObject.registerClass({
             Properties: gprops({
@@ -73,9 +87,9 @@ var Font = class extends Gtk.FontDialogButton { // FIXME: ?? not activatable by 
     set value(value) {
         this.set_font_desc(Pango.FontDescription.from_string(value));
     }
-};
+}
 
-var Color = class extends Gtk.ColorDialogButton { // FIXME: ?? not activatable by upstream design
+export class Color extends Gtk.ColorDialogButton { // FIXME: ?? not activatable by upstream design
     static {
         GObject.registerClass({
             Properties: gprops({
@@ -97,9 +111,9 @@ var Color = class extends Gtk.ColorDialogButton { // FIXME: ?? not activatable b
         let [ok, rgba] = grgba(value);
         if(ok) this.set_rgba(rgba);
     }
-};
+}
 
-var IconLabel = class extends Gtk.Box {
+export class IconLabel extends Gtk.Box {
     static {
         GObject.registerClass(this);
     }
@@ -117,9 +131,9 @@ var IconLabel = class extends Gtk.Box {
         if(typeof icon !== 'string') this._icon.set_from_gicon(icon);
         else this._icon.icon_name = icon || this._fallback_icon;
     }
-};
+}
 
-var AppDialog = class extends Adw.Window {
+export class AppDialog extends Adw.Window {
     static {
         GObject.registerClass({
             Signals: {
@@ -178,9 +192,9 @@ var AppDialog = class extends Adw.Window {
         this.close();
         this.emit('selected', this._select.get_selected_item().get_id());
     }
-};
+}
 
-var DlgBtnBase = class extends Box {
+export class DlgBtnBase extends Box {
     static {
         GObject.registerClass({
             Properties: gprops({
@@ -234,9 +248,9 @@ var DlgBtnBase = class extends Box {
     vfunc_mnemonic_activate() {
         this._btn.activate();
     }
-};
+}
 
-var App = class extends DlgBtnBase {
+export class App extends DlgBtnBase {
     static {
         GObject.registerClass(this);
     }
@@ -269,9 +283,9 @@ var App = class extends DlgBtnBase {
         if(this._dlg.transient_for !== root) this._dlg.set_transient_for(root);
         return Promise.reject(new Error()); // compatible with super
     }
-};
+}
 
-var File = class extends DlgBtnBase {
+export class File extends DlgBtnBase {
     static {
         GObject.registerClass(this);
     }
@@ -322,9 +336,9 @@ var File = class extends DlgBtnBase {
         if(value !== this.value) return;
         this._btn.child.set_info(icon, text);
     }
-};
+}
 
-var Icon = class extends File {
+export class Icon extends File {
     static {
         GObject.registerClass(this);
     }
@@ -340,9 +354,9 @@ var Icon = class extends File {
             this._setInfo(icon || x.get_icon(), x.get_display_name().replace(RegExp(/(-symbolic)*\.svg$/), ''), v);
         }).catch(() => this._setInfo('', null, v));
     }
-};
+}
 
-var Keys = class extends Gtk.Button {
+export class Keys extends Gtk.Button {
     static {
         GObject.registerClass(this);
     }
@@ -404,9 +418,9 @@ var Keys = class extends Gtk.Button {
     isValidAccel(mask, keyval) {
         return Gtk.accelerator_valid(keyval, mask) || (keyval === Gdk.KEY_Tab && mask !== 0);
     }
-};
+}
 
-var PrefRow = class extends Adw.ActionRow {
+export class PrefRow extends Adw.ActionRow {
     static {
         GObject.registerClass(this);
     }
@@ -436,9 +450,9 @@ var PrefRow = class extends Adw.ActionRow {
             }
         }
     }
-};
+}
 
-var LazyEntry = class extends Gtk.Stack {
+export class LazyEntry extends Gtk.Stack {
     static {
         GObject.registerClass({
             Properties: gprops({
@@ -489,4 +503,4 @@ var LazyEntry = class extends Gtk.Stack {
     vfunc_mnemonic_activate() {
         this.get_visible_child_name() === 'label' ? this._edit.activate() : this._done.activate();
     }
-};
+}
