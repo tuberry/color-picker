@@ -2,15 +2,17 @@
 // by tuberry
 
 import { Format } from './const.js';
-import { array, amap } from './util.js';
+import { array, vmap, luminance } from './util.js';
 
-const f2cent = x => `${Math.round(x * 100)}%`; // 0.111 => '11%'
-const stop = n => array(n, i => i / n).concat(1); // `n` is the steps
-const luminate = ({ r, g, b }) => Math.sqrt(0.299 * r * r  + 0.587 * g * g + 0.114 * b * b); // Ref: https://stackoverflow.com/a/596243
+const percent = x => `${Math.round(x * 100)}%`; // 0.111 => '11%'
+const genStops = n => array(n, i => i / n).concat(1); // `n` is the steps
+const parseHEX = m => Math.clamp(parseInt(m, 16), 0, 255);
+const zip = (ks, vs) => Object.fromEntries(ks.map((k, i) => [k, vs[i]]));
+const parseHSL = (m, i) => i ? Math.clamp(parseInt(m) / 100, 0, 1) : Math.clamp(parseInt(m), 0, 360);
 
 // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
 function rgb2hsv(rgb) {
-    let { r, g, b } = amap(rgb, x => x / 255),
+    let { r, g, b } = vmap(rgb, x => x / 255),
         mx = Math.max(r, g, b),
         mn = Math.min(r, g, b),
         d = mx - mn,
@@ -51,7 +53,7 @@ function hsv2hsl({ h, s, v }) {
 
 // Ref: http://www.easyrgb.com/en/math.php
 function cmyk2rgb({ c, m, y, k }) {
-    return amap({ r: c, g: m, b: y }, x => (1 - x * (1 - k) - k) * 255);
+    return vmap({ r: c, g: m, b: y }, x => (1 - x * (1 - k) - k) * 255);
 }
 
 function rgb2cmyk({ r, g, b }) {
@@ -62,36 +64,25 @@ function rgb2cmyk({ r, g, b }) {
 }
 
 export class Color {
-    #pixel;
+    #rgb;
 
-    constructor(pixel) { // pixel: 0xRRGGBBFF, ignore alpha for unpickable
-        this.#pixel = pixel ?? 0;
-    }
-
-    fromClutter({ red: r, green: g, blue: b }) { // from a Clutter.Color
-        this.#pixel = (r << 24 | g << 16 | b << 8 | this.format) >>> 0;
-        return this;
-    }
-
-    get pixel() {
-        return this.#pixel;
-    }
-
-    set format(format) {
-        this.#pixel = (this.#pixel & 0xffffff00 | format) >>> 0;
-    }
-
-    get format() {
-        return this.#pixel & 0xff;
+    constructor(raw = 0, rgb) { // raw <- uint
+        if(rgb) {
+            this.#rgb = { ...rgb };
+            this.format = raw;
+        } else {
+            let [format, b, g, r] = array(4, i => raw >>> (8 * i) & 0xff);
+            this.#rgb = { r, g, b };
+            this.format = format;
+        }
     }
 
     set rgb(rgb) {
-        let { r, g, b } = amap(rgb, Math.round);
-        this.#pixel = (r << 24 | g << 16 | b << 8 | this.format) >>> 0;
+        this.#rgb = vmap(rgb, Math.round);
     }
 
     get rgb() {
-        return { r: this.#pixel >>> 24 & 0xff, g: this.#pixel >>> 16 & 0xff, b: this.#pixel >>> 8 & 0xff };
+        return { ...this.#rgb };
     }
 
     set hsv(hsv) {
@@ -99,7 +90,7 @@ export class Color {
     }
 
     get hsv() {
-        return rgb2hsv(this.rgb);
+        return rgb2hsv(this.#rgb);
     }
 
     set hsl(hsl) {
@@ -111,7 +102,7 @@ export class Color {
     }
 
     get cmyk() {
-        return rgb2cmyk(this.rgb);
+        return rgb2cmyk(this.#rgb);
     }
 
     set cmyk(cmyk) {
@@ -119,48 +110,78 @@ export class Color {
     }
 
     equal(color) {
-        return this.#pixel === color;
+        return this.toRaw() === color;
     }
 
-    assign(key, value) {
-        this[key] = Object.assign(this[key], value);
+    copy() {
+        return new Color(this.format, this.#rgb);
     }
 
     update(type, value) {
         switch(type) {
-        case 'r': case 'g': case 'b': this.assign('rgb', { [type]: value }); break;
-        case 'h': case 's': case 'l': this.assign('hsl', { [type]: value }); break;
+        case 'r': case 'g': case 'b': Object.assign(this.#rgb, { [type]: Math.round(value) }); break;
+        case 'h': case 's': case 'l': this.hsl = Object.assign(this.hsl, { [type]: value }); break;
         }
         return this;
     }
 
+    fromClutter({ red: r, green: g, blue: b }) { // sync with a Clutter.Color
+        this.#rgb = { r, g, b };
+    }
+
+    fromString(str) {
+        return [
+            [/^ *#([0-9a-f]{2})([0-9a-f]{2})([0-91-f]{2}) *$/i, parseHEX, 'rgb'],
+            [/^ *rgb\( *(\d{1,3}) *, *(\d{1,3}) *, *(\d{1,3}) *\) *$/, m => Math.clamp(parseInt(m), 0, 255), 'rgb'],
+            [/^ *hsl\( *(\d{1,3}) *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, parseHSL, 'hsl'],
+            [/^ *([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2}) *$/i, parseHEX, 'rgb'],
+            [/^ *hsv\( *(\d{1,3}) *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, parseHSL, 'hsv'],
+            [/^ *cmyk\( *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, m => Math.clamp(parseInt(m) / 100, 0, 1), 'cmyk'],
+        ].some(([regex, type, tmp], i) => {
+            let [, ...ms] = str.match(regex) ?? [];
+            if(!ms.length) return false;
+            this[tmp] = zip([...tmp], ms.map(type));
+            this.format = i; // sort by Format
+            return true;
+        });
+    }
+
+    toRaw() {
+        let { r, g, b } = this.#rgb;
+        return [r, g, b, this.format].reduce((a, x) => a << 8 | x) >>> 0;
+    }
+
+    toRGBHSL() {
+        return Object.assign(this.hsl, this.#rgb);
+    }
+
     toText(format) {
         switch(format ?? this.format) {
-        case Format.RGB: return (({ r, g, b }) => `rgb(${r}, ${g}, ${b})`)(this.rgb);
-        case Format.HSL: return (({ h, s, l }) => `hsl(${Math.round(h)}, ${f2cent(s)}, ${f2cent(l)})`)(this.hsl);
-        case Format.HSV: return (({ h, s, v }) => `hsv(${Math.round(h)}, ${f2cent(s)}, ${f2cent(v)})`)(this.hsv);
-        case Format.CMYK: return (({ c, m, y, k }) => `cmyk(${c}, ${m}, ${y}, ${k})`)(amap(this.cmyk, f2cent));
-        case Format.hex: return (this.#pixel >>> 8).toString(16).padStart(6, '0');
-        default: return `#${(this.#pixel >>> 8).toString(16).padStart(6, '0')}`;
+        case Format.RGB: return (({ r, g, b }) => `rgb(${r}, ${g}, ${b})`)(this.#rgb);
+        case Format.HSL: return (({ h, s, l }) => `hsl(${Math.round(h)}, ${percent(s)}, ${percent(l)})`)(this.hsl);
+        case Format.HSV: return (({ h, s, v }) => `hsv(${Math.round(h)}, ${percent(s)}, ${percent(v)})`)(this.hsv);
+        case Format.CMYK: return (({ c, m, y, k }) => `cmyk(${c}, ${m}, ${y}, ${k})`)(vmap(this.cmyk, percent));
+        case Format.hex: return (this.toRaw() >>> 8).toString(16).padStart(6, '0');
+        default: return `#${(this.toRaw() >>> 8).toString(16).padStart(6, '0')}`;
         }
     }
 
-    toMarkup(format) { // NOTE: https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-        return ` <span face="monospace" fgcolor="${luminate(this.rgb) > 127 ? '#000' : '#fff'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(format)}</span>`;
+    toMarkup(format) { // FIXME: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
+        return ` <span face="monospace" fgcolor="${luminance(this.#rgb) > 127 ? 'black' : 'white'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(format)}</span>`;
     }
 
     toRGBA(alpha = 1) {
-        let { r, g, b } = amap(this.rgb, x => x / 255);
-        return [r, g, b, alpha];
+        let { r, g, b } = this.#rgb;
+        return [r / 255, g / 255, b / 255, alpha];
     }
 
-    toStop(type) { // linear gradient color stop
-        let color = new Color(this.#pixel);
+    toStops(type) { // linear gradient color stop
+        let color = this.copy();
         switch(type) {
-        case 'r': case 'g': case 'b': return stop(1).map(x => [x].concat(color.update(type, x * 255).toRGBA()));
-        case 'h': return stop(12).map(x => [x].concat(color.update(type, x * 360).toRGBA()));
-        case 's': return stop(1).reverse().map(x => [x].concat(color.update(type, x).toRGBA())); // `s` starts from the end
-        case 'l': return stop(4).sort((a, b) => Math.abs(a - 0.5) - Math.abs(b - 0.5)).map(x => [x].concat(color.update(type, x).toRGBA())); // `l` starts from the middle
+        case 'r': case 'g': case 'b': return genStops(1).map(x => [x].concat(color.update(type, x * 255).toRGBA()));
+        case 'h': return genStops(12).map(x => [x].concat(color.update(type, x * 360).toRGBA()));
+        case 's': return genStops(1).reverse().map(x => [x].concat(color.update(type, x).toRGBA())); // `s` starts from the end
+        case 'l': return genStops(4).sort((a, b) => Math.abs(a - 0.5) - Math.abs(b - 0.5)).map(x => [x].concat(color.update(type, x).toRGBA())); // `l` starts from the middle
         }
     }
 }

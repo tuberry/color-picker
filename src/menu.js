@@ -3,14 +3,14 @@
 
 import St from 'gi://St';
 import Gio from 'gi://Gio';
+import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { amap } from './util.js';
-import { getSelf } from './fubar.js';
+import { ROOT_DIR, vmap } from './util.js';
 
-export const gicon = x => Gio.Icon.new_for_string(`${getSelf().path}/icons/hicolor/scalable/status/${x}.svg`);
+export const gicon = x => Gio.Icon.new_for_string(`${ROOT_DIR}/icons/hicolor/scalable/status/${x}.svg`);
 
 export class TrayIcon extends St.Icon {
     static {
@@ -40,24 +40,19 @@ export class IconButton extends StButton {
         GObject.registerClass(this);
     }
 
-    constructor(param, callback, icon_name = '') {
+    constructor(param, callback, ...args) {
         super(param, callback);
-        this.set_child(new St.Icon({ style_class: 'popup-menu-icon', icon_name }));
+        if(args.length > 1) {
+            let [status, on, off] = args;
+            this.set_child(new St.Icon({ style_class: 'popup-menu-icon', icon_name: status ? on : off }));
+            this.connect('clicked', () => this.setIcon({ [on]: off, [off]: on }[this.child.get_icon_name()]));
+        } else {
+            this.set_child(new St.Icon({ style_class: 'popup-menu-icon', icon_name: args[0] ?? '' }));
+        }
     }
 
     setIcon(icon) {
         this.child.set_icon_name(icon);
-    }
-}
-
-export class StatusButton extends IconButton {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(param, callback, status, on, off) {
-        super(param, callback, status ? on : off);
-        this.connect('clicked', () => this.setIcon({ [on]: off, [off]: on }[this.child.get_icon_name()]));
     }
 }
 
@@ -68,8 +63,8 @@ export class IconItem extends PopupMenu.PopupBaseMenuItem {
 
     constructor(style_class, icons) {
         super({ activate: false });
-        this._icons = amap(icons, x => new (x.length > 2 ? StatusButton : IconButton)({ x_expand: true, style_class }, ...x));
-        let box = new St.BoxLayout({ x_align: St.Align.START, x_expand: true });
+        this._icons = vmap(icons, args => new IconButton({ x_expand: true, style_class }, ...args));
+        let box = new St.BoxLayout({ x_align: Clutter.ActorAlign.FILL, x_expand: true });
         Object.values(this._icons).forEach(x => box.add_child(x));
         this.add_child(box);
     }
@@ -121,7 +116,7 @@ export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
     setSelected(m) {
         if(!(m in this._enum)) return;
         this.label.set_text(`${this._name}：${this._enum[m]}`);
-        this.menu._getMenuItems().forEach(x => x.setOrnament(x.label.text === this._enum[m] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
+        this.menu._getMenuItems().forEach(x => x.setOrnament(PopupMenu.Ornament[x.label.text === this._enum[m] ? 'DOT' : 'NONE']));
     }
 }
 
@@ -141,7 +136,7 @@ export class DRadioItem extends PopupMenu.PopupSubMenuMenuItem {
     setSelected(index) {
         this._index = index;
         this.label.set_text(`${this._name}：${this._onSelect(this._index) || ''}`);
-        this.menu._getMenuItems().forEach((y, i) => y.setOrnament(index === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
+        this.menu._getMenuItems().forEach((y, i) => y.setOrnament(PopupMenu.Ornament[index === i ? 'DOT' : 'NONE']));
     }
 
     setList(list, index) {

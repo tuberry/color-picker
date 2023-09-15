@@ -11,29 +11,25 @@ import { Field } from './const.js';
 
 const { _ } = UI;
 
-class KeyBtn extends UI.DlgBtnBase {
+class KeyDialog extends UI.KeysDialog {
+    static {
+        GObject.registerClass(this);
+    }
+
+    _onKeyPressed(_w, keyval, keycode, state) {
+        let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
+        if(mask || keyval !== Gdk.KEY_Escape) this.emit('selected', Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
+        this.close();
+    }
+}
+
+class Key extends UI.DialogButtonBase {
     static {
         GObject.registerClass(this);
     }
 
     constructor() {
         super(new Gtk.ShortcutLabel({ disabled_text: _('(Key)') }), null, true);
-    }
-
-    _buildDialog() {
-        let content = new Adw.StatusPage({ title: _('Press any key.'), icon_name: 'preferences-desktop-keyboard-symbolic' });
-        this._dlg = new Adw.Window({ modal: true, hide_on_close: true, width_request: 480, height_request: 320, content });
-        let eck = new Gtk.EventControllerKey();
-        eck.connect('key-pressed', this._onKeyPressed.bind(this));
-        this._dlg.add_controller(eck);
-    }
-
-    _onClick() {
-        if(!this._dlg) this._buildDialog();
-        this._dlg.present();
-        let root = this.get_root();
-        if(this._dlg.transient_for !== root) this._dlg.set_transient_for(root);
-        return Promise.reject(new Error()); // compatible with super
     }
 
     _setValue(v) {
@@ -45,10 +41,8 @@ class KeyBtn extends UI.DlgBtnBase {
         this._btn.child.set_accelerator(this._value);
     }
 
-    _onKeyPressed(_w, keyval, keycode, state) {
-        let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
-        if(mask || keyval !== Gdk.KEY_Escape) this.value = Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask);
-        this._dlg.close();
+    _buildDialog() {
+        this._dlg = new KeyDialog({ title: _('Press any key.') });
     }
 }
 
@@ -65,8 +59,8 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
 
     _buildWidgets(gset) {
         this._blk = UI.block({
-            MKEY: ['value',    new KeyBtn()],
-            QKEY: ['value',    new KeyBtn()],
+            MKEY: ['value',    new Key()],
+            QKEY: ['value',    new Key()],
             TICN: ['value',    new UI.Icon()],
             COPY: ['active',   new Gtk.CheckButton()],
             NTF:  ['active',   new Gtk.CheckButton()],
@@ -80,7 +74,7 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
             FMTS: ['selected', new UI.Drop(['HEX', 'RGB', 'HSL', 'hex', 'HSV', 'CMYK'])],
             PVWS: ['selected', new UI.Drop([_('Icon'), _('Label')], _('preview style'))],
         }, gset);
-        this._blk.KEYS = new UI.Keys(gset, Field.KEYS);
+        this._blk.KEYS = new UI.Keys({ gset, key: Field.KEYS });
     }
 
     _buildUI() {

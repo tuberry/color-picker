@@ -6,13 +6,11 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 
 import { EventEmitter } from 'resource:///org/gnome/shell/misc/signals.js';
-import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import { loadInterfaceXML } from 'resource:///org/gnome/shell/misc/fileUtils.js';
 import { TransientSignalHolder } from 'resource:///org/gnome/shell/misc/signalTracker.js';
+import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import { amap, raise } from './util.js';
-
-const { gettext: _ } = Extension.defineTranslationFunctions(import.meta.url);
+import { vmap, raise } from './util.js';
 
 // roll back to the previous workaround for the read-only signalTracker since 45.beta
 // TODO: wait for https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/2542
@@ -34,7 +32,7 @@ export class Destroyable extends EventEmitter {
 
 export function symbiose(host, doom, obj) {
     if(doom) new Symbiont(host, doom);
-    if(obj) return amap(obj, v => new Symbiont(host, ...v));
+    if(obj) return vmap(obj, v => new Symbiont(host, ...v));
 }
 
 export function lightProxy(callback, obj) {
@@ -53,7 +51,7 @@ export function lightProxy(callback, obj) {
     return proxy;
 }
 
-export class BaseExtension extends Extension {
+export class ExtensionBase extends Extension {
     enable() {
         this.$delegate = new this.$klass(this.getSettings());
     }
@@ -66,21 +64,17 @@ export class BaseExtension extends Extension {
 export class Symbiont {
     constructor(host, dispel, summon) {
         host.connectObject('destroy', () => this.dispel(), onus(host));
-        this.summon = (...args) => (this._delegate = summon?.(...args));
         this.dispel = () => { dispel(this._delegate); this._delegate = null; };
-    }
-
-    revive(...args) {
-        this.dispel();
-        return this.summon(...args);
+        this.summon = (...args) => (this._delegate = summon(...args));
+        this.revive = (...args) => { this.dispel(); return this.summon(...args); };
     }
 }
 
 export class Fulu {
-    constructor(prop, gset, obj, tie) {
+    constructor(prop, gset, obj, cluster) {
         this.prop = new WeakMap();
         this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
-        this.attach(prop, obj, tie);
+        this.attach(prop, obj, cluster);
     }
 
     get(prop, obj) {

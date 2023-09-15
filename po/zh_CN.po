@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-10 05:36+0800\n"
+"POT-Creation-Date: 2023-09-22 00:20+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,112 +17,128 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:32 src/prefs.js:75
+#: src/ui.js:280
+msgid "All"
+msgstr "全部"
+
+#: src/ui.js:280
+msgid "Normal"
+msgstr "常规"
+
+#: src/ui.js:280
+msgid "Symbolic"
+msgstr "符号"
+
+#: src/ui.js:329
 msgid "Clear"
 msgstr "清除"
 
-#: src/ui.js:266
+#: src/ui.js:437
+msgid "Mismatched filetype"
+msgstr "文件类型不匹配"
+
+#: src/ui.js:583
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
 
-#. no 'always-show-image'
-#: src/prefs.js:72
+#: src/prefs.js:32
 msgid "(Key)"
 msgstr "(按键)"
 
-#: src/prefs.js:83
-msgid "Press any keys."
+#: src/prefs.js:45
+#, fuzzy
+msgid "Press any key."
 msgstr "按任意键。"
 
-#: src/prefs.js:128
+#: src/prefs.js:72
 msgid "MSG"
 msgstr "系统通知"
 
-#: src/prefs.js:128
+#: src/prefs.js:72
 msgid "OSD"
 msgstr "屏内提示"
 
-#: src/prefs.js:129
+#: src/prefs.js:73
 msgid "history size"
 msgstr "历史大小"
 
-#: src/prefs.js:131
+#: src/prefs.js:75
 msgid "Icon"
 msgstr "图标"
 
-#: src/prefs.js:131
+#: src/prefs.js:75
 msgid "Label"
 msgstr "标签"
 
-#: src/prefs.js:131
+#: src/prefs.js:75
 msgid "preview style"
 msgstr "预览方式"
 
-#: src/prefs.js:138
+#: src/prefs.js:82
 msgid "Automatically copy"
 msgstr "自动复制"
 
-#: src/prefs.js:138
+#: src/prefs.js:82
 msgid "copy the color to clipboard after picking"
 msgstr "选取后复制颜色到剪贴板"
 
-#: src/prefs.js:139 src/extension.js:647
+#: src/prefs.js:83 src/extension.js:526
 msgid "Default format"
 msgstr "默认格式"
 
-#: src/prefs.js:139
+#: src/prefs.js:83
 msgid "hex here means poundless HEX such as “8fd0da”"
 msgstr "hex指无#号前缀的HEX格式例如“8fd0da”"
 
-#: src/prefs.js:140
+#: src/prefs.js:84
 msgid "Shortcut to pick"
 msgstr "快捷键"
 
-#: src/prefs.js:140
+#: src/prefs.js:84
 msgid "press arrow keys / wasd / hjkl to move by pixel"
 msgstr "方向键 / wasd / hjkl 按像素移动"
 
-#: src/prefs.js:141
+#: src/prefs.js:85
 msgid "Notification style"
 msgstr "通知方式"
 
-#: src/prefs.js:141
+#: src/prefs.js:85
 msgid "notify the color after picking"
 msgstr "选取颜色后通知"
 
-#: src/prefs.js:142
+#: src/prefs.js:86
 msgid "Persistent mode"
 msgstr "持续模式"
 
-#: src/prefs.js:142
+#: src/prefs.js:86
 msgid "right click or press Esc key to quit"
 msgstr "右键或按Esc键退出"
 
-#: src/prefs.js:143
+#: src/prefs.js:87
 msgid "Enable preview"
 msgstr "启用预览"
 
-#: src/prefs.js:143
+#: src/prefs.js:87
 msgid "middle click or press Menu key to open menu"
 msgstr "中键或按菜单键打开菜单"
 
-#: src/prefs.js:144
+#: src/prefs.js:88
 msgid "Enable systray"
 msgstr "托盘图标"
 
-#: src/prefs.js:144
+#: src/prefs.js:88
 msgid "right click to open menu"
 msgstr "右键打开菜单"
 
-#: src/extension.js:343
+#: src/extension.js:192
 msgid "Others"
 msgstr "其它"
 
-#: src/extension.js:352
+#: src/extension.js:217
 msgid "Read from clipboard"
 msgstr "从剪贴板读取"
 
-#: src/extension.js:748
+#: src/extension.js:625
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"

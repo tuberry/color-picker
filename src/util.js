@@ -3,9 +3,9 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Json from 'gi://Json';
 import GObject from 'gi://GObject';
-import Soup from 'gi://Soup/?v=3.0';
-import Graphene from 'gi://Graphene';
+import Soup from 'gi://Soup/?version=3.0';
 
 Gio._promisify(Gio.File.prototype, 'copy_async');
 Gio._promisify(Gio.File.prototype, 'delete_async');
@@ -16,23 +16,26 @@ Gio._promisify(Gio.File.prototype, 'replace_contents_async');
 Gio._promisify(Gio.File.prototype, 'enumerate_children_async');
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
+export const ROOT_DIR = GLib.path_get_dirname(import.meta.url.slice(7));
+export const BIND_FULL = GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE;
+
 export const id = x => x;
 export const noop = () => {};
 export const xnor = (x, y) => !x === !y;
 export const raise = x => { throw new Error(x); };
 export const decode = x => new TextDecoder().decode(x);
 export const encode = x => new TextEncoder().encode(x);
-export const fname = (...xs) => GLib.build_filenamev(xs);
-export const amap = (o, f) => omap(o, ([k, v]) => [[k, f(v)]]);
+export const fpath = (...xs) => GLib.build_filenamev(xs);
+export const vmap = (o, f) => omap(o, ([k, v]) => [[k, f(v)]]);
 export const lot = x => x[Math.floor(Math.random() * x.length)];
-export const fopen = (...xs) => Gio.File.new_for_path(fname(...xs));
+export const fopen = (...xs) => Gio.File.new_for_path(fpath(...xs));
 export const bmap = o => ({ ...o, ...omap(o, ([k, v]) => [[v, k]]) });
 export const array = (n, f = id) => Array.from({ length: n }, (_x, i) => f(i));
 export const omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
-export const scap = s => [...s].map((x, i) => i ? x.toLowerCase() : x.toUpperCase()).join('');
+export const pickle = o => Json.gvariant_deserialize(Json.from_string(JSON.stringify(o)), null);
+export const luminance = ({ r, g, b }) => Math.sqrt(0.299 * r * r  + 0.587 * g * g + 0.114 * b * b); // Ref: https://stackoverflow.com/a/596243
 export const gerror = (x, y = '') => new Gio.IOErrorEnum({ code: Gio.IOErrorEnum[x] ?? x, message: y });
 export const gprops = o => omap(o, ([k, [x, ...ys]]) => [[k, GObject.ParamSpec[x](k, k, k, GObject.ParamFlags.READWRITE, ...ys)]]);
-export const grect = (w, h, x = 0, y = 0) => new Graphene.Rect({ origin: new Graphene.Point({ x, y }), size: new Graphene.Size({ width: w, height: h }) });
 export const denum = (x, y = Gio.FILE_ATTRIBUTE_STANDARD_NAME) => x.enumerate_children_async(y, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 export const fquery = (x, ...ys) => x.query_info_async(ys.join(','), Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 export const fcheck = (...xs) => fquery(xs[0] instanceof Gio.File ? xs[0] : fopen(...xs), Gio.FILE_ATTRIBUTE_STANDARD_NAME);
