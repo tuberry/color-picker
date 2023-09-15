@@ -13,9 +13,7 @@ import * as Gettext from 'gettext';
 import { Field } from './const.js';
 
 import { fopen, raise, omap, noop, gprops, fquery } from './util.js';
-import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
-
-const { gettext: _ } = ExtensionPreferences.defineTranslationFunctions(import.meta.url);
+import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 export { _ };
 export const _GTK = Gettext.domain('gtk40').gettext;
@@ -24,14 +22,14 @@ export const conns = (o, ...a) => a.forEach(([k, v]) => o.connect(k, v));
 export const getSelf = () => ExtensionPreferences.lookupByURL(import.meta.url);
 export const block = (o, s) => omap(o, ([k, [x, y]]) => [[k, (s.bind(Field[k], y, x, Gio.SettingsBindFlags.DEFAULT), y)]]);
 
+Gio._promisify(Gtk.FileDialog.prototype, 'open');
+Gio._promisify(Gtk.FileDialog.prototype, 'select_folder');
+
 export class Prefs extends ExtensionPreferences {
     getPreferencesWidget() {
         if(this.$klass) return new this.$klass(this.getSettings());
     }
 }
-
-Gio._promisify(Gtk.FileDialog.prototype, 'open');
-Gio._promisify(Gtk.FileDialog.prototype, 'select_folder');
 
 export class Box extends Gtk.Box {
     static {
@@ -66,7 +64,7 @@ export class Drop extends Gtk.DropDown {
     }
 }
 
-export class Font extends Gtk.FontDialogButton { // FIXME: ?? not activatable by upstream design
+export class Font extends Gtk.FontDialogButton {
     static {
         GObject.registerClass({
             Properties: gprops({
@@ -89,7 +87,7 @@ export class Font extends Gtk.FontDialogButton { // FIXME: ?? not activatable by
     }
 }
 
-export class Color extends Gtk.ColorDialogButton { // FIXME: ?? not activatable by upstream design
+export class Color extends Gtk.ColorDialogButton {
     static {
         GObject.registerClass({
             Properties: gprops({
@@ -154,7 +152,8 @@ export class AppDialog extends Adw.Window {
         let model = new Gio.ListStore({ item_type: Gio.DesktopAppInfo });
         if(param?.no_display) Gio.AppInfo.get_all().forEach(x => model.append(x));
         else Gio.AppInfo.get_all().filter(x => x.should_show()).forEach(x => model.append(x));
-        this._filter = new Gtk.StringFilter({ expression: new Gtk.PropertyExpression(Gio.DesktopAppInfo, null, 'filename') }); // TODO: `get_id()` instead of filename
+        let expression = new Gtk.ClosureExpression(GObject.TYPE_STRING, x => `${x.get_executable()}:${x.get_display_name()}`, null);
+        this._filter = new Gtk.StringFilter({ expression });
         this._select = new Gtk.SingleSelection({ model: new Gtk.FilterListModel({ model, filter: this._filter }) });
         let list = new Gtk.ListView({ model: this._select, factory, single_click_activate: false, vexpand: true });
         list.connect('activate', () => this._onSelect());
@@ -268,7 +267,7 @@ export class App extends DlgBtnBase {
 
     _showValue() {
         if(this._gvalue) this._btn.child.set_info(this._gvalue.get_icon(), this._gvalue.get_display_name());
-        else this._btn.child.set_info('', null);
+        else this._btn.child.set_info('');
     }
 
     _buildDialog() {
@@ -309,7 +308,7 @@ export class File extends DlgBtnBase {
         } else {
             fquery(value, Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME, Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE).then(y => {
                 if(this._filter.match(y)) this.value = value; else raise();
-            }).catch(() => { // NOTE: issue for folder - https://gitlab.gnome.org/GNOME/gtk/-/issues/5348
+            }).catch(() => { // ISSUE: folders - https://gitlab.gnome.org/GNOME/gtk/-/issues/5348
                 this.get_root().add_toast(new Adw.Toast({ title: _('Mismatched filetype'), timeout: 5 }));
             });
         }

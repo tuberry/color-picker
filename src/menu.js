@@ -3,14 +3,14 @@
 
 import St from 'gi://St';
 import Gio from 'gi://Gio';
+import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { amap } from './util.js';
-import { getSelf } from './fubar.js';
+import { ROOT, vmap } from './util.js';
 
-export const gicon = x => Gio.Icon.new_for_string(`${getSelf().path}/icons/hicolor/scalable/status/${x}.svg`);
+export const gicon = x => Gio.Icon.new_for_string(`${ROOT}/icons/hicolor/scalable/status/${x}.svg`);
 
 export class TrayIcon extends St.Icon {
     static {
@@ -68,8 +68,8 @@ export class IconItem extends PopupMenu.PopupBaseMenuItem {
 
     constructor(style_class, icons) {
         super({ activate: false });
-        this._icons = amap(icons, x => new (x.length > 2 ? StatusButton : IconButton)({ x_expand: true, style_class }, ...x));
-        let box = new St.BoxLayout({ x_align: St.Align.START, x_expand: true });
+        this._icons = vmap(icons, x => new (x.length > 2 ? StatusButton : IconButton)({ x_expand: true, style_class }, ...x));
+        let box = new St.BoxLayout({ x_align: Clutter.ActorAlign.FILL, x_expand: true });
         Object.values(this._icons).forEach(x => box.add_child(x));
         this.add_child(box);
     }

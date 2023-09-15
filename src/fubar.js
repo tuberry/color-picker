@@ -6,13 +6,11 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 
 import { EventEmitter } from 'resource:///org/gnome/shell/misc/signals.js';
-import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import { loadInterfaceXML } from 'resource:///org/gnome/shell/misc/fileUtils.js';
 import { TransientSignalHolder } from 'resource:///org/gnome/shell/misc/signalTracker.js';
+import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import { amap, raise } from './util.js';
-
-const { gettext: _ } = Extension.defineTranslationFunctions(import.meta.url);
+import { vmap, raise } from './util.js';
 
 // roll back to the previous workaround for the read-only signalTracker since 45.beta
 // TODO: wait for https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/2542
@@ -21,20 +19,20 @@ const _isDestroyable = x => GObject.type_is_a(x, GObject.Object) && GObject.sign
 export { _ };
 export const getSelf = () => Extension.lookupByURL(import.meta.url);
 export const omit = (o, ...ks) => ks.forEach(k => { o[k]?.destroy?.(); o[k] = null; });
-export const onus = o => [o, o.$scapegoat].find(x => _isDestroyable(x)) ?? raise('undestroyable');
+export const getSignalHolder = o => [o, o.$signal_holder].find(x => _isDestroyable(x)) ?? raise('undestroyable');
 
 export class Destroyable extends EventEmitter {
-    $scapegoat = new TransientSignalHolder(this);
+    $signal_holder = new TransientSignalHolder(this);
 
     destroy() {
         this.emit('destroy');
-        omit(this, '$scapegoat');
+        omit(this, '$signal_holder');
     }
 }
 
-export function symbiose(host, doom, obj) {
-    if(doom) new Symbiont(host, doom);
-    if(obj) return amap(obj, v => new Symbiont(host, ...v));
+export function manageSource(host, doom, obj) {
+    if(doom) new SourceManager(host, doom);
+    if(obj) return vmap(obj, v => new SourceManager(host, ...v));
 }
 
 export function lightProxy(callback, obj) {
@@ -47,7 +45,7 @@ export function lightProxy(callback, obj) {
             g_interface_name: colorInfo.name,
             g_interface_info: colorInfo,
         });
-    proxy.connectObject('g-properties-changed', callback, onus(obj));
+    proxy.connectObject('g-properties-changed', callback, getSignalHolder(obj));
     proxy.init_async(GLib.PRIORITY_DEFAULT, null).catch(logError);
 
     return proxy;
@@ -63,24 +61,24 @@ export class BaseExtension extends Extension {
     }
 }
 
-export class Symbiont {
-    constructor(host, dispel, summon) {
-        host.connectObject('destroy', () => this.dispel(), onus(host));
-        this.summon = (...args) => (this._delegate = summon?.(...args));
-        this.dispel = () => { dispel(this._delegate); this._delegate = null; };
+export class SourceManager {
+    constructor(host, remove, add) {
+        host.connectObject('destroy', () => this.removeSource(), getSignalHolder(host));
+        this.removeSource = () => { remove(this._delegate); this._delegate = null; };
+        this.addSource = (...args) => (this._delegate = add(...args));
     }
 
-    revive(...args) {
-        this.dispel();
-        return this.summon(...args);
+    refreshSource(...args) {
+        this.removeSource();
+        return this.addSource(...args);
     }
 }
 
 export class Fulu {
-    constructor(prop, gset, obj, tie) {
+    constructor(prop, gset, obj, cluster) {
         this.prop = new WeakMap();
         this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
-        this.attach(prop, obj, tie);
+        this.attach(prop, obj, cluster);
     }
 
     get(prop, obj) {
@@ -94,11 +92,11 @@ export class Fulu {
     attach(props, obj, cluster) { // cluster && props <- { fulu: [key, type, output] }
         this.prop.has(obj) ? Object.assign(this.prop.get(obj), props) : this.prop.set(obj, props);
         let callback = cluster ? x => { obj[cluster] = [x, this.get(x, obj), this.prop.get(obj)[x][2]]; } : x => { obj[x] = this.get(x, obj); };
-        Object.entries(props).forEach(([k, [x]]) => { callback(k); this.gset.connectObject(`changed::${x}`, () => callback(k), onus(obj)); });
+        Object.entries(props).forEach(([k, [x]]) => { callback(k); this.gset.connectObject(`changed::${x}`, () => callback(k), getSignalHolder(obj)); });
         return this;
     }
 
     detach(obj) {
-        this.gset.disconnectObject(onus(obj));
+        this.gset.disconnectObject(getSignalHolder(obj));
     }
 }
