@@ -51,8 +51,7 @@ function hsv2hsl({ h, s, v }) {
     return { h, s: l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l), l };
 }
 
-// Ref: http://www.easyrgb.com/en/math.php
-function cmyk2rgb({ c, m, y, k }) {
+function cmyk2rgb({ c, m, y, k }) { // Ref: http://www.easyrgb.com/en/math.php
     return vmap({ r: c, g: m, b: y }, x => (1 - x * (1 - k) - k) * 255);
 }
 

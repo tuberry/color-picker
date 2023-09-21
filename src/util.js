@@ -32,11 +32,11 @@ export const fopen = (...xs) => Gio.File.new_for_path(fpath(...xs));
 export const bmap = o => ({ ...o, ...omap(o, ([k, v]) => [[v, k]]) });
 export const array = (n, f = id) => Array.from({ length: n }, (_x, i) => f(i));
 export const omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
+export const hook = (o, a) => (Object.entries(o).forEach(([k, v]) => a.connect(k, v)), a);
 export const pickle = o => Json.gvariant_deserialize(Json.from_string(JSON.stringify(o)), null);
 export const luminance = ({ r, g, b }) => Math.sqrt(0.299 * r * r  + 0.587 * g * g + 0.114 * b * b); // Ref: https://stackoverflow.com/a/596243
 export const gerror = (x, y = '') => new Gio.IOErrorEnum({ code: Gio.IOErrorEnum[x] ?? x, message: y });
 export const gprops = o => omap(o, ([k, [x, ...ys]]) => [[k, GObject.ParamSpec[x](k, k, k, GObject.ParamFlags.READWRITE, ...ys)]]);
-export const denum = (x, y = Gio.FILE_ATTRIBUTE_STANDARD_NAME) => x.enumerate_children_async(y, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 export const fquery = (x, ...ys) => x.query_info_async(ys.join(','), Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 export const fcheck = (...xs) => fquery(xs[0] instanceof Gio.File ? xs[0] : fopen(...xs), Gio.FILE_ATTRIBUTE_STANDARD_NAME);
 export const fwrite = (x, y) => x.replace_contents_async(encode(y), null, false, Gio.FileCreateFlags.NONE, null);
@@ -45,6 +45,15 @@ export const dtouch = x => x.make_directory_async(GLib.PRIORITY_DEFAULT, null);
 export const fdelete = x => x.delete_async(GLib.PRIORITY_DEFAULT, null);
 export const fexist = (...xs) => fcheck(...xs).catch(noop);
 export const fread = x => x.load_contents_async(null);
+
+export async function denum(path, func) {
+    try {
+        let dir = Array.isArray(path) ? path : [path];
+        return await Array.fromAsync(fopen(...dir).enumerate_children(Gio.FILE_ATTRIBUTE_STANDARD_NAME, Gio.FileQueryInfoFlags.NONE, null), func);
+    } catch(e) {
+        return [];
+    }
+}
 
 export async function access(method, url, param, session = new Soup.Session()) {
     let msg = param ? Soup.Message.new_from_encoded_form(method, url, Soup.form_encode_hash(param)) : Soup.Message.new(method, url);

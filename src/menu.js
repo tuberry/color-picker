@@ -23,25 +23,13 @@ export class TrayIcon extends St.Icon {
     }
 }
 
-export class StButton extends St.Button {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(param, callback) {
-        super(param);
-        this.connect('clicked', callback);
-        this.set_can_focus(true);
-    }
-}
-
-export class IconButton extends StButton {
+export class IconButton extends St.Button {
     static {
         GObject.registerClass(this);
     }
 
     constructor(param, callback, ...args) {
-        super(param, callback);
+        super({ can_focus: true, ...param });
         if(args.length > 1) {
             let [status, on, off] = args;
             this.set_child(new St.Icon({ style_class: 'popup-menu-icon', icon_name: status ? on : off }));
@@ -49,6 +37,7 @@ export class IconButton extends StButton {
         } else {
             this.set_child(new St.Icon({ style_class: 'popup-menu-icon', icon_name: args[0] ?? '' }));
         }
+        this.connect('clicked', callback);
     }
 
     setIcon(icon) {
@@ -105,18 +94,18 @@ export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(name, enums, enum_, callback) {
+    constructor(category, choices, choice, callback) {
         super('');
-        this._enum = enums;
-        this._name = name;
-        Object.entries(enums).forEach(([k, v]) => this.menu.addMenuItem(new MenuItem(v, () => callback(k))));
-        this.setSelected(enum_);
+        this._choices = choices;
+        this._category = category;
+        Object.entries(choices).forEach(([k, v]) => this.menu.addMenuItem(new MenuItem(v, () => callback(k))));
+        this.setSelected(choice);
     }
 
-    setSelected(m) {
-        if(!(m in this._enum)) return;
-        this.label.set_text(`${this._name}：${this._enum[m]}`);
-        this.menu._getMenuItems().forEach(x => x.setOrnament(PopupMenu.Ornament[x.label.text === this._enum[m] ? 'DOT' : 'NONE']));
+    setSelected(c) {
+        if(!(c in this._choices)) return;
+        this.label.set_text(`${this._category}：${this._choices[c]}`);
+        this.menu._getMenuItems().forEach(x => x.setOrnament(PopupMenu.Ornament[x.label.text === this._choices[c] ? 'DOT' : 'NONE']));
     }
 }
 
@@ -125,27 +114,26 @@ export class DRadioItem extends PopupMenu.PopupSubMenuMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(name, list, index, click, select) {
+    constructor(category, choices, selected, callback) {
         super('');
-        this._name = name;
-        this._onClick = click;
-        this._onSelect = select || (x => this._list[x]);
-        this.setList(list, index);
+        this._category = category;
+        this._callback = callback;
+        this.setList(choices, selected);
     }
 
-    setSelected(index) {
-        this._index = index;
-        this.label.set_text(`${this._name}：${this._onSelect(this._index) || ''}`);
-        this.menu._getMenuItems().forEach((y, i) => y.setOrnament(PopupMenu.Ornament[index === i ? 'DOT' : 'NONE']));
+    setSelected(selected) {
+        this._selected = selected;
+        this.label.set_text(`${this._category}：${this._choices[this._selected] || ''}`);
+        this.menu._getMenuItems().forEach((y, i) => y.setOrnament(PopupMenu.Ornament[selected === i ? 'DOT' : 'NONE']));
     }
 
-    setList(list, index) {
+    setList(choices, selected) {
         let items = this.menu._getMenuItems();
-        let diff = list.length - items.length;
-        if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => this._onClick(items.length + a)));
+        let diff = choices.length - items.length;
+        if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => this._callback(items.length + a)));
         else if(diff < 0) do items.at(diff).destroy(); while(++diff < 0);
-        this._list = list;
-        this.menu._getMenuItems().forEach((x, i) => x.setLabel(list[i]));
-        this.setSelected(index ?? this._index);
+        this._choices = choices;
+        this.menu._getMenuItems().forEach((x, i) => x.setLabel(choices[i]));
+        this.setSelected(selected ?? this._selected);
     }
 }

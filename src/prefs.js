@@ -34,10 +34,6 @@ class Key extends UI.DialogButtonBase {
 
     _setValue(v) {
         this._value = v;
-        this._showValue();
-    }
-
-    _showValue() {
         this._btn.child.set_accelerator(this._value);
     }
 

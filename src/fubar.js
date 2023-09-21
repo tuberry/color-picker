@@ -71,23 +71,23 @@ export class Symbiont {
 }
 
 export class Fulu {
+    #map = new WeakMap();
     constructor(prop, gset, obj, cluster) {
-        this.prop = new WeakMap();
         this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
         this.attach(prop, obj, cluster);
     }
 
     get(prop, obj) {
-        return (([key, type]) => this.gset[`get_${type}`](key))(this.prop.get(obj)[prop]);
+        return (([key, type]) => this.gset[`get_${type}`](key))(this.#map.get(obj)[prop]);
     }
 
     set(prop, value, obj) {
-        (([key, type]) => this.gset[`set_${type}`](key, value))(this.prop.get(obj)[prop]);
+        (([key, type]) => this.gset[`set_${type}`](key, value))(this.#map.get(obj)[prop]);
     }
 
     attach(props, obj, cluster) { // cluster && props <- { fulu: [key, type, output] }
-        this.prop.has(obj) ? Object.assign(this.prop.get(obj), props) : this.prop.set(obj, props);
-        let callback = cluster ? x => { obj[cluster] = [x, this.get(x, obj), this.prop.get(obj)[x][2]]; } : x => { obj[x] = this.get(x, obj); };
+        this.#map.has(obj) ? Object.assign(this.#map.get(obj), props) : this.#map.set(obj, props);
+        let callback = cluster ? x => { obj[cluster] = [x, this.get(x, obj), this.#map.get(obj)[x][2]]; } : x => { obj[x] = this.get(x, obj); };
         Object.entries(props).forEach(([k, [x]]) => { callback(k); this.gset.connectObject(`changed::${x}`, () => callback(k), onus(obj)); });
         return this;
     }

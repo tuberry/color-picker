@@ -18,8 +18,8 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import { Color } from './color.js';
 import { Field, Format as Formats } from './const.js';
-import { encode, omap, bmap, xnor, gerror, gprops, raise } from './util.js';
-import { StButton, IconButton, MenuItem, RadioItem, IconItem, TrayIcon } from './menu.js';
+import { IconButton, MenuItem, RadioItem, IconItem, TrayIcon } from './menu.js';
+import { encode, omap, bmap, xnor, gerror, gprops, raise, hook } from './util.js';
 import { Fulu, ExtensionBase, Destroyable, symbiose, omit, onus, _, getSelf } from './fubar.js';
 
 const setCursor = x => x && global.display.set_cursor(Meta.Cursor[x]);
@@ -76,19 +76,19 @@ class ColorSlider extends Slider.Slider {
 
     constructor(type, number, base, color, callback) {
         super(number / base);
-        this.type = type;
-        this.base = base;
-        this.color = color;
-        this.step = base > 1 ? 1 / base : 0.01;
+        this._type = type;
+        this._base = base;
+        this._color = color;
+        this._step = base > 1 ? 1 / base : 0.01;
         this.connect('notify::value', () => (this._dragging || this.get_parent().active) && callback(this.number));
     }
 
     get number() {
-        return this.value * this.base;
+        return this.value * this._base;
     }
 
     set number(number) {
-        let value = number / this.base;
+        let value = number / this._base;
         if(value === this.value) this.queue_repaint();
         else this.value = value;
     }
@@ -103,7 +103,7 @@ class ColorSlider extends Slider.Slider {
         // draw background
         cr.arc(barLevelRadius, height / 2, barLevelRadius, Math.PI * (1 / 2), Math.PI * (3 / 2));
         cr.arc(width - barLevelRadius, height / 2, barLevelRadius, Math.PI * 3 / 2, Math.PI / 2);
-        this.color.toStops(this.type).forEach(x => gradient.addColorStopRGBA(...x));
+        this._color.toStops(this._type).forEach(x => gradient.addColorStopRGBA(...x));
         cr.setSource(gradient);
         cr.fill();
 
@@ -112,7 +112,7 @@ class ColorSlider extends Slider.Slider {
             handleX = ceiledHandleRadius + (width - 2 * ceiledHandleRadius) * this._value / this._maxValue,
             handleY = height / 2;
         // draw handle
-        cr.setSourceRGBA(...this.color.toRGBA());
+        cr.setSourceRGBA(...this._color.toRGBA());
         cr.arc(handleX, handleY, handleRadius, 0, 2 * Math.PI);
         cr.fill();
         Clutter.cairo_set_source_color(cr, themeNode.get_foreground_color());
@@ -125,7 +125,7 @@ class ColorSlider extends Slider.Slider {
     vfunc_key_press_event(event) {
         let key = event.get_key_symbol();
         if(key === Clutter.KEY_Right || key === Clutter.KEY_Left) {
-            let delta = key === Clutter.KEY_Right ? this.step : -this.step;
+            let delta = key === Clutter.KEY_Right ? this._step : -this._step;
             this.value = Math.clamp(this._value + delta, 0, this._maxValue);
             return Clutter.EVENT_STOP;
         }
@@ -142,7 +142,7 @@ class ColorSlider extends Slider.Slider {
             default: return 0;
             }
         })(event.get_scroll_direction());
-        this.value = Math.clamp(this._value + delta * this.step, 0, this._maxValue);
+        this.value = Math.clamp(this._value + delta * this._step, 0, this._maxValue);
         return Clutter.EVENT_STOP;
     }
 }
@@ -225,9 +225,9 @@ class ColorMenu extends PopupMenu.PopupMenu {
 
     _genHEXItem() {
         let item = new MenuItem('', () => this._emitSelected(Format.HEX));
-        ['RGB', 'HSL', 'hex'].reverse().forEach(x => item.insert_child_at_index(new StButton({
-            x_expand: false, label: x, style_class: 'color-picker-button button',
-        }, () => { this.close(); this._emitSelected(Format[x]); }), 0));
+        ['RGB', 'HSL', 'hex'].forEach((x, i) => item.insert_child_at_index(hook({
+            clicked: () => { this.close(); this._emitSelected(Format[x]); },
+        }, new St.Button({ x_expand: false, can_focus: true, label: x, style_class: 'color-picker-button button' })), i));
         return item;
     }
 
@@ -256,8 +256,8 @@ class ColorLabel extends BoxPointer.BoxPointer {
         Main.layoutManager.addTopChrome(this);
         this._label = new St.Label({ style_class: 'color-picker-label' });
         this.bin.set_child(this._label);
-        let s = Math.round(Meta.prefs_get_cursor_size() * 0.8);
-        this._cursor = new Clutter.Actor({ opacity: 0, width: s, height: s });
+        let len = Math.round(Meta.prefs_get_cursor_size() * 0.8);
+        this._cursor = new Clutter.Actor({ opacity: 0, width: len, height: len });
         symbiose(this, () => omit(this, '_cursor'));
         Main.uiGroup.add_child(this._cursor);
     }
@@ -399,14 +399,15 @@ class ColorArea extends St.Widget {
     }
 
     set preview(preview) {
-        if(xnor(preview, this._view)) return;
-        if(preview) {
-            this._view = this.pvstyle ? new ColorLabel() : new ColorIcon();
-            this._menu = new ColorMenu(this);
-            this._menu.connectObject('color-selected', (_a, color) => this._emitColor(color),
-                'open-state-changed', (_a, open) => setCursor(open ? 'DEFAULT' : this._view?.cursor_type), onus(this));
-        } else {
-            omit(this, '_view', '_menu');
+        if(!xnor(preview, this._view)) {
+            if(preview) {
+                this._view = this.pvstyle ? new ColorLabel() : new ColorIcon();
+                this._menu = new ColorMenu(this);
+                this._menu.connectObject('color-selected', (_a, color) => this._emitColor(color),
+                    'open-state-changed', (_a, open) => setCursor(open ? 'DEFAULT' : this._view?.cursor_type), onus(this));
+            } else {
+                omit(this, '_view', '_menu');
+            }
         }
         setCursor(preview === null ? 'DEFAULT' : this._view?.cursor_type ?? 'CROSSHAIR');
     }
