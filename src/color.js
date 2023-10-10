@@ -51,8 +51,7 @@ function hsv2hsl({ h, s, v }) {
     return { h, s: l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l), l };
 }
 
-// Ref: http://www.easyrgb.com/en/math.php
-function cmyk2rgb({ c, m, y, k }) {
+function cmyk2rgb({ c, m, y, k }) { // Ref: http://www.easyrgb.com/en/math.php
     return vmap({ r: c, g: m, b: y }, x => (1 - x * (1 - k) - k) * 255);
 }
 
@@ -71,7 +70,7 @@ export class Color {
             this.#rgb = { ...rgb };
             this.format = raw;
         } else {
-            let [r, g, b, format] = [24, 16, 8, 0].map(x => raw >>> x & 0xff);
+            let [format, b, g, r] = array(4, i => raw >>> (8 * i) & 0xff);
             this.#rgb = { r, g, b };
             this.format = format;
         }
@@ -137,10 +136,10 @@ export class Color {
             [/^ *([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2}) *$/i, parseHEX, 'rgb'],
             [/^ *hsv\( *(\d{1,3}) *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, parseHSL, 'hsv'],
             [/^ *cmyk\( *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, m => Math.clamp(parseInt(m) / 100, 0, 1), 'cmyk'],
-        ].some(([r, f, t], i) => {
-            let [, ...ms] = str.match(r) ?? [];
+        ].some(([regex, type, tmp], i) => {
+            let [, ...ms] = str.match(regex) ?? [];
             if(!ms.length) return false;
-            this[t] = zip([...t], ms.map(f));
+            this[tmp] = zip([...tmp], ms.map(type));
             this.format = i; // sort by Format
             return true;
         });
