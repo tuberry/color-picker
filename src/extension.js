@@ -15,32 +15,59 @@ import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import { Color } from './color.js';
-import { Field, Format as Formats } from './const.js';
+import { Field, Format } from './const.js';
+import { encode, omap, xnor, gerror, gprops, hook } from './util.js';
 import { IconButton, MenuItem, RadioItem, IconItem, TrayIcon } from './menu.js';
-import { encode, omap, bmap, xnor, gerror, gprops, raise, hook } from './util.js';
-import { Fulu, ExtensionBase, Destroyable, symbiose, omit, onus, _, getSelf } from './fubar.js';
+import { Fulu, ExtensionBase, Destroyable, symbiose, omit, connect, _, getSelf } from './fubar.js';
 
 const setCursor = x => x && global.display.set_cursor(Meta.Cursor[x]);
 const setClipboard = x => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, x);
-const genColorSwatch = x => encode(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" version="1.1">
-  <rect x="2" y="2" width="12" height="12" rx="2" fill="${x}" />
-</svg>`);
+const genColorSwatch = x => encode(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" version="1.1">
+  <rect x="8" y="8" width="48" height="48" rx="8" fill="${x}" />
+</svg>`); // 8 = 64 >> 3
 
-const Format = bmap(Formats);
 const Notify = { MSG: 0, OSD: 1 };
 
-class ColorItem extends MenuItem {
+class ColorItemLabel extends St.Label {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(param) {
+        super({ can_focus: true, y_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'color-picker-item-label', ...param });
+    }
+
+    setMarkup(markup) {
+        this._markup = markup;
+        this.clutter_text.set_markup(markup);
+    }
+
+    vfunc_key_focus_in() {
+        super.vfunc_key_focus_in();
+        this.clutter_text.set_use_markup(false);
+    }
+
+    vfunc_key_focus_out() {
+        super.vfunc_key_focus_out();
+        this.clutter_text.set_use_markup(true);
+        if(this._markup) this.clutter_text.set_markup(this._markup);
+    }
+}
+
+class ColorItem extends PopupMenu.PopupBaseMenuItem {
     static {
         GObject.registerClass(this);
     }
 
     constructor(callback, item) {
-        super('', () => setClipboard(this._color.toText()));
-        this.label.set_x_expand(true);
-        this._btn = new IconButton({ style_class: 'color-picker-setting' }, () => callback(this._color.toRaw()));
-        this.add_child(this._btn);
+        super({ can_focus: false });
+        this.connect('activate', () => setClipboard(this._color.toText()));
+        this.label = new ColorItemLabel({ x_expand: true });
+        this._btn = new IconButton({ style_class: 'color-picker-iconbtn' }, () => callback(this._color.toRaw()));
+        [this.label, this._btn].forEach(x => this.add_child(x));
         this.setItem(item);
     }
 
@@ -50,7 +77,7 @@ class ColorItem extends MenuItem {
         this._btn.setIcon(icon ? 'starred-symbolic' : 'non-starred-symbolic');
         if(this._color?.equal(raw)) return;
         this._color = new Color(raw);
-        this.label.clutter_text.set_markup(this._color.toMarkup());
+        this.label.setMarkup(this._color.toMarkup());
     }
 }
 
@@ -118,31 +145,29 @@ class ColorSlider extends Slider.Slider {
         Clutter.cairo_set_source_color(cr, themeNode.get_foreground_color());
         cr.arc(handleX, handleY, barLevelRadius, 0, 2 * Math.PI);
         cr.fill();
-
         cr.$dispose();
     }
 
+    _updateValue(delta) {
+        this.value = Math.clamp(this._value + delta, 0, this._maxValue);
+    }
+
     vfunc_key_press_event(event) {
-        let key = event.get_key_symbol();
-        if(key === Clutter.KEY_Right || key === Clutter.KEY_Left) {
-            let delta = key === Clutter.KEY_Right ? this._step : -this._step;
-            this.value = Math.clamp(this._value + delta, 0, this._maxValue);
-            return Clutter.EVENT_STOP;
+        switch(event.get_key_symbol()) {
+        case Clutter.KEY_Left: this._updateValue(-this._step); break;
+        case Clutter.KEY_Right: this._updateValue(this._step); break;
+        default: return super.vfunc_key_press_event(event);
         }
-        return super.vfunc_key_press_event(event);
+        return Clutter.EVENT_STOP;
     }
 
     scroll(event) {
         if(event.is_pointer_emulated()) return Clutter.EVENT_PROPAGATE;
-        let delta = (direction => {
-            switch(direction) {
-            case Clutter.ScrollDirection.UP: return 1;
-            case Clutter.ScrollDirection.DOWN: return -1;
-            case Clutter.ScrollDirection.SMOOTH: return -event.get_scroll_delta().at(1);
-            default: return 0;
-            }
-        })(event.get_scroll_direction());
-        this.value = Math.clamp(this._value + delta * this._step, 0, this._maxValue);
+        switch(event.get_scroll_direction()) {
+        case Clutter.ScrollDirection.UP: this._updateValue(this._step); break;
+        case Clutter.ScrollDirection.DOWN: this._updateValue(-this._step); break;
+        case Clutter.ScrollDirection.SMOOTH: this._updateValue(-event.get_scroll_delta().at(1) * this._step); break;
+        }
         return Clutter.EVENT_STOP;
     }
 }
@@ -209,7 +234,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
     }
 
     _updateLabelText() {
-        this._menus.HEX.label.clutter_text.set_markup(this.color.toMarkup(Format.HEX));
+        this._menus.HEX.label.setMarkup(this.color.toMarkup(Format.HEX));
         ['RGB', 'HSL', 'HSV', 'CMYK'].forEach(x => this._menus[x].label.set_text(this.color.toText(Format[x])));
     }
 
@@ -224,7 +249,10 @@ class ColorMenu extends PopupMenu.PopupMenu {
     }
 
     _genHEXItem() {
-        let item = new MenuItem('', () => this._emitSelected(Format.HEX));
+        let item = new PopupMenu.PopupBaseMenuItem({ can_focus: false });
+        item.connect('activate', () => this._emitSelected(Format.HEX));
+        item.label = new ColorItemLabel();
+        item.add_child(item.label);
         ['RGB', 'HSL', 'hex'].forEach((x, i) => item.insert_child_at_index(hook({
             clicked: () => { this.close(); this._emitSelected(Format[x]); },
         }, new St.Button({ x_expand: false, can_focus: true, label: x, style_class: 'color-picker-button button' })), i));
@@ -263,7 +291,7 @@ class ColorLabel extends BoxPointer.BoxPointer {
     }
 
     setColor(x, y, color) {
-        this.hide(); // NOTE: workaround for box-shadow afterimage since 45.beta
+        this.hide(); // HACK: workaround for box-shadow afterimage since 45.beta
         this._label.clutter_text.set_markup(`<span bgcolor="${color.toText(Format.HEX)}">\u2001 </span> ${color.toText()}`);
         this._cursor.set_position(x, y);
         this.setPosition(this._cursor, 0);
@@ -403,8 +431,8 @@ class ColorArea extends St.Widget {
             if(preview) {
                 this._view = this.pvstyle ? new ColorLabel() : new ColorIcon();
                 this._menu = new ColorMenu(this);
-                this._menu.connectObject('color-selected', (_a, color) => this._emitColor(color),
-                    'open-state-changed', (_a, open) => setCursor(open ? 'DEFAULT' : this._view?.cursor_type), onus(this));
+                connect(this, [this._menu, 'color-selected', (_a, color) => this._emitColor(color),
+                    'open-state-changed', (_a, open) => setCursor(open ? 'DEFAULT' : this._view?.cursor_type)]);
             } else {
                 omit(this, '_view', '_menu');
             }
@@ -427,36 +455,33 @@ class ColorArea extends St.Widget {
         return Clutter.EVENT_PROPAGATE;
     }
 
-    _onMoveKeyPressed(keyval) {
-        let dx = 0, dy = 0;
-        switch(keyval) {
-        case Clutter.KEY_a:
-        case Clutter.KEY_h:
-        case Clutter.KEY_Left:  dx = -1; break;
-        case Clutter.KEY_w:
-        case Clutter.KEY_k:
-        case Clutter.KEY_Up:    dy = -1; break;
-        case Clutter.KEY_d:
-        case Clutter.KEY_l:
-        case Clutter.KEY_Right: dx = 1; break;
-        case Clutter.KEY_s:
-        case Clutter.KEY_j:
-        case Clutter.KEY_Down:  dy = 1; break;
-        }
+    _movePointerBy(dx, dy) {
         this._pointer.notify_relative_motion(global.get_current_time(), dx, dy);
     }
 
     vfunc_key_press_event(event) {
-        let key = event.get_key_symbol();
-        if(this.menukey && key === Clutter[`KEY_${this.menukey}`]) {
-            this._menu?.summon();
-        } else if(key === Clutter.KEY_Escape || this.quitkey && key === Clutter[`KEY_${this.quitkey}`]) {
-            this.emit('end-pick', true);
-            return Clutter.EVENT_PROPAGATE;
-        } else {
-            this._onMoveKeyPressed(key);
+        switch(event.get_key_symbol()) {
+        case Clutter.KEY_Escape:
+        case Clutter[`KEY_${this.quitkey}`]: this.emit('end-pick', true); break;
+        case Clutter[`KEY_${this.menukey}`]: this._menu?.summon(); break;
+        case Clutter.KEY_a:
+        case Clutter.KEY_h:
+        case Clutter.KEY_Left: this._movePointerBy(-1, 0); break;
+        case Clutter.KEY_w:
+        case Clutter.KEY_k:
+        case Clutter.KEY_Up: this._movePointerBy(0, -1); break;
+        case Clutter.KEY_d:
+        case Clutter.KEY_l:
+        case Clutter.KEY_Right: this._movePointerBy(1, 0); break;
+        case Clutter.KEY_s:
+        case Clutter.KEY_j:
+        case Clutter.KEY_Down: this._movePointerBy(0, 1); break;
+        case Clutter.KEY_space:
+        case Clutter.KEY_Return:
+        case Clutter.KEY_KP_Enter: this._emitColor(); break;
+        default: return super.vfunc_key_press_event(event);
         }
-        return super.vfunc_key_press_event(event);
+        return Clutter.EVENT_PROPAGATE;
     }
 
     vfunc_button_press_event(event) {
@@ -524,13 +549,13 @@ class ColorButton extends PanelMenu.Button {
 
     _addMenuItems() {
         this._menus = {
-            format:  new RadioItem(_('Default format'), omap(Formats, ([k, v]) => [[v, k]]), this._format, x => this._fulu.set('format', x, this)),
+            format:  new RadioItem(_('Default format'), omap(Format, ([k, v]) => [[v, k]]), this._format, x => this._fulu.set('format', x, this)),
             sep0:    new PopupMenu.PopupSeparatorMenuItem(),
             section: new ColorSection(...this.getSection()),
             sep1:    new PopupMenu.PopupSeparatorMenuItem(),
-            prefs:   new IconItem('color-picker-setting', {
+            prefs:   new IconItem('color-picker-iconbtn', {
                 pick: [() => { this.menu.close(); this._callback(); }, 'find-location-symbolic'],
-                star: [() => this._fulu.set('menu_style', !this.menu_style, this), this.menu_style, 'semi-starred-symbolic', 'starred-symbolic'],
+                star: [() => this._fulu.set('menu_style', !this.menu_style, this), [this.menu_style, 'semi-starred-symbolic', 'starred-symbolic']],
                 gear: [() => { this.menu.close(); getSelf().openPreferences(); }, 'emblem-system-symbolic'],
             }),
         };
@@ -606,7 +631,7 @@ class ColorPicker extends Destroyable {
         if(this._area) return;
         this._btn?.add_style_pseudo_class('busy');
         this._area = new ColorArea({ format: this.enable_fmt ? this.format : null, fulu: this._fulu });
-        this._area.connectObject('end-pick', () => this.dispel(), 'notify-color', this.inform.bind(this), onus(this));
+        connect(this, [this._area, 'end-pick', () => this.dispel(), 'notify-color', this.inform.bind(this)]);
     }
 
     dispel() {
@@ -622,10 +647,16 @@ class ColorPicker extends Destroyable {
         this._picked.push(text);
         this._btn?._addHistory(color.toRaw());
         if(!this.enable_notify) return;
+        let icon = Gio.BytesIcon.new(genColorSwatch(color.toText(Format.HEX)));
         if(this.notify_style === Notify.MSG) {
-            Main.notify(getSelf().metadata.name, _('%s is picked.').format(text));
+            let source = new MessageTray.SystemNotificationSource();
+            source.getIcon = () => icon;
+            source.iconUpdated();
+            Main.messageTray.add(source);
+            let notification = new MessageTray.Notification(source, getSelf().metadata.name, _('%s is picked.').format(text));
+            notification.setTransient(true);
+            source.showNotification(notification);
         } else {
-            let icon = Gio.BytesIcon.new(genColorSwatch(color.toText(Format.HEX)));
             Main.osdWindowManager.show(global.display.get_current_monitor(), icon, text);
         }
     }
@@ -636,8 +667,8 @@ class ColorPicker extends Destroyable {
                 if(this._area) throw gerror('FAILED', 'Cannot start picking');
                 this._btn?.add_style_pseudo_class('busy');
                 this._area = new ColorArea({ once: true, fulu: this._fulu });
-                this._area.connectObject('end-pick', (_a, except) => { this.dispel(); if(except) raise('aborted'); },
-                    'notify-color', (_a, color) => resolve(color.toText(Format.HEX)), onus(this));
+                connect(this, [this._area, 'end-pick', (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); },
+                    'notify-color', (_a, color) => resolve(color.toText(Format.HEX))]);
             } catch(e) {
                 reject(e);
             }
@@ -649,7 +680,7 @@ export default class Extension extends ExtensionBase {
     $klass = ColorPicker;
     // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
     pickAsync() {
-        if(!this.$delegate) raise('disabled');
+        if(!this.$delegate) throw Error('disabled');
         return this.$delegate.pickAsync();
     }
 }

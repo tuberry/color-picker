@@ -16,7 +16,7 @@ class KeyDialog extends UI.KeysDialog {
         GObject.registerClass(this);
     }
 
-    _onKeyPressed(_w, keyval, keycode, state) {
+    _onKeyPress(_w, keyval, keycode, state) {
         let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
         if(mask || keyval !== Gdk.KEY_Escape) this.emit('selected', Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
         this.close();
@@ -55,20 +55,20 @@ class ColorPickerPrefs extends Adw.PreferencesGroup {
 
     _buildWidgets(gset) {
         this._blk = UI.block({
-            MKEY: ['value',    new Key()],
-            QKEY: ['value',    new Key()],
-            TICN: ['value',    new UI.Icon()],
-            COPY: ['active',   new Gtk.CheckButton()],
-            NTF:  ['active',   new Gtk.CheckButton()],
-            FMT:  ['active',   new Gtk.CheckButton()],
-            PVW:  ['active',   new Gtk.CheckButton()],
-            KEY:  ['active',   new Gtk.CheckButton()],
-            STRY: ['active',   new Gtk.CheckButton()],
-            PRST: ['active',   new Gtk.CheckButton()],
-            NTFS: ['selected', new UI.Drop([_('MSG'), _('OSD')])],
-            MSIZ: ['value',    new UI.Spin(1, 16, 1, _('history size'))],
-            FMTS: ['selected', new UI.Drop(['HEX', 'RGB', 'HSL', 'hex', 'HSV', 'CMYK'])],
-            PVWS: ['selected', new UI.Drop([_('Icon'), _('Label')], _('preview style'))],
+            MKEY: [new Key()],
+            QKEY: [new Key()],
+            TICN: [new UI.Icon()],
+            COPY: [new UI.Check()],
+            NTF:  [new UI.Check()],
+            FMT:  [new UI.Check()],
+            PVW:  [new UI.Check()],
+            KEY:  [new UI.Check()],
+            STRY: [new UI.Check()],
+            PRST: [new UI.Check()],
+            NTFS: [new UI.Drop([_('MSG'), _('OSD')])],
+            MSIZ: [new UI.Spin(1, 16, 1, _('history size'))],
+            FMTS: [new UI.Drop(['HEX', 'RGB', 'HSL', 'hex', 'HSV', 'CMYK'])],
+            PVWS: [new UI.Drop([_('Icon'), _('Label')], _('preview style'))],
         }, gset);
         this._blk.KEYS = new UI.Keys({ gset, key: Field.KEYS });
     }

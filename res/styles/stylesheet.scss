@@ -22,6 +22,13 @@ $pfx: 'color-picker';
     color: lighten($selected_bg_color, 10%);
 }
 
-.#{$pfx}-setting:hover {
-    color: lighten($selected_bg_color, 5%);
+.#{$pfx}-item-label:focus {
+    color: $selected_bg_color;
+    font-weight: bold;
+    font-family: monospace;
+}
+
+.#{$pfx}-iconbtn {
+    &:focus { color: $selected_bg_color; }
+    &:hover { color: lighten($selected_bg_color, 5%); }
 }

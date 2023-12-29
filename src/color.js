@@ -57,7 +57,7 @@ function cmyk2rgb({ c, m, y, k }) { // Ref: http://www.easyrgb.com/en/math.php
 
 function rgb2cmyk({ r, g, b }) {
     let cmy = [r, g, b].map(x => 1 - x / 255),
-        n = Math.min(...cmy.values()),
+        n = Math.min(...cmy),
         [c, m, y, k] = n === 1 ? [0, 0, 0, 1] : cmy.map(x => (x - n) / (1 - n)).concat(n);
     return { c, m, y, k };
 }
@@ -70,7 +70,7 @@ export class Color {
             this.#rgb = { ...rgb };
             this.format = raw;
         } else {
-            let [format, b, g, r] = array(4, i => raw >>> (8 * i) & 0xff);
+            let [format, b, g, r] = array(4, i => raw >>> (i << 3) & 0xff);
             this.#rgb = { r, g, b };
             this.format = format;
         }
@@ -108,8 +108,8 @@ export class Color {
         this.rgb = cmyk2rgb(cmyk);
     }
 
-    equal(color) {
-        return this.toRaw() === color;
+    equal(raw) {
+        return this.toRaw() === raw;
     }
 
     copy() {
@@ -130,24 +130,24 @@ export class Color {
 
     fromString(str) {
         return [
-            [/^ *#([0-9a-f]{2})([0-9a-f]{2})([0-91-f]{2}) *$/i, parseHEX, 'rgb'],
-            [/^ *rgb\( *(\d{1,3}) *, *(\d{1,3}) *, *(\d{1,3}) *\) *$/, m => Math.clamp(parseInt(m), 0, 255), 'rgb'],
-            [/^ *hsl\( *(\d{1,3}) *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, parseHSL, 'hsl'],
-            [/^ *([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2}) *$/i, parseHEX, 'rgb'],
-            [/^ *hsv\( *(\d{1,3}) *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, parseHSL, 'hsv'],
-            [/^ *cmyk\( *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, m => Math.clamp(parseInt(m) / 100, 0, 1), 'cmyk'],
-        ].some(([regex, type, tmp], i) => {
+            ['HEX', /^ *#([0-9a-f]{2})([0-9a-f]{2})([0-91-f]{2}) *$/i, parseHEX, 'rgb'],
+            ['RGB', /^ *rgb\( *(\d{1,3}) *, *(\d{1,3}) *, *(\d{1,3}) *\) *$/, m => Math.clamp(parseInt(m), 0, 255), 'rgb'],
+            ['HSL', /^ *hsl\( *(\d{1,3}) *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, parseHSL, 'hsl'],
+            ['hex', /^ *([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2}) *$/i, parseHEX, 'rgb'],
+            ['HSV', /^ *hsv\( *(\d{1,3}) *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, parseHSL, 'hsv'],
+            ['CMYK', /^ *cmyk\( *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, m => Math.clamp(parseInt(m) / 100, 0, 1), 'cmyk'],
+        ].some(([format, regex, type, tmp]) => {
             let [, ...ms] = str.match(regex) ?? [];
             if(!ms.length) return false;
             this[tmp] = zip([...tmp], ms.map(type));
-            this.format = i; // sort by Format
+            this.format = Format[format];
             return true;
         });
     }
 
     toRaw() {
         let { r, g, b } = this.#rgb;
-        return [r, g, b, this.format].reduce((a, x) => a << 8 | x) >>> 0;
+        return [r, g, b, this.format].reduce((p, x) => p << 8 | x) >>> 0;
     }
 
     toRGBHSL() {
@@ -165,7 +165,7 @@ export class Color {
         }
     }
 
-    toMarkup(format) { // FIXME: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
+    toMarkup(format) { // HACK: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
         return ` <span face="monospace" fgcolor="${luminance(this.#rgb) > 127 ? 'black' : 'white'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(format)}</span>`;
     }
 

@@ -10,16 +10,17 @@ import { loadInterfaceXML } from 'resource:///org/gnome/shell/misc/fileUtils.js'
 import { TransientSignalHolder } from 'resource:///org/gnome/shell/misc/signalTracker.js';
 import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import { vmap, raise } from './util.js';
-
-// roll back to the previous workaround for the read-only signalTracker since 45.beta
-// TODO: wait for https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/2542
-const _isDestroyable = x => GObject.type_is_a(x, GObject.Object) && GObject.signal_lookup('destroy', x);
+import { vmap } from './util.js';
 
 export { _ };
 export const getSelf = () => Extension.lookupByURL(import.meta.url);
 export const omit = (o, ...ks) => ks.forEach(k => { o[k]?.destroy?.(); o[k] = null; });
-export const onus = o => [o, o.$scapegoat].find(x => _isDestroyable(x)) ?? raise('undestroyable');
+
+// TODO: wait for https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/2542
+const onus = o => [o, o.$scapegoat].find(x => GObject.type_is_a(x, GObject.Object) && GObject.signal_lookup('destroy', x)) ??
+    (() => { throw Error('undestroyable'); })(); // NOTE: https://github.com/tc39/proposal-throw-expressions#todo
+export const connect = (tracker, ...args) => (x => args.forEach(([emitter, ...argv]) => emitter.connectObject(...argv, x)))(onus(tracker));
+export const disconnect = (tracker, ...args) => (x => args.forEach(emitter => emitter?.disconnectObject(x)))(onus(tracker));
 
 export class Destroyable extends EventEmitter {
     $scapegoat = new TransientSignalHolder(this);
@@ -36,16 +37,15 @@ export function symbiose(host, doom, obj) {
 }
 
 export function lightProxy(callback, obj) {
-    let BUS_NAME = 'org.gnome.SettingsDaemon.Color',
-        colorInfo = Gio.DBusInterfaceInfo.new_for_xml(loadInterfaceXML(BUS_NAME)),
-        proxy = new Gio.DBusProxy({
-            g_name: BUS_NAME,
-            g_connection: Gio.DBus.session,
-            g_object_path: '/org/gnome/SettingsDaemon/Color',
-            g_interface_name: colorInfo.name,
-            g_interface_info: colorInfo,
-        });
-    proxy.connectObject('g-properties-changed', callback, onus(obj));
+    let iface = Gio.DBusInterfaceInfo.new_for_xml(loadInterfaceXML('org.gnome.SettingsDaemon.Color'));
+    let proxy = new Gio.DBusProxy({
+        g_interface_info: iface,
+        g_interface_name: iface.name,
+        g_connection: Gio.DBus.session,
+        g_name: 'org.gnome.SettingsDaemon.Color',
+        g_object_path: '/org/gnome/SettingsDaemon/Color',
+    });
+    connect(obj, [proxy, 'g-properties-changed', callback]);
     proxy.init_async(GLib.PRIORITY_DEFAULT, null).catch(logError);
 
     return proxy;
@@ -63,7 +63,7 @@ export class ExtensionBase extends Extension {
 
 export class Symbiont {
     constructor(host, dispel, summon) {
-        host.connectObject('destroy', () => this.dispel(), onus(host));
+        connect(host, [host, 'destroy', () => this.dispel()]);
         this.dispel = () => { dispel(this._delegate); this._delegate = null; };
         this.summon = (...args) => (this._delegate = summon(...args));
         this.revive = (...args) => { this.dispel(); return this.summon(...args); };
@@ -88,11 +88,11 @@ export class Fulu {
     attach(props, obj, cluster) { // cluster && props <- { fulu: [key, type, output] }
         this.#map.has(obj) ? Object.assign(this.#map.get(obj), props) : this.#map.set(obj, props);
         let callback = cluster ? x => { obj[cluster] = [x, this.get(x, obj), this.#map.get(obj)[x][2]]; } : x => { obj[x] = this.get(x, obj); };
-        Object.entries(props).forEach(([k, [x]]) => { callback(k); this.gset.connectObject(`changed::${x}`, () => callback(k), onus(obj)); });
+        Object.entries(props).forEach(([k, [x]]) => { callback(k); connect(obj, [this.gset, `changed::${x}`, () => callback(k)]); });
         return this;
     }
 
     detach(obj) {
-        this.gset.disconnectObject(onus(obj));
+        disconnect(obj, this.gset);
     }
 }

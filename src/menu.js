@@ -3,14 +3,13 @@
 
 import St from 'gi://St';
 import Gio from 'gi://Gio';
-import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { ROOT_DIR, vmap } from './util.js';
+import { ROOT_DIR } from './util.js';
 
-export const gicon = x => Gio.Icon.new_for_string(`${ROOT_DIR}/icons/hicolor/scalable/status/${x}.svg`);
+export const genIcon = x => Gio.Icon.new_for_string(`${ROOT_DIR}/icons/hicolor/scalable/status/${x}.svg`);
 
 export class TrayIcon extends St.Icon {
     static {
@@ -19,7 +18,7 @@ export class TrayIcon extends St.Icon {
 
     constructor(icon_name = '', fallback) {
         super({ style_class: 'system-status-icon', icon_name });
-        if(fallback) this.set_fallback_gicon(gicon(icon_name));
+        if(fallback) this.set_fallback_gicon(genIcon(icon_name));
     }
 }
 
@@ -28,16 +27,17 @@ export class IconButton extends St.Button {
         GObject.registerClass(this);
     }
 
-    constructor(param, callback, ...args) {
+    constructor(param, callback, icon, uid) {
         super({ can_focus: true, ...param });
-        if(args.length > 1) {
-            let [status, on, off] = args;
+        this.connect('clicked', callback);
+        if(Array.isArray(icon)) {
+            let [status, on, off] = icon;
             this.set_child(new St.Icon({ style_class: 'popup-menu-icon', icon_name: status ? on : off }));
             this.connect('clicked', () => this.setIcon({ [on]: off, [off]: on }[this.child.get_icon_name()]));
         } else {
-            this.set_child(new St.Icon({ style_class: 'popup-menu-icon', icon_name: args[0] ?? '' }));
+            this.set_child(new St.Icon({ style_class: 'popup-menu-icon', icon_name: icon ?? '' }));
         }
-        this.connect('clicked', callback);
+        this._uid = uid;
     }
 
     setIcon(icon) {
@@ -51,15 +51,16 @@ export class IconItem extends PopupMenu.PopupBaseMenuItem {
     }
 
     constructor(style_class, icons) {
-        super({ activate: false });
-        this._icons = vmap(icons, args => new IconButton({ x_expand: true, style_class }, ...args));
-        let box = new St.BoxLayout({ x_align: Clutter.ActorAlign.FILL, x_expand: true });
-        Object.values(this._icons).forEach(x => box.add_child(x));
-        this.add_child(box);
+        super({ activate: false, can_focus: false });
+        Object.entries(icons).forEach(([k, v]) => this.add_child(new IconButton({ x_expand: true, style_class }, ...v, k)));
     }
 
-    setViz(icon, viz) {
-        this._icons[icon]?.[viz ? 'show' : 'hide']();
+    getIcon(uid) {
+        return [...this].find(x => x._uid === uid);
+    }
+
+    setViz(uid, viz) {
+        this.getIcon(uid)?.[viz ? 'show' : 'hide']();
     }
 }
 
