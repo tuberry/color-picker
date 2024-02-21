@@ -1,5 +1,6 @@
 #!/bin/bash
-# by tuberry
+# SPDX-FileCopyrightText: tuberry
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 LC=${1:-${LANG%%.*}}
 DM=$(meson setup build "$(test -d build && echo --wipe || echo)" | grep -Po '(?<=Project name: ).*')

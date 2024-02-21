@@ -1,26 +1,31 @@
-// vim:fdm=syntax
-// by tuberry
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
 
+import St from 'gi://St';
 import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 
-import { EventEmitter } from 'resource:///org/gnome/shell/misc/signals.js';
-import { loadInterfaceXML } from 'resource:///org/gnome/shell/misc/fileUtils.js';
-import { TransientSignalHolder } from 'resource:///org/gnome/shell/misc/signalTracker.js';
-import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
+import {EventEmitter} from 'resource:///org/gnome/shell/misc/signals.js';
+import {loadInterfaceXML} from 'resource:///org/gnome/shell/misc/fileUtils.js';
+import {TransientSignalHolder} from 'resource:///org/gnome/shell/misc/signalTracker.js';
+import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import { vmap } from './util.js';
+import {vmap, hook} from './util.js';
 
-export { _ };
-export const getSelf = () => Extension.lookupByURL(import.meta.url);
-export const omit = (o, ...ks) => ks.forEach(k => { o[k]?.destroy?.(); o[k] = null; });
-
+export {_};
+export const getSelf = () => Extension.lookupByURL(import.meta.url); // NOTE: https://github.com/tc39/proposal-json-modules
+export const debug = (...xs) => console.debug(`[${getSelf().uuid}]`, ...xs);
+export const ruin = o => o && (o.destroy ?? o.run_dispose)?.bind(o)();
+export const omit = (o, ...ks) => ks.forEach(k => { ruin(o[k]); o[k] = null; });
 // TODO: wait for https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/2542
 const getSignalHolder = o => [o, o.$signal_holder].find(x => GObject.type_is_a(x, GObject.Object) && GObject.signal_lookup('destroy', x)) ??
     (() => { throw Error('undestroyable'); })(); // NOTE: https://github.com/tc39/proposal-throw-expressions#todo
 export const connect = (tracker, ...args) => (x => args.forEach(([emitter, ...argv]) => emitter.connectObject(...argv, x)))(getSignalHolder(tracker));
 export const disconnect = (tracker, ...args) => (x => args.forEach(emitter => emitter?.disconnectObject(x)))(getSignalHolder(tracker));
+export const open = uri => Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
+export const copy = (text, primary) => St.Clipboard.get_default().set_text(primary ? St.ClipboardType.PRIMARY : St.ClipboardType.CLIPBOARD, text);
+export const paste = primary => new Promise(resolve => St.Clipboard.get_default().get_text(
+    primary ? St.ClipboardType.PRIMARY : St.ClipboardType.CLIPBOARD, (_c, x) => x && resolve(x)));
 
 export class Destroyable extends EventEmitter {
     $signal_holder = new TransientSignalHolder(this);
@@ -32,23 +37,18 @@ export class Destroyable extends EventEmitter {
 }
 
 export function manageSource(host, doom, obj) {
-    if(doom) new SourceManager(host, doom);
+    if(doom) host.connect('destroy', doom);
     if(obj) return vmap(obj, v => new SourceManager(host, ...v));
 }
 
-export function lightProxy(callback, obj) {
-    let iface = Gio.DBusInterfaceInfo.new_for_xml(loadInterfaceXML('org.gnome.SettingsDaemon.Color'));
-    let proxy = new Gio.DBusProxy({
-        g_interface_info: iface,
-        g_interface_name: iface.name,
-        g_connection: Gio.DBus.session,
-        g_name: 'org.gnome.SettingsDaemon.Color',
-        g_object_path: '/org/gnome/SettingsDaemon/Color',
-    });
-    connect(obj, [proxy, 'g-properties-changed', callback]);
-    proxy.init_async(GLib.PRIORITY_DEFAULT, null).catch(logError);
-
-    return proxy;
+export async function bindNight(callback, host, key) {
+    let Proxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.gnome.SettingsDaemon.Color')),
+        value = 'NightLightActive',
+        symbol = Symbol(value);
+    host[symbol] = hook({'g-properties-changed': (_a, p) => { if(p.lookup_value(value, null)) host[key] = callback(host[symbol][value] ?? false); }},
+        await Proxy.newAsync(Gio.DBus.session, 'org.gnome.SettingsDaemon.Color', '/org/gnome/SettingsDaemon/Color'));
+    host[key] = callback(host[symbol][value] ?? false);
+    manageSource(host, () => omit(host, symbol));
 }
 
 export class ExtensionBase extends Extension {
@@ -63,9 +63,9 @@ export class ExtensionBase extends Extension {
 
 export class SourceManager {
     constructor(host, removeSource, addSource) {
-        connect(host, [host, 'destroy', () => this.removeSource()]);
-        this.removeSource = () => { removeSource(this._delegate); this._delegate = null; };
+        manageSource(host, () => this.removeSource());
         this.addSource = (...args) => (this._delegate = addSource(...args));
+        this.removeSource = () => { removeSource(this._delegate); this._delegate = null; };
         this.refreshSource = (...args) => { this.removeSource(); return this.addSource(...args); };
     }
 }
@@ -73,7 +73,7 @@ export class SourceManager {
 export class Fulu {
     #map = new WeakMap();
     constructor(prop, gset, obj, cluster) {
-        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
+        this.gset = typeof gset === 'string' ? new Gio.Settings({schema: gset}) : gset;
         this.attach(prop, obj, cluster);
     }
 
@@ -93,6 +93,6 @@ export class Fulu {
     }
 
     detach(obj) {
-        disconnect(obj, this.gset);
+        if(this.#map.has(obj)) disconnect(obj, this.gset);
     }
 }

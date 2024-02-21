@@ -10,8 +10,12 @@
             <summary>enable shortcut</summary>
         </key>
         <key type="b" name="enable-notify">
-            <default>true</default>
+            <default>false</default>
             <summary>enable notify</summary>
+        </key>
+        <key type="b" name="enable-sound">
+            <default>true</default>
+            <summary>enable sound</summary>
         </key>
         <key type="b" name="persistent-mode">
             <default>false</default>
@@ -34,18 +38,18 @@
             <summary>shortcut to pick color</summary>
         </key>
         <key type="s" name="menu-key">
-            <default>""</default>
+            <default>"m"</default>
             <summary>key to open menu</summary>
         </key>
         <key type="s" name="quit-key">
-            <default>""</default>
+            <default>"q"</default>
             <summary>key to quit picking</summary>
         </key>
-        <key type="at" name="color-history">
+        <key type="au" name="color-history">
             <default>[]</default>
             <summary>picked color history</summary>
         </key>
-        <key type="at" name="color-collection">
+        <key type="au" name="color-collection">
             <default>[]</default>
             <summary>picked color collection</summary>
         </key>
@@ -54,19 +58,24 @@
             <summary>systray dropper icon</summary>
         </key>
         <key type="u" name="preview-style">
-            <range min="0" max="1"/>
+            <range min="0" max="2"/>
             <default>0</default>
-            <summary>preview style: 0-Icon 1-Label</summary>
+            <summary>preview style - (0 - lens, 1 - icon, 2 - label)</summary>
         </key>
         <key type="u" name="default-format">
             <range min="0" max="5"/>
             <default>0</default>
-            <summary>default format: 0-HEX 1-RGB 2-HSL 3-Hex(RRGGBB) 4-HSV 5-CMYK</summary>
+            <summary>default format - (0 - HEX, 1 - RGB, 2 - HSL, 3 - hex(rrggbb), 4 - HSV, 5 - CMYK)</summary>
         </key>
         <key type="u" name="notify-style">
             <range min="0" max="1"/>
             <default>0</default>
-            <summary>notify style: 0-MSG 1-OSD</summary>
+            <summary>notify style - (0 - MSG, 1 - OSD)</summary>
+        </key>
+        <key type="u" name="notify-sound">
+            <range min="0" max="1"/>
+            <default>0</default>
+            <summary>notify sound - (0 - screenshot, 1 - complete)</summary>
         </key>
         <key type="u" name="menu-size">
             <range min="1" max="16"/>
@@ -75,7 +84,7 @@
         </key>
         <key type="b" name="menu-style">
             <default>false</default>
-            <summary>menu style: false-history true-collection</summary>
+            <summary>menu style - (false - history, true - collection)</summary>
         </key>
     </schema>
 </schemalist>
