@@ -2,7 +2,7 @@
 
 Simple color picker for GNOME Shell.
 > 春水碧于天，画船听雨眠。 —— *韦庄《菩萨蛮》*<br>
-[![license]](/LICENSE)
+[![license]](/LICENSE.md)
 </br>
 
 ![color-picker-menu](https://user-images.githubusercontent.com/17917040/229520114-8e023786-fe8a-47bc-952e-263b8bf20b69.png)
@@ -35,5 +35,14 @@ For older versions (< 44), it's recommended to install via:
 
 ![cppref](https://user-images.githubusercontent.com/17917040/155882315-739d0ec7-9947-49a8-a58c-31475feafdc6.png)
 
-[license]:https://img.shields.io/badge/license-GPLv3-green.svg
+### DBus
+
+The DBus interface retruns the same result as XDG Desktop [Screenshot] Portal required:
+
+```bash
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/ColorPicker --method org.gnome.Shell.Extensions.ColorPicker.Pick
+```
+
+[license]:https://img.shields.io/badge/license-GPLv3+-green.svg
 [EGO]:https://extensions.gnome.org/extension/3396/color-picker/
+[Screenshot]:https://github.com/flatpak/xdg-desktop-portal/blob/main/data/org.freedesktop.portal.Screenshot.xml

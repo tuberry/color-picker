@@ -1,25 +1,16 @@
 configure_file(
   input: 'metadata.json.in',
   output: 'metadata.json',
-  configuration: {
-    'name': NAME,
-    'uuid': UUID,
-    'gettext': GETTEXT,
-    'schemas': SCHEMAS,
-    'version': VERSION,
-    'url': 'https://github.com/tuberry' / EID,
-    'shell': meson.project_version().split('.')[0],
-    'description': INFO + '\\n\\nFor support, please report any issues via the homepage link below.'
-  },
-  install_dir: TARGET_DIR
+  configuration: metadata,
+  install_dir: target_dir
 )
 
-subdir('schemas')
+subdir('schema')
 
-if fs.is_dir('styles')
-  subdir('styles')
+if fs.is_dir('style')
+  subdir('style')
 endif
 
-if fs.is_dir('icons')
-  subdir('icons')
+if fs.is_dir('icon')
+  subdir('icon')
 endif

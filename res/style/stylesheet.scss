@@ -1,0 +1,42 @@
+@import 'gnome-shell-sass/_colors';
+
+$pfx: 'color-picker';
+
+@function tone($color, $percent: 10%, $reverse: true){
+    @return if($variant==if($reverse, 'light', 'dark'), darken($color, $percent), lighten($color, $percent))
+}
+
+@mixin inner_border($radius: 0.15em, $width: 0.15em) {
+    border-radius: $radius;
+    background-color: $bg_color;
+    box-shadow: inset 0 0 0 $width transparentize($selected_bg_color, 0.3);
+}
+
+.#{$pfx}-label {
+    color: $fg_color;
+    padding: 0.3em;
+    min-width: 6em;
+    font-size: 1.4em;
+    border-radius: 0.4em;
+    background-color: tone($bg_color);
+    box-shadow: 0 0.08em 0.15em 0 $shadow_color;
+}
+
+.#{$pfx}-button {
+    padding: 0 0.5em;
+}
+
+.#{$pfx}-systray:state-busy {
+    color: tone($selected_bg_color);
+}
+
+.#{$pfx}-item-label {
+    font-family: monospace;
+    &:focus { @include inner_border(); }
+}
+
+.#{$pfx}-iconbtn {
+    padding: 0 0.15em;
+    &:focus { @include inner_border(0.5em); }
+    &:hover { color: tone($selected_bg_color, 5%); }
+}

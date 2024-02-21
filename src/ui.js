@@ -1,5 +1,5 @@
-// vim:fdm=syntax
-// by tuberry
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
@@ -9,17 +9,18 @@ import Pango from 'gi://Pango';
 import GObject from 'gi://GObject';
 
 import * as Gettext from 'gettext';
-import { Field } from './const.js';
+import {Field} from './const.js';
 
-import { fopen, omap, noop, gprops, fquery, hook, BIND_FULL } from './util.js';
-import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {fopen, omap, noop, gprops, fquery, hook, BIND} from './util.js';
+import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 Gio._promisify(Gtk.FileDialog.prototype, 'open');
 Gio._promisify(Gtk.FileDialog.prototype, 'select_folder');
 
-export { _ };
+export {_};
 export const _GTK = Gettext.domain('gtk40').gettext;
 export const getSelf = () => ExtensionPreferences.lookupByURL(import.meta.url);
+export const wrapValue = (...args) => ({Properties: gprops({value: [...args]})});
 export const block = (o, s) => omap(o, ([k, [x, y = 'value']]) => [[k, (s.bind(Field[k], x, y, Gio.SettingsBindFlags.DEFAULT), x)]]);
 
 export class Hook {
@@ -48,8 +49,8 @@ export class Box extends Gtk.Box {
     }
 
     constructor(children, param, linked = true) {
-        super({ valign: Gtk.Align.CENTER, ...param });
-        children?.forEach(x => this.append(x));
+        super({valign: Gtk.Align.CENTER, ...param});
+        children?.forEach(x => x && this.append(x));
         if(linked) this.add_css_class('linked');
     }
 }
@@ -59,70 +60,65 @@ export class Spin extends Gtk.SpinButton {
         GObject.registerClass(this);
     }
 
-    constructor(lower, upper, step_increment, tooltip_text = '') {
-        super({ tooltip_text, valign: Gtk.Align.CENTER });
-        this.set_adjustment(new Gtk.Adjustment({ lower, upper, step_increment }));
+    constructor(lower, upper, step_increment, tooltip_text = '', param) {
+        super({tooltip_text, valign: Gtk.Align.CENTER, ...param});
+        this.set_adjustment(new Gtk.Adjustment({lower, upper, step_increment}));
+    }
+}
+
+export class Switch extends Gtk.Switch {
+    static {
+        GObject.registerClass(wrapValue('boolean', false), this);
+    }
+
+    constructor(param) {
+        super({valign: Gtk.Align.CENTER, ...param});
+        this.bind_property('active', this, 'value', BIND);
     }
 }
 
 export class Check extends Gtk.CheckButton {
     static {
-        GObject.registerClass({
-            Properties: gprops({
-                value: ['boolean', false],
-            }),
-        }, this);
+        GObject.registerClass(wrapValue('boolean', false), this);
     }
 
     constructor(param) {
         super(param);
-        this.bind_property('active', this, 'value', BIND_FULL);
+        this.bind_property('active', this, 'value', BIND);
     }
 }
 
 export class Drop extends Gtk.DropDown {
     static {
-        GObject.registerClass({
-            Properties: gprops({
-                value: ['uint', 0, Gtk.INVALID_LIST_POSITION, 0],
-            }),
-        }, this);
+        GObject.registerClass(wrapValue('uint', 0, Gtk.INVALID_LIST_POSITION, 0), this);
     }
 
-    constructor(strv, tooltip_text = '') {
-        super({ model: Gtk.StringList.new(strv), valign: Gtk.Align.CENTER, tooltip_text });
-        this.bind_property('selected', this, 'value', BIND_FULL);
+    constructor(strv, tooltip_text = '', param) {
+        super({model: Gtk.StringList.new(strv), valign: Gtk.Align.CENTER, tooltip_text, ...param});
+        this.bind_property('selected', this, 'value', BIND);
     }
 }
 
 export class Font extends Gtk.FontDialogButton {
     static {
-        GObject.registerClass({
-            Properties: gprops({
-                value: ['string', ''],
-            }),
-        }, this);
+        GObject.registerClass(wrapValue('string', ''), this);
     }
 
     constructor(param) {
-        super({ valign: Gtk.Align.CENTER, dialog: new Gtk.FontDialog(), ...param });
-        this.bind_property_full('value', this, 'font-desc', BIND_FULL, (_b, data) =>
+        super({valign: Gtk.Align.CENTER, dialog: new Gtk.FontDialog(), ...param});
+        this.bind_property_full('value', this, 'font-desc', BIND, (_b, data) =>
             [true, Pango.FontDescription.from_string(data)], (_b, data) => [true, data.to_string()]);
     }
 }
 
 export class Color extends Gtk.ColorDialogButton {
     static {
-        GObject.registerClass({
-            Properties: gprops({
-                value: ['string', ''],
-            }),
-        }, this);
+        GObject.registerClass(wrapValue('string', ''), this);
     }
 
     constructor(param) {
-        super({ tooltip_text: param?.title ?? '', valign: Gtk.Align.CENTER, dialog: new Gtk.ColorDialog(param) });
-        this.bind_property_full('value', this, 'rgba', BIND_FULL, (_b, data) =>
+        super({tooltip_text: param?.title ?? '', valign: Gtk.Align.CENTER, dialog: new Gtk.ColorDialog(param)});
+        this.bind_property_full('value', this, 'rgba', BIND, (_b, data) =>
             (color => [color.parse(data), color])(new Gdk.RGBA()), (_b, data) => [true, data.to_string()]);
     }
 }
@@ -133,14 +129,14 @@ export class IconLabel extends Gtk.Box {
     }
 
     constructor(fallback_icon) {
-        super({ spacing: 5 });
+        super({spacing: 5});
         this._icon = new Gtk.Image();
         this._label = new Gtk.Label();
         this._fallback_icon = fallback_icon;
         [this._icon, this._label].forEach(x => this.append(x));
     }
 
-    setupContent(icon, label) {
+    setContent(icon, label) {
         this._label.set_label(label || _GTK('(None)'));
         if(icon instanceof Gio.Icon) this._icon.set_from_gicon(icon);
         else this._icon.icon_name = icon || this._fallback_icon;
@@ -151,50 +147,64 @@ export class DialogBase extends Adw.Window {
     static {
         GObject.registerClass({
             Signals: {
-                selected: { param_types: [GObject.TYPE_STRING] },
+                selected: {param_types: [GObject.TYPE_STRING]},
             },
         }, this);
     }
 
     constructor(title, param) {
-        super({ title, modal: true, hide_on_close: true, width_request: 360, height_request: 320 });
+        super({title, modal: true, hide_on_close: true, width_request: 360, height_request: 320});
         this._buildContent(param);
     }
 
     _buildContent(param) {
-        let { view, filter, title } = this._buildList(param),
-            search = new Gtk.ToggleButton({ icon_name: 'system-search-symbolic' }),
-            close = hook({ clicked: () => this.close() }, Gtk.Button.new_with_mnemonic(_GTK('_Close'))),
-            select = hook({ clicked: () => this._onSelect() }, Gtk.Button.new_with_mnemonic(_GTK('_Select'))),
-            eck = hook({ key_pressed: (_w, k) => k === Gdk.KEY_Escape && this.close() }, new Gtk.EventControllerKey()),
-            entry = hook({ search_changed: x => filter.set_search(x.get_text()) }, new Gtk.SearchEntry({ halign: Gtk.Align.CENTER })),
-            header = new Adw.HeaderBar({ show_end_title_buttons: false, show_start_title_buttons: false, title_widget: title || null }),
-            bar = new Gtk.SearchBar({ show_close_button: false, child: entry });
-
-        bar.connect_entry(entry);
-        bar.set_key_capture_widget(this);
+        let {content, filter, title} = this._buildWidgets(param),
+            eck = hook({'key-pressed': this._onKeyPress.bind(this)}, new Gtk.EventControllerKey()),
+            close = hook({clicked: () => this.close()}, Gtk.Button.new_with_mnemonic(_GTK('_Cancel'))),
+            select = hook({clicked: () => this._onSelect()}, Gtk.Button.new_with_mnemonic(_GTK('_OK'))),
+            header = new Adw.HeaderBar({show_end_title_buttons: false, show_start_title_buttons: false, title_widget: title || null});
         select.add_css_class('suggested-action');
-        search.bind_property('active', bar, 'search-mode-enabled', BIND_FULL);
-        this.connect('close-request', () => { search.set_active(false); view.scroll_to(0, Gtk.ListScrollFlags.FOCUS, null); });
-
         this.add_controller(eck);
         header.pack_start(close);
-        [select, search].forEach(x => header.pack_end(x));
-        this.set_content(new Box([header, bar, new Gtk.ScrolledWindow({ child: view })],
-            { orientation: Gtk.Orientation.VERTICAL, valign: Gtk.Align.FILL }, false));
+        header.pack_end(select);
+
+        let search;
+        if(filter) {
+            let button = new Gtk.ToggleButton({icon_name: 'system-search-symbolic'});
+            let entry = hook({'search-changed': x => filter.set_search(x.get_text())}, new Gtk.SearchEntry({halign: Gtk.Align.CENTER}));
+            search = new Gtk.SearchBar({show_close_button: false, child: entry});
+            search.connect_entry(entry);
+            search.set_key_capture_widget(this);
+            button.bind_property('active', search, 'search-mode-enabled', BIND);
+            this.connect('close-request', () => { button.set_active(false); content.scroll_to(0, Gtk.ListScrollFlags.FOCUS, null); });
+            header.pack_end(button);
+        }
+        this.set_content(new Box([header, search, new Gtk.ScrolledWindow({child: content})],
+            {orientation: Gtk.Orientation.VERTICAL, valign: Gtk.Align.FILL}, false));
     }
 
-    _onSelect() {
-        this.emit('selected', this.getSelected());
+    _onKeyPress(_w, key) {
+        switch(key) {
+        case Gdk.KEY_Escape: this.close(); break;
+        case Gdk.KEY_Return:
+        case Gdk.KEY_KP_Enter:
+        case Gdk.KEY_ISO_Enter: this._onSelect(); break;
+        }
+    }
+
+    _onSelect(selected) {
+        selected ??= this.getSelected?.();
+        if(selected !== undefined) this.emit('selected', selected);
         this.close();
     }
 
-    choose_sth(root) {
-        this.present();
+    choose_sth(root, initial) {
+        this.initSelected?.(initial);
         if(this.transient_for !== root) this.set_transient_for(root);
+        this.present();
         return new Promise((resolve, reject) => Hook.attach({
             selected: (_d, value) => resolve(value),
-            close_request: () => reject(new Error('cancelled')),
+            close_request: () => reject(Error('cancelled')),
         }, this));
     }
 }
@@ -208,20 +218,20 @@ export class AppDialog extends DialogBase {
         super(_GTK('Select Application'), param);
     }
 
-    _buildList(param) {
+    _buildWidgets(param) {
         let factory = hook({
                 setup: (_f, x) => x.set_child(new IconLabel('application-x-executable-symbolic')),
-                bind: (_f, x) => x.get_child().setupContent(...(y => [y.get_icon() || '', y.get_display_name()])(x.get_item())),
+                bind: (_f, x) => x.get_child().setContent(...(y => [y.get_icon() || '', y.get_display_name()])(x.get_item())),
             }, new Gtk.SignalListItemFactory()),
             filter = Gtk.CustomFilter.new(null),
-            model = new Gio.ListStore({ item_type: Gio.DesktopAppInfo }),
-            select = new Gtk.SingleSelection({ model: new Gtk.FilterListModel({ model, filter }) }),
-            view = hook({ activate: () => this._onSelect() }, new Gtk.ListView({ model: select, factory, vexpand: true }));
+            model = new Gio.ListStore({item_type: Gio.DesktopAppInfo}),
+            select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model, filter})}),
+            content = hook({activate: () => this._onSelect()}, new Gtk.ListView({model: select, factory, vexpand: true}));
         if(param?.no_display) Gio.AppInfo.get_all().forEach(x => model.append(x));
         else Gio.AppInfo.get_all().filter(x => x.should_show()).forEach(x => model.append(x));
         filter.set_search = s => filter.set_filter_func(s ? (a => x => a.has(x.get_id()))(new Set(Gio.DesktopAppInfo.search(s).flat())) : null);
         this.getSelected = () => select.get_selected_item().get_id();
-        return { view, filter };
+        return {content, filter};
     }
 }
 
@@ -234,17 +244,16 @@ export class KeysDialog extends DialogBase {
         super('', param);
     }
 
-    _buildContent({ title }) {
-        this.set_content(new Adw.StatusPage({ icon_name: 'preferences-desktop-keyboard-symbolic', title }));
-        this.add_controller(hook({ key_pressed: this._onKeyPress.bind(this) }, new Gtk.EventControllerKey()));
+    _buildContent({title}) {
+        this.set_content(new Adw.StatusPage({icon_name: 'preferences-desktop-keyboard-symbolic', title}));
+        this.add_controller(hook({'key-pressed': this._onKeyPress.bind(this)}, new Gtk.EventControllerKey()));
     }
 
     _onKeyPress(_w, keyval, keycode, state) {
         let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
         if(!mask && keyval === Gdk.KEY_Escape) return this.close();
         if(!this.isValidBinding(mask, keycode, keyval) || !this.isValidAccel(mask, keyval)) return;
-        this.emit('selected', Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
-        this.close();
+        this._onSelect(Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
     }
 
     keyvalIsForbidden(keyval) {
@@ -287,23 +296,23 @@ class IconDialog extends DialogBase {
         super('', param);
     }
 
-    _buildList(param) {
+    _buildWidgets(param) {
         let factory = hook({
-                setup: (_f, x) => x.set_child(new Gtk.Image({ icon_size: Gtk.IconSize.LARGE })),
-                bind: (_f, { child, item: { string } }) => { child.icon_name = child.tooltip_text = string; },
+                setup: (_f, x) => x.set_child(new Gtk.Image({icon_size: Gtk.IconSize.LARGE})),
+                bind: (_f, {child, item: {string}}) => { child.icon_name = child.tooltip_text = string; },
             }, new Gtk.SignalListItemFactory()),
             filter = new Gtk.EveryFilter(),
             title = new Drop([_('All'), _('Normal'), _('Symbolic')]),
             model = Gtk.StringList.new(Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).get_icon_names()),
-            select = new Gtk.SingleSelection({ model: new Gtk.FilterListModel({ model, filter }) }),
-            view = hook({ activate: () => this._onSelect() }, new Gtk.GridView({ model: select, factory, vexpand: true }));
-        filter.append(new Gtk.BoolFilter({ expression: this._genIconExp() }));
-        filter.append(new Gtk.StringFilter({ expression: new Gtk.PropertyExpression(Gtk.StringObject, null, 'string') }));
+            select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model, filter})}),
+            content = hook({activate: () => this._onSelect()}, new Gtk.GridView({model: select, factory, vexpand: true}));
+        filter.append(new Gtk.BoolFilter({expression: this._genIconExp()}));
+        filter.append(new Gtk.StringFilter({expression: new Gtk.PropertyExpression(Gtk.StringObject, null, 'string')}));
         this.connect('notify::icon-type', () => filter.get_item(0).set_expression(this._genIconExp()));
-        this.bind_property('icon-type', title, 'selected', BIND_FULL);
+        this.bind_property('icon-type', title, 'selected', BIND);
         if(param?.icon_type) this.icon_type = param.icon_type;
         this.getSelected = () => select.get_selected_item().get_string();
-        return { view, title, filter: filter.get_item(1) };
+        return {content, title, filter: filter.get_item(1)};
     }
 
     _genIconExp() {
@@ -317,16 +326,12 @@ class IconDialog extends DialogBase {
 
 export class DialogButtonBase extends Box {
     static {
-        GObject.registerClass({
-            Properties: gprops({
-                value: ['string', ''],
-            }),
-        }, this);
+        GObject.registerClass(wrapValue('string', ''), this);
     }
 
     constructor(child, gtype, reset) {
         super();
-        this._btn = hook({ clicked: () => this._onClick().then(x => { this.value = x; }).catch(noop) }, new Gtk.Button({ child }));
+        this._btn = hook({clicked: () => this._onClick().then(x => { this.value = x; }).catch(noop)}, new Gtk.Button({child}));
         if(gtype) this._buildDND(gtype);
         if(reset) this._buildReset();
         this.prepend(this._btn);
@@ -334,13 +339,13 @@ export class DialogButtonBase extends Box {
     }
 
     _buildReset() {
-        this.append(hook({ clicked: () => { this.value = ''; } },
-            new Gtk.Button({ icon_name: 'edit-clear-symbolic', tooltip_text: _('Clear') })));
+        this.append(hook({clicked: () => { this.value = ''; }},
+            new Gtk.Button({icon_name: 'edit-clear-symbolic', tooltip_text: _('Clear')})));
     }
 
     _buildDND(gtype) {
-        this._btn.add_controller(hook({ drop: this._onDrop.bind(this) }, Gtk.DropTarget.new(gtype, Gdk.DragAction.COPY)));
-        this._btn.add_controller(hook({ prepare: this._onDrag.bind(this) }, new Gtk.DragSource({ actions: Gdk.DragAction.COPY })));
+        this._btn.add_controller(hook({drop: this._onDrop.bind(this)}, Gtk.DropTarget.new(gtype, Gdk.DragAction.COPY)));
+        this._btn.add_controller(hook({prepare: this._onDrag.bind(this)}, new Gtk.DragSource({actions: Gdk.DragAction.COPY})));
     }
 
     _onDrag(src) {
@@ -353,8 +358,11 @@ export class DialogButtonBase extends Box {
         this.value = v;
     }
 
+    get _dlg() {
+        return (this._dialog ??= this._buildDialog());
+    }
+
     _onClick() {
-        if(!this._dlg) this._buildDialog();
         return this._dlg.choose_sth(this.get_root());
     }
 
@@ -394,8 +402,8 @@ export class App extends DialogButtonBase {
         let type = typeof v === 'string';
         this._gvalue = type ? Gio.DesktopAppInfo.new(v) : v;
         this._value = type ? v : v.get_id();
-        if(this._gvalue) this._btn.child.setupContent(this._gvalue.get_icon(), this._gvalue.get_display_name());
-        else this._btn.child.setupContent();
+        if(this._gvalue) this._btn.child.setContent(this._gvalue.get_icon(), this._gvalue.get_display_name());
+        else this._btn.child.setContent();
     }
 
     _genDragSwatch() {
@@ -404,7 +412,7 @@ export class App extends DialogButtonBase {
     }
 
     _buildDialog() {
-        this._dlg = new AppDialog();
+        return new AppDialog();
     }
 }
 
@@ -415,15 +423,16 @@ export class File extends DialogButtonBase {
 
     constructor(param) {
         super(new IconLabel('document-open-symbolic'), Gio.File.$gtype, true);
-        if(param?.select_folder) param.filter = { mime_types:  ['inode/directory'] };
+        if(param?.select_folder) param.filter = {mime_types:  ['inode/directory']};
         if(param?.filter) this._filter = new Gtk.FileFilter(param.filter);
         this._param = param;
     }
 
     _buildDialog() {
-        this._dlg = new Gtk.FileDialog({ modal: true });
-        if(this._param?.title) this._dlg.set_title(this._param.title);
-        if(this._filter) this._dlg.set_default_filter(this._filter);
+        let dialog = new Gtk.FileDialog({modal: true});
+        if(this._param?.title) dialog.set_title(this._param.title);
+        if(this._filter) dialog.set_default_filter(this._filter);
+        return dialog;
     }
 
     _onDrop(_t, value) {
@@ -433,7 +442,7 @@ export class File extends DialogButtonBase {
             fquery(value, Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE).then(y => {
                 if(this._filter.match(y)) this.value = value; else throw Error();
             }).catch(() => {
-                this.get_root().add_toast(new Adw.Toast({ title: _('Mismatched filetype'), timeout: 5 }));
+                this.get_root().add_toast(new Adw.Toast({title: _('Mismatched filetype'), timeout: 5}));
             });
         }
     }
@@ -447,14 +456,13 @@ export class File extends DialogButtonBase {
     }
 
     _onClick() {
-        if(!this._dlg) this._buildDialog();
         this._dlg.set_initial_file(this._gvalue);
         return this._dlg[this._param?.select_folder ? 'select_folder' : 'open'](this.get_root(), null);
     }
 
     _setContent(value, icon, text) {
         if(value !== this.value) return;
-        this._btn.child.setupContent(icon, text);
+        this._btn.child.setContent(icon, text);
     }
 }
 
@@ -476,12 +484,12 @@ export class Icon extends DialogButtonBase {
         let type = typeof v === 'string';
         this._gvalue = type ? Gio.ThemedIcon.new(v) : v;
         this._value = type ? v : v.to_string();
-        if(this._gvalue) this._btn.child.setupContent(this._value, this._value.replace(/-symbolic$/, ''));
-        else this._btn.child.setupContent();
+        if(this._gvalue) this._btn.child.setContent(this._value, this._value.replace(/-symbolic$/, ''));
+        else this._btn.child.setContent();
     }
 
     _buildDialog() {
-        this._dlg = new IconDialog();
+        return new IconDialog();
     }
 }
 
@@ -491,7 +499,7 @@ export class Keys extends DialogButtonBase {
     }
 
     constructor(param) {
-        super(new Gtk.ShortcutLabel({ disabled_text: _GTK('New accelerator…') }));
+        super(new Gtk.ShortcutLabel({disabled_text: _GTK('New accelerator…')}));
         this._btn.set_has_frame(false);
         this._param = param;
         this.value = this.shortcut ?? '';
@@ -512,7 +520,7 @@ export class Keys extends DialogButtonBase {
     }
 
     _buildDialog() {
-        this._dlg = new KeysDialog({ title: _GTK('New accelerator…') });
+        return new KeysDialog({title: _GTK('New accelerator…')});
     }
 }
 
@@ -550,29 +558,25 @@ export class PrefRow extends Adw.ActionRow {
 
 export class LazyEntry extends Gtk.Stack {
     static {
-        GObject.registerClass({
-            Properties: gprops({
-                value: ['string', ''],
-            }),
-        }, this);
+        GObject.registerClass(wrapValue('string', ''), this);
     }
 
-    constructor(placeholder, tooltip) {
-        super({ valign: Gtk.Align.CENTER, hhomogeneous: true });
+    constructor(placeholder, tooltip, param) {
+        super({valign: Gtk.Align.CENTER, hhomogeneous: true, ...param});
         this._buildWidgets(placeholder, tooltip);
         this.value = '';
     }
 
     _buildWidgets(placeholder_text = '', tooltip_text = '') {
-        this._label = new Gtk.Entry({ hexpand: true, sensitive: false, placeholder_text });
-        this._entry = hook({ activate: () => { this.value = this._entry.get_text(); } },
-            new Gtk.Entry({ hexpand: true, enable_undo: true, placeholder_text }));
-        this._edit = hook({ clicked: () => { this._entry.set_text(this.value); this.set_visible_child_name('entry'); } },
-            new Gtk.Button({ icon_name: 'document-edit-symbolic', tooltip_text }));
-        this._done = hook({ clicked: () => { this.value = this._entry.get_text(); } },
-            new Gtk.Button({ icon_name: 'object-select-symbolic', tooltip_text: _('Click or press ENTER to commit changes') }));
-        this.add_named(new Box([this._label, this._edit], { hexpand: true }), 'label');
-        this.add_named(new Box([this._entry, this._done], { hexpand: true }), 'entry');
+        this._label = new Gtk.Entry({hexpand: true, sensitive: false, placeholder_text});
+        this._entry = hook({activate: () => { this.value = this._entry.get_text(); }},
+            new Gtk.Entry({hexpand: true, enable_undo: true, placeholder_text}));
+        this._edit = hook({clicked: () => { this._entry.set_text(this.value); this.set_visible_child_name('entry'); }},
+            new Gtk.Button({icon_name: 'document-edit-symbolic', tooltip_text}));
+        this._done = hook({clicked: () => { this.value = this._entry.get_text(); }},
+            new Gtk.Button({icon_name: 'object-select-symbolic', tooltip_text: _('Click or press ENTER to commit changes')}));
+        this.add_named(new Box([this._label, this._edit], {hexpand: true}), 'label');
+        this.add_named(new Box([this._entry, this._done], {hexpand: true}), 'entry');
         this._done.add_css_class('suggested-action');
     }
 

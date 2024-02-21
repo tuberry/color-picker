@@ -1,47 +1,50 @@
 project(
   'gnome-shell-extension-color-picker',
-  subproject_dir: 'submodules',
-  license: 'GPL3+',
-  version: '45.0',
+  license: 'GPL-3.0-or-later',
+  version: '46.beta',
 )
 
-NAME = 'Color Picker'
-INFO = 'Simple color picker for gnome shell'
-EID = meson.project_name().replace('gnome-shell-extension-', '')
-UUID = EID + '@tuberry'
-EGO = 'EGO=3396' / EID
-
-GETTEXT = meson.project_name()
-SCHEMAS = 'org.gnome.shell.extensions.' + EID
-VERSION = (get_option('version') != 0) ? get_option('version') : run_command('cli/get-version.sh', check: true, env: [EGO]).stdout().strip()
+_name = meson.project_name().replace('gnome-shell-extension-', '')
+_version = get_option('version')
+metadata = {
+    'name': 'Color Picker',
+    'uuid': _name + '@tuberry',
+    'gettext': meson.project_name(),
+    'shell': meson.project_version().split('.')[0],
+    'url': 'https://github.com/tuberry' / _name,
+    'schemas': 'org.gnome.shell.extensions.' + _name,
+    'version': (_version != 0) ? _version : run_command('cli/get-version.sh', check: true, env: ['EGO=3396' / _name]).stdout().strip(),
+    'description': 'Simple color picker for GNOME Shell'
+      + '\\n\\nFor support, please report any issues via the homepage link below.',
+}
 
 fs = import('fs')
 i18n = import('i18n')
 gnome = import('gnome')
 
-TARGET = get_option('target')
-if(TARGET == 'system') 
-  LOCALE_DIR = get_option('localedir')
-  SCHEMA_DIR = get_option('datadir') / 'glib-2.0' / 'schemas'
-  TARGET_DIR = get_option('datadir') / 'gnome-shell' / 'extensions' / UUID
+target = get_option('target')
+datadir = get_option('datadir')
+if(target == 'system')
+  locale_dir = get_option('localedir')
+  schema_dir = datadir / 'glib-2.0' / 'schemas'
+  target_dir = datadir / 'gnome-shell' / 'extensions' / metadata['uuid']
 else
-  TARGET_ROOT = (TARGET == 'local') ? fs.expanduser('~/.local/share/gnome-shell/extensions/') : meson.project_build_root()
-  TARGET_DIR = TARGET_ROOT / UUID
-  LOCALE_DIR = TARGET_DIR / 'locale'
-  SCHEMA_DIR = TARGET_DIR / 'schemas'
+  target_root = (target == 'local') ? fs.expanduser('~/.local/share/gnome-shell/extensions/') : meson.project_build_root()
+  target_dir = target_root / metadata['uuid']
+  locale_dir = target_dir / 'locale'
+  schema_dir = target_dir / 'schemas'
 endif
 
-if(TARGET == 'zip')
-  ZIP_DIR = get_option('desktop') ? fs.expanduser('~/Desktop') : TARGET_ROOT 
+if(target == 'zip')
+  zip_dir = get_option('desktop') ? fs.expanduser('~/Desktop') : target_root
   meson.add_install_script(
     find_program('7z'),
     'a',
-    ZIP_DIR / '@0@_v@1@.zip'.format(GETTEXT, VERSION),
-    TARGET_DIR / '*'
-    )
+    zip_dir / '@0@_v@1@.zip'.format(metadata['gettext'], metadata['version']),
+    target_dir / '*'
+  )
 endif
 
 subdir('po')
 subdir('res')
-install_subdir('src', install_dir: TARGET_DIR, strip_directory: true)
-
+install_subdir('src', install_dir: target_dir, strip_directory: true)
