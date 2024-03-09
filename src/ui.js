@@ -593,6 +593,6 @@ export class LazyEntry extends Gtk.Stack {
     }
 
     vfunc_mnemonic_activate() {
-        this[this.get_visible_child_name() === 'label' ? '_edit' : '_done'].activate();
+        this.get_visible_child_name() === 'label' ? this._edit.activate() : this._done.activate();
     }
 }
