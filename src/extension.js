@@ -56,7 +56,7 @@ class ColorItem extends MenuItem {
         this.label.set_x_expand(true);
         this.label.set_can_focus(true);
         this.label.add_style_class_name('color-picker-item-label');
-        this._btn = new IconButton({style_class: 'color-picker-iconbtn'}, () => callback(this._color.toRaw()));
+        this._btn = new IconButton({style_class: 'color-picker-icon'}, () => callback(this._color.toRaw()));
         this.add_child(this._btn);
         this.setItem(item);
     }
@@ -457,7 +457,7 @@ class ColorArea extends St.Widget {
     }
 
     async _buildWidgets() {
-        symbiose(this, () => { omit(this, 'preview', '_pointer'); });
+        symbiose(this, () => omit(this, 'preview', '_pointer'));
         let [content, scale] = await new Shell.Screenshot().screenshot_stage_to_content();
         this.set_content(content);
         let texture = content.get_texture();
@@ -504,7 +504,6 @@ class ColorArea extends St.Widget {
             this._color.fromPixel(pixels, (c_y * w + c_x) * 4);
             this._view?.setColor(x, y, this._color, pixels, [w, h, c_x, c_y, r]);
         } catch(e) {
-            logError(e);
             this.emit('end-pick', true);
         }
     }
@@ -629,16 +628,16 @@ class ColorButton extends PanelButton {
     }
 
     _addMenuItems() {
-        let iconbtn = {style_class: 'color-picker-iconbtn'};
+        let param = {style_class: 'color-picker-icon'};
         this._menus = {
             format: new RadioItem(_('Default format'), omap(Format, ([k, v]) => [[v, k]]), this._format, x => this._fulu.set('format', x, this)),
             sep0:   new PopupMenu.PopupSeparatorMenuItem(),
             colors: new ColorSection(...this.getColors()),
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
             prefs:  new IconItem({
-                pick: [iconbtn, () => { this.menu.close(); this._callback(); }, 'find-location-symbolic'],
-                star: [iconbtn, () => this._fulu.set('menu_style', !this.menu_style, this), [this.menu_style, 'semi-starred-symbolic', 'starred-symbolic']],
-                gear: [iconbtn, () => { this.menu.close(); getSelf().openPreferences(); }, 'emblem-system-symbolic'],
+                pick: [param, () => { this.menu.close(); this._callback(); }, 'find-location-symbolic'],
+                star: [param, () => this._fulu.set('menu_style', !this.menu_style, this), [this.menu_style, 'semi-starred-symbolic', 'starred-symbolic']],
+                gear: [param, () => { this.menu.close(); getSelf().openPreferences(); }, 'emblem-system-symbolic'],
             }),
         };
         Object.values(this._menus).forEach(x => this.menu.addMenuItem(x));
@@ -696,8 +695,8 @@ class ColorPicker extends Destroyable {
         this._picked = [];
         this._fulu = new Fulu({}, gset, this);
         this._sbt = symbiose(this, () => omit(this, 'dbus', 'systray', '_area'), {
-            keys: [x => x && Main.wm.removeKeybinding(Field.KEYS),
-                x => x && Main.wm.addKeybinding(Field.KEYS, this._fulu.gset, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this.summon())],
+            keys: [x => x && Main.wm.removeKeybinding(Field.KEYS), x => x && Main.wm.addKeybinding(Field.KEYS, this._fulu.gset,
+                Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this.summon())],
         });
     }
 
@@ -765,11 +764,13 @@ class ColorPicker extends Destroyable {
         if(!this.enable_notify) return;
         let gicon = Gio.BytesIcon.new(genColorSwatch(color.toText(Format.HEX)));
         if(this.notify_style === Notify.MSG) {
-            let src = MessageTray.getSystemSource();
-            let msg = new MessageTray.Notification(src);
-            msg.update(getSelf().metadata.name, _('%s is picked.').format(text), {gicon});
-            msg.setTransient(true);
-            src.showNotification(msg);
+            let source = MessageTray.getSystemSource();
+            let message = new MessageTray.Notification({
+                gicon, source, isTransient: true,
+                title: getSelf().metadata.name,
+                body: _('%s is picked.').format(text),
+            });
+            source.addNotification(message);
         } else {
             Main.osdWindowManager.show(global.display.get_current_monitor(), gicon, text);
         }
@@ -780,7 +781,7 @@ class ColorPicker extends Destroyable {
             if(this._area) reject(Error('busy'));
             this._btn?.add_style_pseudo_class('state-busy');
             this._area = hook({
-                'notify-color': (_a, color) => resolve(color.rgb),
+                'notify-color': (_a, {rgb}) => resolve(rgb),
                 'end-pick': (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); },
             }, new ColorArea({once: true, fulu: this._fulu}));
         });
