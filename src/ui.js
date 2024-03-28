@@ -524,6 +524,18 @@ export class Keys extends DialogButtonBase {
     }
 }
 
+export class PrefPage extends Adw.PreferencesPage {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(param, prefs = new Adw.PreferencesGroup()) {
+        super(param);
+        this._add = widget => prefs.add(widget);
+        this.add(prefs);
+    }
+}
+
 export class PrefRow extends Adw.ActionRow {
     static {
         GObject.registerClass(this);

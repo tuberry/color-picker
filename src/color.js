@@ -2,14 +2,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {array} from './util.js';
-import {Format} from './const.js';
 
 const percent = x => `${Math.round(x * 100)}%`; // 0.111 => '11%'
-const parseHEX = x => Math.clamp(parseInt(x, 16) / 255, 0, 1);
 const genStops = (n, f) => array(n + 1, i => (x => [x].concat(f(x), 1))(i / n));
-const parseHSL = (x, i) => i ? Math.clamp(parseInt(x) / 100, 0, 1) : Math.clamp(parseInt(x), 0, 360);
 
 const Index = {r: 0, g: 1, b: 2, h: 0, s: 1, l: 2};
+const Base = new Set(['b', 'h', 'H', 'x', 'X', 'f', 'F']);
+const Type = new Set(['Re', 'Gr', 'Bl', 'Hu', 'Sl', 'Ll', 'Va', 'Cy', 'Ma', 'Ye', 'Bk']);
+
+function formatByte(byte, base) {
+    switch(base) {
+    case 'b': return byte;
+    case 'h': return (byte >> 4).toString(16);
+    case 'H': return (byte >> 4).toString(16).toUpperCase();
+    case 'x': return byte.toString(16).padStart(2, '0');
+    case 'X': return byte.toString(16).padStart(2, '0').toUpperCase();
+    case 'f': return (byte / 255).toLocaleString(undefined, {maximumFractionDigits: 2});
+    case 'F': return (byte / 255).toLocaleString(undefined, {maximumFractionDigits: 2}).slice(1);
+    default: return byte;
+    }
+}
 
 function lstar([r, g, b]) { // L* in CIELAB, Ref: https://stackoverflow.com/a/56678483
     let f = x => x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92;
@@ -75,14 +87,20 @@ function rgb2cmyk(rgb) {
 }
 
 export class Color {
+    #fmt = {}; // format cache
     #rgb; // [0-255]{3}
 
-    constructor(raw = 0) { // raw <- 0x0FRRGGBB
+    constructor(raw = 0x26f3ba, formats = []) { // raw <- 0x0FRRGGBB
         [this.format, ...this.#rgb] = [24, 16, 8, 0].map(x => raw >>> x & 0xff);
+        this.formats = formats;
     }
 
-    static new_for_format(format) {
-        return new Color(format << 24);
+    static new_for_format(format, formats) {
+        return new Color(format << 24, formats);
+    }
+
+    static toSample(data) {
+        return data && new Color(undefined, [data]).toText();
     }
 
     set rgb(rgb) {
@@ -117,10 +135,6 @@ export class Color {
         this.rgb = cmyk2rgb(cmyk);
     }
 
-    equal(raw) {
-        return this.toRaw() === raw;
-    }
-
     update(type, value) {
         switch(type) {
         case 'r': case 'g': case 'b': this.rgb = this.rgb.with([Index[type]], value); break;
@@ -132,23 +146,6 @@ export class Color {
 
     fromPixel(pixel, start = 0) {
         for(let i = 0; i < 3; i++) this.#rgb[i] = pixel[start + i];
-    }
-
-    fromText(str) {
-        return [
-            [Format.HEX, /^ *#([0-9a-f]{2})([0-9a-f]{2})([0-91-f]{2}) *$/i, parseHEX, 'rgb'],
-            [Format.RGB, /^ *rgb\( *(\d{1,3}) *, *(\d{1,3}) *, *(\d{1,3}) *\) *$/, m => Math.clamp(parseInt(m) / 255, 0, 1), 'rgb'],
-            [Format.HSL, /^ *hsl\( *(\d{1,3}) *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, parseHSL, 'hsl'],
-            [Format.hex, /^ *([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2}) *$/i, parseHEX, 'rgb'],
-            [Format.HSV, /^ *hsv\( *(\d{1,3}) *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, parseHSL, 'hsv'],
-            [Format.CMYK, /^ *cmyk\( *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *, *(\d{1,3})% *\) *$/, m => Math.clamp(parseInt(m) / 100, 0, 1), 'cmyk'],
-        ].some(([format, regex, parse, type]) => {
-            let [, ...data] = str.match(regex) ?? [];
-            if(!data.length) return false;
-            this[type] = data.map(parse);
-            this.format = format;
-            return true;
-        });
     }
 
     toRGBHSL() { // -> {(0-1)}
@@ -163,18 +160,51 @@ export class Color {
     }
 
     toText(format) {
-        switch(format ?? this.format) {
-        case Format.HEX: return `#${this.#rgb.map(x => x.toString(16).padStart(2, '0')).join('')}`;
-        case Format.RGB: return `rgb(${this.#rgb.join(', ')})`;
-        case Format.HSL: return `hsl(${this.hsl.map((x, i) => i ? percent(x) : Math.round(x)).join(', ')})`;
-        case Format.HSV: return `hsv(${this.hsv.map((x, i) => i ? percent(x) : Math.round(x)).join(', ')})`;
-        case Format.hex: return this.#rgb.map(x => x.toString(16).padStart(2, '0')).join('');
-        case Format.CMYK: return `cmyk(${this.cmyk.map(percent).join(', ')})`;
+        let txt = this.formats[format ?? this.format] || '#%Rex%Grx%Blx';
+        let pos = txt.indexOf('%') + 1;
+        while(pos !== 0) {
+            let end = pos + 2;
+            let type = txt.slice(pos, end);
+            if(Type.has(type)) {
+                let base = txt.charAt(end);
+                txt = `${txt.slice(0, pos - 1)}${this.#convert(type, base)}${txt.slice(Base.has(base) ? end + 1 : end)}`;
+            }
+            pos = txt.indexOf('%', pos) + 1;
+        }
+        this.#fmt = {};
+        return txt;
+    }
+
+    #get(kind) {
+        switch(kind) {
+        case 'hsl': return (this.#fmt.hsl ??= this.hsl);
+        case 'cmyk': return (this.#fmt.cmyk ??= this.cmyk);
         }
     }
 
+    #convert(type, base) {
+        switch(type) {
+        case 'Re': return formatByte(this.#rgb[0], base);
+        case 'Gr': return formatByte(this.#rgb[1], base);
+        case 'Bl': return formatByte(this.#rgb[2], base);
+        case 'Hu': return Math.round(this.#get('hsl')[0]);
+        case 'Sl': return percent(this.#get('hsl')[1]);
+        case 'Ll': return percent(this.#get('hsl')[2]);
+        case 'Va': return percent(Math.max(...this.rgb));
+        case 'Cy': return percent(this.#get('cmyk')[0]);
+        case 'Ma': return percent(this.#get('cmyk')[1]);
+        case 'Ye': return percent(this.#get('cmyk')[2]);
+        case 'Bk': return percent(this.#get('cmyk')[3]);
+        default: return '';
+        }
+    }
+
+    toHEX() {
+        return `#${this.#rgb.map(x => x.toString(16).padStart(2, '0')).join('')}`;
+    }
+
     toMarkup(format) { // HACK: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-        return ` <span face="monospace" fgcolor="${lstar(this.rgb) > 50 ? 'black' : 'white'}" bgcolor="${this.toText(Format.HEX)}">${this.toText(format)}</span>`;
+        return ` <span face="monospace" fgcolor="${lstar(this.rgb) > 50 ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${this.toText(format)}</span>`;
     }
 
     toNamed() {

@@ -17,10 +17,10 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {Color} from './color.js';
-import {Field, Format} from './const.js';
-import {encode, omap, xnor, gprops, hook, execute} from './util.js';
+import {Field, Format, Preset} from './const.js';
+import {encode, xnor, gprops, hook, array, has} from './util.js';
 import {IconButton, MenuItem, RadioItem, IconItem, PanelButton} from './menu.js';
-import {Fulu, ExtensionBase, Destroyable, symbiose, omit, _, getSelf, copy, paste} from './fubar.js';
+import {Fulu, ExtensionBase, Destroyable, symbiose, omit, _, getSelf, copy} from './fubar.js';
 
 const setCursor = x => global.display.set_cursor(x);
 
@@ -40,8 +40,9 @@ const genColorSwatch = x => encode(`<svg width="64" height="64" fill="${x}" view
 </svg>`);
 
 function hookNoMarkupOnKeyFocus(label) { // HACK: workaround for low discoverability of the inner-border(box-shadow) around the markup
-    label.setMarkup = x => { label._markup = x; label.clutter_text.set_markup(x); };
-    label.connect('key-focus-out', a => { a.clutter_text.set_use_markup(true); a.setMarkup(a._markup); });
+    let markup = Symbol('markup');
+    label.setMarkup = x => { label[markup] = x; label.clutter_text.set_markup(x); };
+    label.connect('key-focus-out', a => { a.clutter_text.set_use_markup(true); a.setMarkup(a[markup]); });
     label.connect('key-focus-in', a => a.clutter_text.set_use_markup(false));
 }
 
@@ -50,7 +51,7 @@ class ColorItem extends MenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(callback, item) {
+    constructor(callback, color) {
         super('', () => copy(this._color.toText()), {can_focus: false});
         hookNoMarkupOnKeyFocus(this.label);
         this.label.set_x_expand(true);
@@ -58,15 +59,14 @@ class ColorItem extends MenuItem {
         this.label.add_style_class_name('color-picker-item-label');
         this._btn = new IconButton({style_class: 'color-picker-icon'}, () => callback(this._color.toRaw()));
         this.add_child(this._btn);
-        this.setItem(item);
+        this.setColor(color);
     }
 
-    setItem(item) {
-        if(!item) return;
-        let [icon, raw] = item;
+    setColor(color) {
+        if(!color) return;
+        let [icon, raw, fmts] = color;
         this._btn.setIcon(icon ? 'starred-symbolic' : 'non-starred-symbolic');
-        if(this._color?.equal(raw)) return;
-        this._color = new Color(raw);
+        this._color = new Color(raw, fmts);
         this.label.setMarkup(this._color.toMarkup());
     }
 }
@@ -82,7 +82,7 @@ class ColorSection extends PopupMenu.PopupMenuSection {
         let diff = colors.length - items.length;
         if(diff > 0) for(let a = 0; a < diff; a++) this.addMenuItem(new ColorItem(callback));
         else if(diff < 0) for(let a = 0; a > diff; a--) items.at(a - 1).destroy();
-        this._getMenuItems().forEach((x, i) => x.setItem(colors[i]));
+        this._getMenuItems().forEach((x, i) => x.setColor(colors[i]));
     }
 }
 
@@ -166,6 +166,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
     constructor(area) {
         super(area._view, 0.15, St.Side.LEFT);
         this.color = area._color;
+        this.formats = array(area._color.formats.length).slice(Preset.length);
         Main.layoutManager.addTopChrome(this.actor);
         this._manager = new PopupMenu.PopupMenuManager(area);
         this.actor.add_style_class_name('color-picker-menu');
@@ -186,10 +187,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
             h: this._genSliderItem({h}, 1 / 360),
             s: this._genSliderItem({s}, 1 / 100),
             l: this._genSliderItem({l}, 1 / 100),
-            other: new PopupMenu.PopupSeparatorMenuItem(_('Others')),
-            HSV: new MenuItem('hsv', () => this._emitSelected(Format.HSV)),
-            CMYK: new MenuItem('cmyk', () => this._emitSelected(Format.CMYK)),
-            clip: this._genClipItem(),
+            custom: this._genCustomSection(),
         };
         Object.values(this._menus).forEach(x => this.addMenuItem(x));
     }
@@ -202,31 +200,32 @@ class ColorMenu extends PopupMenu.PopupMenu {
     _updateSlider(type, value) {
         this.color.update(type, value);
         Object.entries(this.color.toRGBHSL()).forEach(([k, v]) => k === type || this._menus[k]._setValue(v));
-        this._updateLabelText();
+        this._updateLabels();
     }
 
-    _updateLabelText() {
+    _genCustomSection() {
+        let section = new PopupMenu.PopupMenuSection();
+        let items = this.formats.map(x => new MenuItem('', () => this._emitSelected(x)));
+        if(items.length) section.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Others')));
+        items.forEach(x => section.addMenuItem(x));
+        section.updateLabels = () => items.forEach((x, i) => x.label.set_text(this.color.toText(this.formats[i])));
+        return section;
+    }
+
+    _updateLabels() {
+        ['RGB', 'HSL'].forEach(x => this._menus[x].label.set_text(this.color.toText(Format[x])));
         this._menus.HEX.label.setMarkup(this.color.toMarkup(Format.HEX));
-        ['RGB', 'HSL', 'HSV', 'CMYK'].forEach(x => this._menus[x].label.set_text(this.color.toText(Format[x])));
-    }
-
-    _genClipItem() {
-        let item = new PopupMenu.PopupMenuItem(_('Read from clipboard'));
-        item.activate = () => paste().then(text => {
-            if(this.color.fromText(text)) this._updateSlider();
-            else console.warn(`[${getSelf().uuid}]`, `Unknown color format: ${text}`);
-        }); // override to keep the menu open after activated
-        return item;
+        this._menus.custom.updateLabels();
     }
 
     _genHEXItem() {
-        let item = new MenuItem('', () => this._emitSelected(Format.HEX), {can_focus: false});
+        let item = new MenuItem('', () => this.emit('color-selected', this.color), {can_focus: false});
         item.label.add_style_class_name('color-picker-item-label');
         item.label.set_can_focus(true);
         hookNoMarkupOnKeyFocus(item.label);
-        ['RGB', 'HSL', 'hex'].forEach((x, i) => item.insert_child_at_index(hook({
+        ['RGB', 'HSL', 'HEX'].forEach((x, i) => item.insert_child_at_index(hook({
             clicked: () => { this.close(); this._emitSelected(Format[x]); },
-        }, new St.Button({x_expand: false, can_focus: true, label: x, style_class: 'color-picker-button button'})), i));
+        }, new St.Button({can_focus: true, label: x, style_class: 'color-picker-button button'})), i));
         return item;
     }
 
@@ -339,7 +338,7 @@ class ColorLabel extends BoxPointer.BoxPointer {
 
     setColor(x, y, color, pixels, area) {
         this.close(BoxPointer.PopupAnimation.NONE);
-        this._label.clutter_text.set_markup(`<span bgcolor="${color.toText(Format.HEX)}">\u2001 </span> ${color.toText()}`);
+        this._label.clutter_text.set_markup(`<span bgcolor="${color.toHEX()}">\u2001 </span> ${color.toText()}`);
         if(this._lens) {
             this._cursor.setColor(x, y, color, pixels, area);
             this.setPosition(this._cursor, 1 / 2);
@@ -443,14 +442,14 @@ class ColorArea extends St.Widget {
         }, this);
     }
 
-    constructor({fulu, once, format}) {
+    constructor({fulu, once, format, formats}) {
         super({reactive: true, style_class: 'screenshot-ui-screen-screenshot'});
         Main.layoutManager.addTopChrome(this);
         Main.pushModal(this, {actionMode: Shell.ActionMode.POPUP});
         Main.uiGroup.set_child_above_sibling(Main.messageTray, this); // show notifications in persistent mode
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
 
-        this._color = Color.new_for_format(format);
+        this._color = Color.new_for_format(format, formats);
         this.once = once ?? false;
         this._bindSettings(fulu);
         this._buildWidgets();
@@ -605,7 +604,21 @@ class ColorButton extends PanelButton {
             collect:    [Field.CLCT, 'value', x => x.deepUnpack()],
             history:    [Field.HIST, 'value', x => x.deepUnpack()],
             menu_style: [Field.MSTL, 'boolean'],
-        }, this, 'colors');
+        }, this, 'colors').attach({
+            hexfmt: [Field.HEX,  'string'],
+            rgbfmt: [Field.RGB,  'string'],
+            hslfmt: [Field.HSL,  'string'],
+            csmfmt: [Field.CFMT, 'value', x => x.recursiveUnpack().filter(y => y.enable)],
+        }, this, 'formats');
+    }
+
+    set formats([k, v, cb]) {
+        this[k] = cb?.(v) ?? v;
+        if(!has(this, 'hexfmt', 'rgbfmt', 'hslfmt', 'csmfmt')) return;
+        this._formats = [this.hexfmt, this.rgbfmt, this.hslfmt, ...this.csmfmt.map(x => x.format)];
+        this._options = Preset.concat(this.csmfmt.map(y => y.name));
+        this._menus?.colors.setColors(...this.getColors());
+        this._menus?.format.setOptions(this._options);
     }
 
     set colors([k, v, cb]) {
@@ -630,7 +643,7 @@ class ColorButton extends PanelButton {
     _addMenuItems() {
         let param = {style_class: 'color-picker-icon'};
         this._menus = {
-            format: new RadioItem(_('Default format'), omap(Format, ([k, v]) => [[v, k]]), this._format, x => this._fulu.set('format', x, this)),
+            format: new RadioItem(_('Default format'), this._options, this._format, x => this._fulu.set('format', x, this)),
             sep0:   new PopupMenu.PopupSeparatorMenuItem(),
             colors: new ColorSection(...this.getColors()),
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
@@ -645,7 +658,8 @@ class ColorButton extends PanelButton {
     }
 
     getColors() {
-        return [this.menu_style ? this.collect.map(x => [true, x]) : this.history.map(x => [this.collect.includes(x), x]), x => this._starColor(x)];
+        return [this.menu_style ? this.collect.map(x => [true, x, this._formats])
+            : this.history.map(x => [this.collect.includes(x), x, this._formats]), x => this._starColor(x)];
     }
 
     _starColor(color) {
@@ -674,20 +688,6 @@ class ColorPicker extends Destroyable {
         super();
         this._buildWidgets(gset);
         this._bindSettings();
-        this._portSettings(gset);
-    }
-
-    _portSettings(gset) { // FIXME: remove in the next version
-        [Field.CLCT, Field.HIST].forEach(key => {
-            if(gset.get_value(key).deepUnpack().length) return;
-            execute(`dconf read /org/gnome/shell/extensions/color-picker/${key}`).then(out => {
-                out &&= GLib.Variant.parse(GLib.VariantType.new('at'), out, null, null).deepUnpack();
-                if(out) gset.set_value(key, new GLib.Variant('au', out.map(x => ((x & 0xff) << 24 | (x >>> 8)) >>> 0)));
-            }).catch(e => {
-                logError(e);
-                gset.reset(key);
-            });
-        });
     }
 
     _buildWidgets(gset) {
@@ -712,8 +712,20 @@ class ColorPicker extends Destroyable {
             notify_sound:  [Field.SNDS, 'uint'],
             notify_style:  [Field.NTFS, 'uint'],
             enable_notify: [Field.NTF,  'boolean'],
-        }, this);
+        }, this).attach({
+            hexfmt: [Field.HEX,  'string'],
+            rgbfmt: [Field.RGB,  'string'],
+            hslfmt: [Field.HSL,  'string'],
+            csmfmt: [Field.CFMT, 'value', x => x.recursiveUnpack().filter(y => y.enable).map(y => y.format)],
+        }, this, 'formats');
     }
+
+    set formats([k, v, cb]) {
+        this[k] = cb?.(v) ?? v;
+        if(!has(this, 'hexfmt', 'rgbfmt', 'hslfmt', 'csmfmt')) return;
+        this._formats = [this.hexfmt, this.rgbfmt, this.hslfmt, ...this.csmfmt];
+    }
+
 
     set shortcut(shortcut) {
         this._sbt.keys.revive(shortcut);
@@ -745,7 +757,7 @@ class ColorPicker extends Destroyable {
         if(this._area) return;
         this._btn?.add_style_pseudo_class('state-busy');
         this._area = hook({'end-pick': () => this.dispel(), 'notify-color': this.inform.bind(this)},
-            new ColorArea({format: this.enable_fmt ? this.format : null, fulu: this._fulu}));
+            new ColorArea({format: this.enable_fmt ? this.format : null, formats: this._formats, fulu: this._fulu}));
     }
 
     dispel() {
@@ -762,7 +774,7 @@ class ColorPicker extends Destroyable {
         this._btn?._addHistory(color.toRaw());
         if(this.enable_sound) global.display.get_sound_player().play_from_theme(this._sound, _('Color picked'), null);
         if(!this.enable_notify) return;
-        let gicon = Gio.BytesIcon.new(genColorSwatch(color.toText(Format.HEX)));
+        let gicon = Gio.BytesIcon.new(genColorSwatch(color.toHEX()));
         if(this.notify_style === Notify.MSG) {
             let source = MessageTray.getSystemSource();
             let message = new MessageTray.Notification({

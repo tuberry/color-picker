@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-export const Format = {HEX: 0, RGB: 1, HSL: 2, hex: 3, HSV: 4, CMYK: 5};
+export const Preset = ['HEX', 'RGB', 'HSL'];
+
+export const Format = {HEX: 0, RGB: 1, HSL: 2};
 
 export const Field = {
     MKEY: 'menu-key',
@@ -9,13 +11,17 @@ export const Field = {
     COPY: 'auto-copy',
     MSIZ: 'menu-size',
     MSTL: 'menu-style',
-    SNDS: 'notify-sound',
     NTFS: 'notify-style',
     SND:  'enable-sound',
+    SNDS: 'notify-sound',
     FMT:  'enable-format',
+    HEX:  'hex-formatter',
     HIST: 'color-history',
+    HSL:  'hsl-formatter',
     NTF:  'enable-notify',
     PVWS: 'preview-style',
+    RGB:  'rgb-formatter',
+    CFMT: 'custom-formats',
     FMTS: 'default-format',
     PVW:  'enable-preview',
     STRY: 'enable-systray',

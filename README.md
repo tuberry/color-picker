@@ -37,12 +37,17 @@ For older versions (< 44), it's recommended to install via:
 
 ### DBus
 
-The DBus interface retruns the same result as XDG Desktop [Screenshot] Portal required:
+The DBus interface returns the same result as XDG Desktop [Screenshot] Portal required:
 
 ```bash
 gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/ColorPicker --method org.gnome.Shell.Extensions.ColorPicker.Pick
 ```
 
+## Acknowledgements
+
+* [PowerToys]: the idea of custom color formats
+
 [license]:https://img.shields.io/badge/license-GPLv3+-green.svg
 [EGO]:https://extensions.gnome.org/extension/3396/color-picker/
 [Screenshot]:https://github.com/flatpak/xdg-desktop-portal/blob/main/data/org.freedesktop.portal.Screenshot.xml
+[PowerToys]:https://learn.microsoft.com/en-us/windows/powertoys/color-picker#managing-color-formats

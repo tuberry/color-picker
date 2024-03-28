@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-02-18 16:12+0800\n"
+"POT-Creation-Date: 2024-03-28 18:03+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -37,138 +37,180 @@ msgstr "清除"
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:577
+#: src/ui.js:589
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
 
-#: src/prefs.js:32
+#: src/prefs.js:34
 msgid "(Key)"
 msgstr "(按键)"
 
-#: src/prefs.js:41
+#: src/prefs.js:43
 msgid "Press any key."
 msgstr "按任意键。"
 
-#: src/prefs.js:69
+#: src/prefs.js:74
 msgid "MSG"
 msgstr "系统通知"
 
-#: src/prefs.js:69
+#: src/prefs.js:74
 msgid "OSD"
 msgstr "屏内提示"
 
-#: src/prefs.js:70
+#: src/prefs.js:75
 msgid "History size"
 msgstr "历史大小"
 
-#: src/prefs.js:72
+#: src/prefs.js:76
 msgid "Screenshot"
 msgstr "截屏"
 
-#: src/prefs.js:72
+#: src/prefs.js:76
 msgid "Complete"
 msgstr "完成"
 
-#: src/prefs.js:72
+#: src/prefs.js:76
 msgid "Sound effect"
 msgstr "音效"
 
-#: src/prefs.js:73
+#: src/prefs.js:77
 msgid "Lens"
 msgstr "镜头"
 
-#: src/prefs.js:73
+#: src/prefs.js:77
 msgid "Icon"
 msgstr "图标"
 
-#: src/prefs.js:73
+#: src/prefs.js:77
 msgid "Label"
 msgstr "标签"
 
-#: src/prefs.js:73
+#: src/prefs.js:77
 msgid "Preview style"
 msgstr "预览方式"
 
-#: src/prefs.js:80
+#: src/prefs.js:85
 msgid "Automatically copy"
 msgstr "自动复制"
 
-#: src/prefs.js:80
+#: src/prefs.js:85
 msgid "Copy the color to clipboard after picking"
 msgstr "选取后复制颜色到剪贴板"
 
-#: src/prefs.js:81 src/extension.js:634
+#: src/prefs.js:86 src/extension.js:646
 msgid "Default format"
 msgstr "默认格式"
 
-#: src/prefs.js:81
-msgid "“hex” means poundless HEX such as 8fd0da"
-msgstr "“hex”指形如8fd0da的无#号前缀HEX格式"
+#: src/prefs.js:86
+msgid "Support PowerToys-like custom color formats"
+msgstr "支持类似 PowerToys 的自定义颜色格式"
 
-#: src/prefs.js:82
+#: src/prefs.js:87
 msgid "Notification sound"
 msgstr "通知声音"
 
-#: src/prefs.js:82
+#: src/prefs.js:87
 msgid "Play the sound after picking"
 msgstr "选取颜色后响铃"
 
-#: src/prefs.js:83
+#: src/prefs.js:88
 msgid "Notification style"
 msgstr "通知方式"
 
-#: src/prefs.js:83
+#: src/prefs.js:88
 msgid "Notify the color after picking"
 msgstr "选取颜色后通知"
 
-#: src/prefs.js:84
+#: src/prefs.js:89
 msgid "Shortcut to pick"
 msgstr "快捷键"
 
-#: src/prefs.js:84
+#: src/prefs.js:89
 msgid "Press arrow keys / wasd / hjkl to move by pixel"
 msgstr "方向键 / wasd / hjkl 按像素移动"
 
-#: src/prefs.js:85
+#: src/prefs.js:90
 msgid "Persistent mode"
 msgstr "持续模式"
 
-#: src/prefs.js:85
+#: src/prefs.js:90
 msgid "Right click or press Esc key to quit"
 msgstr "右键或按Esc键退出"
 
-#: src/prefs.js:86
+#: src/prefs.js:91
 msgid "Enable preview"
 msgstr "启用预览"
 
-#: src/prefs.js:86
+#: src/prefs.js:91
 msgid "Middle click or press Menu key to open menu"
 msgstr "中键或按菜单键打开菜单"
 
-#: src/prefs.js:87
+#: src/prefs.js:92
 msgid "Enable systray"
 msgstr "托盘图标"
 
-#: src/prefs.js:87
+#: src/prefs.js:92
 msgid "Right click to open menu"
 msgstr "右键打开菜单"
 
-#: src/extension.js:189
+#: src/prefs.js:111 src/prefs.js:114
+msgid "New Color Format"
+msgstr "新建颜色格式"
+
+#: src/prefs.js:118
+msgid "Name"
+msgstr "名称"
+
+#: src/prefs.js:118 src/prefs.js:406
+msgid "Format"
+msgstr "格式"
+
+#: src/prefs.js:129
+msgid "The following parameters can be used:"
+msgstr "下列参数可用:"
+
+#: src/prefs.js:130
+msgid "The red/green/blue value can be formatted with:"
+msgstr "红/绿/蓝色值可格式化为:"
+
+#: src/prefs.js:131
+msgid "i.e. <b>%Grx</b> means hex lowercase 2 digits green value."
+msgstr "例如，<b>%Grx</b> 意为两位小写十六进制绿色值。"
+
+#: src/prefs.js:156
+msgid "Add Format"
+msgstr "添加格式"
+
+#: src/prefs.js:323
+msgid "Custom"
+msgstr "自设"
+
+#: src/prefs.js:376
+msgid "Preset"
+msgstr "预设"
+
+#: src/prefs.js:405
+msgid "Basic"
+msgstr "基本"
+
+#: src/extension.js:209
 msgid "Others"
 msgstr "其它"
 
-#: src/extension.js:214
-msgid "Read from clipboard"
-msgstr "从剪贴板读取"
-
-#: src/extension.js:764
+#: src/extension.js:775
 msgid "Color picked"
 msgstr "已拾取颜色"
 
-#: src/extension.js:770
+#: src/extension.js:783
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"
+
+#~ msgid "“hex” means poundless HEX such as 8fd0da"
+#~ msgstr "“hex”指形如8fd0da的无#号前缀HEX格式"
+
+#~ msgid "Read from clipboard"
+#~ msgstr "从剪贴板读取"
 
 #~ msgid "Disable"
 #~ msgstr "禁用"
