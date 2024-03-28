@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-03-28 18:03+0800\n"
+"POT-Creation-Date: 2024-03-28 23:46+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -102,8 +102,8 @@ msgid "Default format"
 msgstr "默认格式"
 
 #: src/prefs.js:86
-msgid "Support PowerToys-like custom color formats"
-msgstr "支持类似 PowerToys 的自定义颜色格式"
+msgid "Support custom color formats"
+msgstr "支持自定义颜色格式"
 
 #: src/prefs.js:87
 msgid "Notification sound"
@@ -161,7 +161,7 @@ msgstr "新建颜色格式"
 msgid "Name"
 msgstr "名称"
 
-#: src/prefs.js:118 src/prefs.js:406
+#: src/prefs.js:118 src/prefs.js:409
 msgid "Format"
 msgstr "格式"
 
@@ -177,19 +177,19 @@ msgstr "红/绿/蓝色值可格式化为:"
 msgid "i.e. <b>%Grx</b> means hex lowercase 2 digits green value."
 msgstr "例如，<b>%Grx</b> 意为两位小写十六进制绿色值。"
 
-#: src/prefs.js:156
+#: src/prefs.js:158
 msgid "Add Format"
 msgstr "添加格式"
 
-#: src/prefs.js:323
+#: src/prefs.js:326
 msgid "Custom"
 msgstr "自设"
 
-#: src/prefs.js:376
+#: src/prefs.js:379
 msgid "Preset"
 msgstr "预设"
 
-#: src/prefs.js:405
+#: src/prefs.js:408
 msgid "Basic"
 msgstr "基本"
 

@@ -83,7 +83,7 @@ class PrefsBasic extends UI.PrefPage {
     _buildUI() {
         [
             [this._blk.COPY, [_('Automatically copy'), _('Copy the color to clipboard after picking')]],
-            [this._blk.FMT,  [_('Default format'), _('Support PowerToys-like custom color formats')], this._blk.FMTS],
+            [this._blk.FMT,  [_('Default format'), _('Support custom color formats')], this._blk.FMTS],
             [this._blk.SND,  [_('Notification sound'), _('Play the sound after picking')], this._blk.SNDS],
             [this._blk.NTF,  [_('Notification style'), _('Notify the color after picking')], this._blk.NTFS],
             [this._blk.KEY,  [_('Shortcut to pick'), _('Press arrow keys / wasd / hjkl to move by pixel')], this._blk.KEYS],
@@ -159,7 +159,7 @@ class NewFormatRow extends Gtk.ListBoxRow {
     }
 }
 
-class NewFormatModal extends GObject.Object {
+class NewFormatModel extends GObject.Object {
     static {
         GObject.registerClass({
             Implements: [Gio.ListModel],
@@ -198,7 +198,7 @@ class FormatItem extends GObject.Object {
     }
 }
 
-class FormatModal extends GObject.Object {
+class FormatModel extends GObject.Object {
     static {
         GObject.registerClass({
             Implements: [Gio.ListModel],
@@ -324,12 +324,12 @@ class FormatList extends Adw.PreferencesGroup {
 
     constructor(gset) {
         super({title: _('Custom')});
-        this._fmts = new FormatModal(gset, Field.CFMT);
+        this._fmts = new FormatModel(gset, Field.CFMT);
         let store = new Gio.ListStore({item_type: Gio.ListModel}),
             model = new Gtk.FlattenListModel({model: store}),
             list = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.NONE, css_classes: ['boxed-list']});
         store.append(this._fmts);
-        store.append(new NewFormatModal());
+        store.append(new NewFormatModel());
         list.bind_model(model, x => x instanceof NewFormatItem ? new NewFormatRow() : hook({
             moved: (_w, src, aim) => this._fmts.move(src, aim),
             changed: (_w, pos) => this._editFormat(pos),
