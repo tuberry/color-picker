@@ -17,8 +17,8 @@ function formatByte(byte, base) {
     case 'H': return (byte >> 4).toString(16).toUpperCase();
     case 'x': return byte.toString(16).padStart(2, '0');
     case 'X': return byte.toString(16).padStart(2, '0').toUpperCase();
-    case 'f': return (byte / 255).toLocaleString(undefined, {maximumFractionDigits: 2});
-    case 'F': return (byte / 255).toLocaleString(undefined, {maximumFractionDigits: 2}).slice(1);
+    case 'f': return (byte / 255).toLocaleString(undefined, {maximumFractionDigits: 3});
+    case 'F': return (byte / 255).toLocaleString(undefined, {maximumFractionDigits: 3}).slice(1);
     default: return byte;
     }
 }
@@ -90,7 +90,7 @@ export class Color {
     #fmt = {}; // format cache
     #rgb; // [0-255]{3}
 
-    constructor(raw = 0x26f3ba, formats = []) { // raw <- 0x0FRRGGBB
+    constructor(raw = 0, formats = []) { // raw <- 0x0FRRGGBB
         [this.format, ...this.#rgb] = [24, 16, 8, 0].map(x => raw >>> x & 0xff);
         this.formats = formats;
     }
@@ -100,7 +100,7 @@ export class Color {
     }
 
     static toSample(data) {
-        return data && new Color(undefined, [data]).toText();
+        return data && new Color(0x26f3ba, [data]).toText();
     }
 
     set rgb(rgb) {
@@ -167,7 +167,7 @@ export class Color {
             let type = txt.slice(pos, end);
             if(Type.has(type)) {
                 let base = txt.charAt(end);
-                txt = `${txt.slice(0, pos - 1)}${this.#convert(type, base)}${txt.slice(Base.has(base) ? end + 1 : end)}`;
+                txt = `${txt.slice(0, pos - 1)}${this.#form(type, base)}${txt.slice(Base.has(base) ? end + 1 : end)}`;
             }
             pos = txt.indexOf('%', pos) + 1;
         }
@@ -182,7 +182,7 @@ export class Color {
         }
     }
 
-    #convert(type, base) {
+    #form(type, base) {
         switch(type) {
         case 'Re': return formatByte(this.#rgb[0], base);
         case 'Gr': return formatByte(this.#rgb[1], base);

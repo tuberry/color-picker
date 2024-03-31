@@ -329,7 +329,7 @@ class ColorLabel extends BoxPointer.BoxPointer {
         Main.layoutManager.addTopChrome(this);
         this.style_class = 'color-picker-boxpointer';
         this.cursor_type = lens ? Meta.Cursor.BLANK : Meta.Cursor.CROSSHAIR;
-        this._cursor = lens ? new ColorLens({width: 1, height: 1}) : new Clutter.Actor({opacity: 0, width: 20, height: 20});
+        this._cursor = lens ? new ColorLens({width: 1, height: 1}) : new Clutter.Actor({opacity: 0, width: 8, height: 8});
         Main.layoutManager.addTopChrome(this._cursor);
         this._label = new St.Label({style_class: 'color-picker-label'});
         this.bin.set_child(this._label);
@@ -508,9 +508,9 @@ class ColorArea extends St.Widget {
     }
 
     _getLoupe(x, y) {
-        let {width, height} = this._data;
-        x = Math.clamp(x, 0, width);
-        y = Math.clamp(y, 0, height);
+        let {width, height, scale} = this._data;
+        x = Math.clamp(Math.round(x * scale), 0, width);
+        y = Math.clamp(Math.round(y * scale), 0, height);
         if(this.pvstyle !== Preview.LENS) return [x, y, 1, 1, 0, 0, 0];
         let r = 10,
             a = Math.max(x - r, 0),

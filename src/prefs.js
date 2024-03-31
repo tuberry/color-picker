@@ -401,6 +401,7 @@ class PrefsFormat extends UI.PrefPage {
         this.add(new FormatList(gset));
     }
 }
+
 export default class PrefsWidget extends UI.Prefs {
     fillPreferencesWindow(win) {
         let gset = this.getSettings();
