@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-03-28 23:46+0800\n"
+"POT-Creation-Date: 2024-04-24 18:17+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,35 +17,35 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:305
+#: src/ui.js:322
 msgid "All"
 msgstr "全部"
 
-#: src/ui.js:305
+#: src/ui.js:322
 msgid "Normal"
 msgstr "常规"
 
-#: src/ui.js:305
+#: src/ui.js:322
 msgid "Symbolic"
 msgstr "符号"
 
-#: src/ui.js:343
+#: src/ui.js:360
 msgid "Clear"
 msgstr "清除"
 
-#: src/ui.js:445
+#: src/ui.js:462
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:589
+#: src/ui.js:606
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
 
-#: src/prefs.js:34
+#: src/prefs.js:35
 msgid "(Key)"
 msgstr "(按键)"
 
-#: src/prefs.js:43
+#: src/prefs.js:44
 msgid "Press any key."
 msgstr "按任意键。"
 
@@ -78,16 +78,12 @@ msgid "Lens"
 msgstr "镜头"
 
 #: src/prefs.js:77
-msgid "Icon"
-msgstr "图标"
-
-#: src/prefs.js:77
 msgid "Label"
 msgstr "标签"
 
 #: src/prefs.js:77
-msgid "Preview style"
-msgstr "预览方式"
+msgid "Scroll or press Ctrl key to toggle preview style when picking"
+msgstr "取色时可滚动或按 Ctrl 键切换预览方式"
 
 #: src/prefs.js:85
 msgid "Automatically copy"
@@ -97,7 +93,7 @@ msgstr "自动复制"
 msgid "Copy the color to clipboard after picking"
 msgstr "选取后复制颜色到剪贴板"
 
-#: src/prefs.js:86 src/extension.js:646
+#: src/prefs.js:86 src/extension.js:659
 msgid "Default format"
 msgstr "默认格式"
 
@@ -135,7 +131,7 @@ msgstr "持续模式"
 
 #: src/prefs.js:90
 msgid "Right click or press Esc key to quit"
-msgstr "右键或按Esc键退出"
+msgstr "右键或按 Esc 键退出"
 
 #: src/prefs.js:91
 msgid "Enable preview"
@@ -161,7 +157,7 @@ msgstr "新建颜色格式"
 msgid "Name"
 msgstr "名称"
 
-#: src/prefs.js:118 src/prefs.js:409
+#: src/prefs.js:118 src/prefs.js:417
 msgid "Format"
 msgstr "格式"
 
@@ -174,37 +170,43 @@ msgid "The red/green/blue value can be formatted with:"
 msgstr "红/绿/蓝色值可格式化为:"
 
 #: src/prefs.js:131
-msgid "i.e. <b>%Grx</b> means hex lowercase 2 digits green value."
-msgstr "例如，<b>%Grx</b> 意为两位小写十六进制绿色值。"
+msgid "i.e. <b>%Blx</b> means hex lowercase 2 digits blue value."
+msgstr "例如，<b>%Blx</b> 意为两位小写十六进制蓝色值。"
 
-#: src/prefs.js:158
+#: src/prefs.js:159
 msgid "Add Format"
 msgstr "添加格式"
 
-#: src/prefs.js:326
+#: src/prefs.js:333
 msgid "Custom"
-msgstr "自设"
+msgstr "自便"
 
-#: src/prefs.js:379
+#: src/prefs.js:386
 msgid "Preset"
 msgstr "预设"
 
-#: src/prefs.js:408
+#: src/prefs.js:416
 msgid "Basic"
 msgstr "基本"
 
-#: src/extension.js:209
+#: src/extension.js:215
 msgid "Others"
 msgstr "其它"
 
-#: src/extension.js:775
+#: src/extension.js:683
 msgid "Color picked"
 msgstr "已拾取颜色"
 
-#: src/extension.js:783
+#: src/extension.js:691
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"
+
+#~ msgid "Icon"
+#~ msgstr "图标"
+
+#~ msgid "Preview style"
+#~ msgstr "预览方式"
 
 #~ msgid "“hex” means poundless HEX such as 8fd0da"
 #~ msgstr "“hex”指形如8fd0da的无#号前缀HEX格式"

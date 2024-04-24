@@ -4,7 +4,7 @@
 import {array} from './util.js';
 
 const percent = x => `${Math.round(x * 100)}%`; // 0.111 => '11%'
-const genStops = (n, f) => array(n + 1, i => (x => [x].concat(f(x), 1))(i / n));
+const genStops = (n, f, r) => array(n + 1, i => (x => [r ? 1 - x : x].concat(f(x), 1))(i / n));
 
 const Index = {r: 0, g: 1, b: 2, h: 0, s: 1, l: 2};
 const Base = new Set(['b', 'h', 'H', 'x', 'X', 'f', 'F']);
@@ -87,20 +87,20 @@ function rgb2cmyk(rgb) {
 }
 
 export class Color {
-    #fmt = {}; // format cache
-    #rgb; // [0-255]{3}
-
-    constructor(raw = 0, formats = []) { // raw <- 0x0FRRGGBB
-        [this.format, ...this.#rgb] = [24, 16, 8, 0].map(x => raw >>> x & 0xff);
-        this.formats = formats;
-    }
-
     static new_for_format(format, formats) {
         return new Color(format << 24, formats);
     }
 
     static toSample(data) {
         return data && new Color(0x26f3ba, [data]).toText();
+    }
+
+    #rgb; // [0-255]{3}
+    #fmt = {}; // format cache
+
+    constructor(raw = 0, formats = []) { // raw <- 0x0FRRGGBB
+        [this.format, ...this.#rgb] = [24, 16, 8, 0].map(x => raw >>> x & 0xff);
+        this.formats = formats;
     }
 
     set rgb(rgb) {
@@ -167,7 +167,7 @@ export class Color {
             let type = txt.slice(pos, end);
             if(Type.has(type)) {
                 let base = txt.charAt(end);
-                txt = `${txt.slice(0, pos - 1)}${this.#form(type, base)}${txt.slice(Base.has(base) ? end + 1 : end)}`;
+                txt = `${txt.slice(0, pos - 1)}${this.$form(type, base)}${txt.slice(Base.has(base) ? end + 1 : end)}`;
             }
             pos = txt.indexOf('%', pos) + 1;
         }
@@ -175,26 +175,26 @@ export class Color {
         return txt;
     }
 
-    #get(kind) {
+    $get(kind) {
         switch(kind) {
         case 'hsl': return (this.#fmt.hsl ??= this.hsl);
         case 'cmyk': return (this.#fmt.cmyk ??= this.cmyk);
         }
     }
 
-    #form(type, base) {
+    $form(type, base) {
         switch(type) {
         case 'Re': return formatByte(this.#rgb[0], base);
         case 'Gr': return formatByte(this.#rgb[1], base);
         case 'Bl': return formatByte(this.#rgb[2], base);
-        case 'Hu': return Math.round(this.#get('hsl')[0]);
-        case 'Sl': return percent(this.#get('hsl')[1]);
-        case 'Ll': return percent(this.#get('hsl')[2]);
+        case 'Hu': return Math.round(this.$get('hsl')[0]);
+        case 'Sl': return percent(this.$get('hsl')[1]);
+        case 'Ll': return percent(this.$get('hsl')[2]);
         case 'Va': return percent(Math.max(...this.rgb));
-        case 'Cy': return percent(this.#get('cmyk')[0]);
-        case 'Ma': return percent(this.#get('cmyk')[1]);
-        case 'Ye': return percent(this.#get('cmyk')[2]);
-        case 'Bk': return percent(this.#get('cmyk')[3]);
+        case 'Cy': return percent(this.$get('cmyk')[0]);
+        case 'Ma': return percent(this.$get('cmyk')[1]);
+        case 'Ye': return percent(this.$get('cmyk')[2]);
+        case 'Bk': return percent(this.$get('cmyk')[3]);
         default: return '';
         }
     }
@@ -207,6 +207,10 @@ export class Color {
         return ` <span face="monospace" fgcolor="${lstar(this.rgb) > 50 ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${this.toText(format)}</span>`;
     }
 
+    toPreview() {
+        return `<span bgcolor="${this.toHEX()}">\u2001 </span> ${this.toText()}`;
+    }
+
     toNamed() {
         let [r, g, b] = this.#rgb;
         return {red: r, green: g, blue: b, alpha: 255};
@@ -217,13 +221,13 @@ export class Color {
         return hsl2rgb(s < 0.1 ? [0, 0, lstar(this.rgb) < 50 ? 1 : 0] : [(h + 180) % 360, 1, 0.5]);
     }
 
-    toStops(type) { // linear gradient
+    toStops(type, rtl) { // linear gradient
         let index = Index[type];
         switch(type) {
-        case 'r': case 'g': case 'b': { let {rgb} = this; return genStops(1, x => rgb.with(index, x)); }
-        case 's': { let {hsl} = this; return genStops(1, x => hsl2rgb(hsl.with(index, x))); }
-        case 'l': { let {hsl} = this; return genStops(5, x => hsl2rgb(hsl.with(index, x))); }
-        case 'h': { let {hsl} = this; return genStops(12, x => hsl2rgb(hsl.with(index, x * 360))); }
+        case 'r': case 'g': case 'b': { let {rgb} = this; return genStops(1, x => rgb.with(index, x), rtl); }
+        case 's': { let {hsl} = this; return genStops(1, x => hsl2rgb(hsl.with(index, x)), rtl); }
+        case 'l': { let {hsl} = this; return genStops(5, x => hsl2rgb(hsl.with(index, x)), rtl); }
+        case 'h': { let {hsl} = this; return genStops(12, x => hsl2rgb(hsl.with(index, x * 360)), rtl); }
         }
     }
 }

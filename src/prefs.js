@@ -10,18 +10,19 @@ import GObject from 'gi://GObject';
 import * as UI from './ui.js';
 import {Color} from './color.js';
 import {Field, Preset} from './const.js';
-import {array, gprops, hook, BIND, noop, pickle} from './util.js';
-const {_, wrapValue} = UI;
+import {BIND, array, hook, noop, pickle} from './util.js';
+
+const {_, vprop, gprop} = UI;
 
 class KeyDialog extends UI.KeysDialog {
     static {
         GObject.registerClass(this);
     }
 
-    _onKeyPress(_w, keyval, keycode, state) {
+    $onKeyPress(_w, keyval, keycode, state) {
         let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
         if(!mask && keyval === Gdk.KEY_Escape) return this.close();
-        this._onSelect(Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
+        this.$onSelect(Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
     }
 }
 
@@ -34,12 +35,12 @@ class Key extends UI.DialogButtonBase {
         super(new Gtk.ShortcutLabel({disabled_text: _('(Key)')}), null, true);
     }
 
-    _setValue(v) {
-        this._value = v;
-        this._btn.child.set_accelerator(this._value);
+    $setValue(v) {
+        this.$value = v;
+        this.$btn.child.set_accelerator(this.$value);
     }
 
-    _buildDialog() {
+    $genDialog() {
         return new KeyDialog({title: _('Press any key.')});
     }
 }
@@ -51,46 +52,45 @@ class PrefsBasic extends UI.PrefPage {
 
     constructor(param, gset) {
         super(param);
-        this._buildWidgets(gset);
-        this._buildUI();
+        this.getFormats = () => Preset.concat(gset.get_value(Field.CFMT).recursiveUnpack().flatMap(x => x.enable ? [x.name] : []));
+        this.$buildWidgets(gset);
+        this.$buildUI();
     }
 
-    _buildWidgets(gset) {
-        let getFormats = () => Preset.concat(gset.get_value(Field.CFMT).recursiveUnpack()
-            .filter(x => x.enable).map(x => x.name));
-        this._blk = UI.block({
-            MKEY: [new Key()],
-            QKEY: [new Key()],
-            TICN: [new UI.Icon()],
-            COPY: [new UI.Check()],
-            NTF:  [new UI.Check()],
-            FMT:  [new UI.Check()],
-            PVW:  [new UI.Check()],
-            KEY:  [new UI.Check()],
-            SND:  [new UI.Check()],
-            STRY: [new UI.Check()],
-            PRST: [new UI.Check()],
-            FMTS: [new UI.Drop(getFormats())],
-            NTFS: [new UI.Drop([_('MSG'), _('OSD')])],
-            MSIZ: [new UI.Spin(1, 16, 1, _('History size'))],
-            SNDS: [new UI.Drop([_('Screenshot'), _('Complete')], _('Sound effect'))],
-            PVWS: [new UI.Drop([_('Lens'), _('Icon'), _('Label')], _('Preview style'))],
+    $buildWidgets(gset) {
+        this.$blk = UI.block({
+            MKEY: new Key(),
+            QKEY: new Key(),
+            TICN: new UI.Icon(),
+            COPY: new UI.Check(),
+            NTF:  new UI.Check(),
+            FMT:  new UI.Check(),
+            PVW:  new UI.Check(),
+            KEY:  new UI.Check(),
+            SND:  new UI.Check(),
+            STRY: new UI.Check(),
+            PRST: new UI.Check(),
+            FMTS: new UI.Drop(this.getFormats()),
+            NTFS: new UI.Drop([_('MSG'), _('OSD')]),
+            MSIZ: new UI.Spin(1, 16, 1, _('History size')),
+            SNDS: new UI.Drop([_('Screenshot'), _('Complete')], _('Sound effect')),
+            PVWS: new UI.Drop([_('Lens'), _('Label')], _('Scroll or press Ctrl key to toggle preview style when picking')),
         }, gset);
-        this._blk.KEYS = new UI.Keys({gset, key: Field.KEYS});
-        gset.connect(`changed::${Field.CFMT}`, () => this._blk.FMTS.set_model(Gtk.StringList.new(getFormats())));
+        this.$blk.KEYS = new UI.Keys({gset, key: Field.KEYS});
+        gset.connect(`changed::${Field.CFMT}`, () => this.$blk.FMTS.set_model(Gtk.StringList.new(this.getFormats())));
     }
 
-    _buildUI() {
+    $buildUI() {
         [
-            [this._blk.COPY, [_('Automatically copy'), _('Copy the color to clipboard after picking')]],
-            [this._blk.FMT,  [_('Default format'), _('Support custom color formats')], this._blk.FMTS],
-            [this._blk.SND,  [_('Notification sound'), _('Play the sound after picking')], this._blk.SNDS],
-            [this._blk.NTF,  [_('Notification style'), _('Notify the color after picking')], this._blk.NTFS],
-            [this._blk.KEY,  [_('Shortcut to pick'), _('Press arrow keys / wasd / hjkl to move by pixel')], this._blk.KEYS],
-            [this._blk.PRST, [_('Persistent mode'), _('Right click or press Esc key to quit')], this._blk.QKEY],
-            [this._blk.PVW,  [_('Enable preview'), _('Middle click or press Menu key to open menu')], this._blk.PVWS, this._blk.MKEY],
-            [this._blk.STRY, [_('Enable systray'), _('Right click to open menu')], this._blk.TICN, this._blk.MSIZ],
-        ].forEach(xs => this._add(new UI.PrefRow(...xs)));
+            [this.$blk.COPY, [_('Automatically copy'), _('Copy the color to clipboard after picking')]],
+            [this.$blk.FMT,  [_('Default format'), _('Support custom color formats')], this.$blk.FMTS],
+            [this.$blk.SND,  [_('Notification sound'), _('Play the sound after picking')], this.$blk.SNDS],
+            [this.$blk.NTF,  [_('Notification style'), _('Notify the color after picking')], this.$blk.NTFS],
+            [this.$blk.KEY,  [_('Shortcut to pick'), _('Press arrow keys / wasd / hjkl to move by pixel')], this.$blk.KEYS],
+            [this.$blk.PRST, [_('Persistent mode'), _('Right click or press Esc key to quit')], this.$blk.QKEY],
+            [this.$blk.PVW,  [_('Enable preview'), _('Middle click or press Menu key to open menu')], this.$blk.PVWS, this.$blk.MKEY],
+            [this.$blk.STRY, [_('Enable systray'), _('Right click to open menu')], this.$blk.TICN, this.$blk.MSIZ],
+        ].forEach(xs => this.addToGroup(new UI.PrefRow(...xs)));
     }
 }
 
@@ -105,30 +105,30 @@ class FormatDialog extends UI.DialogBase {
         this.height_request = 485;
     }
 
-    _buildWidgets(param) {
-        let mkLabel = (label, end) => new Gtk.Label({label, use_markup: true, halign: end ? Gtk.Align.END : Gtk.Align.START}),
+    $buildWidgets(param) {
+        let genLabel = (label, end) => new Gtk.Label({label, use_markup: true, halign: end ? Gtk.Align.END : Gtk.Align.START}),
             [edit, type, base] = array(3, () => new Gtk.Grid({vexpand: true, row_spacing: 12, column_spacing: 12})),
             title = Adw.WindowTitle.new(_('New Color Format'), ''),
-            format = hook({activate: () => this._onSelect()}, new Gtk.Entry({hexpand: true, placeholder_text: '#%Rex%Grx%Blx'})),
-            name = hook({activate: () => this._onSelect()}, new Gtk.Entry({hexpand: true, placeholder_text: 'HEX', sensitive: !param?.preset}));
+            format = hook({activate: () => this.$onSelect()}, new Gtk.Entry({hexpand: true, placeholder_text: '#%Rex%Grx%Blx'})),
+            name = hook({activate: () => this.$onSelect()}, new Gtk.Entry({hexpand: true, placeholder_text: 'HEX', sensitive: !param?.preset}));
         name.bind_property_full('text', title, 'title', GObject.BindingFlags.DEFAULT, (_b, data) => [true, data || _('New Color Format')], null);
         format.bind_property_full('text', title, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, data) => [true, Color.toSample(data)], null);
         this.initSelected = x => { name.set_text(x?.name ?? ''); format.set_text(x?.format ?? ''); };
         this.getSelected = () => JSON.stringify({name: name.get_text(), format: format.get_text()});
-        [mkLabel(_('Name'), true), name, mkLabel(_('Format'), true), format]
+        [genLabel(_('Name'), true), name, genLabel(_('Format'), true), format]
             .forEach((x, i) => edit.attach(x, i % 2, i / 2 >> 0, 1, 1));
         Object.entries({
             Re: 'red', Gr: 'green', Bl: 'blue', Hu: 'hue', Sl: 'saturation', Ll: 'lightness',
             Va: 'value', Cy: 'cyan', Ma: 'magenta', Ye: 'yellow', Bk: 'black',
-        }).forEach(([x, y], i) => type.attach(mkLabel(`<b>%${x}</b> ${y}`), i % 3, i / 3 >> 0, 1, 1));
+        }).forEach(([x, y], i) => type.attach(genLabel(`<b>%${x}</b> ${y}`), i % 3, i / 3 >> 0, 1, 1));
         Object.entries({
             h: 'hex lowercase 1 digit', H: 'hex uppercase 1 digit', x: 'hex lowercase 2 digits', X: 'hex uppercase 2 digits',
             f: 'float with leading zero', F: 'float without leading zero', b: 'byte value (default)',
-        }).forEach(([x, y], i) => base.attach(mkLabel(`<b>${x}</b> ${y}`), i % 2, i / 2 >> 0, 1, 1));
+        }).forEach(([x, y], i) => base.attach(genLabel(`<b>${x}</b> ${y}`), i % 2, i / 2 >> 0, 1, 1));
         return {
-            content: new UI.Box([edit, mkLabel(_('The following parameters can be used:')),
-                type, mkLabel(_('The red/green/blue value can be formatted with:')),
-                base, mkLabel(_('i.e. <b>%Grx</b> means hex lowercase 2 digits green value.'))], {
+            content: new UI.Box([edit, genLabel(_('The following parameters can be used:')),
+                type, genLabel(_('The red/green/blue value can be formatted with:')),
+                base, genLabel(_('i.e. <b>%Blx</b> means hex lowercase 2 digits blue value.'))], {
                 orientation: Gtk.Orientation.VERTICAL, valign: Gtk.Align.START, spacing: 12,
                 margin_top: 12, margin_bottom: 12, margin_start: 12, margin_end: 12,
             }, false), title,
@@ -142,6 +142,7 @@ class NewFormatItem extends GObject.Object {
     }
 }
 
+// FIXME: ButtonRow - https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.ButtonRow.html
 class NewFormatRow extends Gtk.ListBoxRow {
     static {
         GObject.registerClass(this);
@@ -176,7 +177,7 @@ class NewFormatModel extends GObject.Object {
         return this.#items.length;
     }
 
-    vfunc_get_item(_pos) {
+    vfunc_get_item(_p) {
         return this.#items[0];
     }
 }
@@ -184,10 +185,10 @@ class NewFormatModel extends GObject.Object {
 class FormatItem extends GObject.Object {
     static {
         GObject.registerClass({
-            Properties: gprops({
+            Properties: gprop({
                 name: ['string', ''],
                 format: ['string', ''],
-                enable: ['boolean', true],
+                enable: ['boolean', false],
             }),
         }, this);
     }
@@ -195,6 +196,7 @@ class FormatItem extends GObject.Object {
     constructor(fmt) {
         super();
         this.set(fmt);
+        this.toggle = () => { this.enable = !this.enable; };
     }
 }
 
@@ -210,45 +212,44 @@ class FormatModel extends GObject.Object {
     constructor(gset, key) {
         super();
         let sync = () => {
-            let removed = this.#items.length;
-            this.#items = gset.get_value(key).recursiveUnpack().map(x => new FormatItem(x));
-            this.items_changed(0, removed, this.#items.length);
+            let items = gset.get_value(key).recursiveUnpack().map(x => new FormatItem(x));
+            this.$splice(this.#items, 0, this.#items.length, items);
         };
         let handler = gset.connect(`changed::${key}`, () => sync());
-        this._saveFormats = () => {
+        this.$saveFormats = callback => {
+            callback(this.#items);
             gset.block_signal_handler(handler);
-            gset.set_value(key, pickle(this.#items.map(({enable, name, format}) => ({enable, name, format}))));
+            gset.set_value(key, pickle(this.#items.map(({name, enable, format}) => ({name, enable, format})), false));
             gset.unblock_signal_handler(handler);
         };
         sync();
     }
 
-    #process(pos, callback, removed = 0, added = 0) {
-        if(pos < 0) return;
-        callback(pos);
-        this._saveFormats();
-        this.items_changed(pos, removed, added);
+    $splice(items, pos, del = 0, add = []) {
+        if(pos < 0) return [];
+        let removed = items.splice(pos, del, ...add);
+        this.items_changed(pos, del, add.length);
+        return removed;
     }
 
-    move(src, aim) {
-        this.#process(src, () => this.#items.splice(aim, 0, this.#items.splice(src, 1)[0]), 1);
-        this.items_changed(aim, 0, 1);
+    move(drag, drop) {
+        this.$saveFormats(x => this.$splice(x, drop, 0, this.$splice(x, drag, 1)));
     }
 
     append(fmt) {
-        this.#process(this.#items.length, () => this.#items.push(new FormatItem(fmt)), 0, 1);
-    }
-
-    toggle(pos) {
-        this.#process(pos, x => (y => { y.enable = !y.enable; })(this.#items[x]));
+        this.$saveFormats(x => this.$splice(x, x.length, 0, [new FormatItem(fmt)]));
     }
 
     remove(pos) {
-        this.#process(pos, x => this.#items.splice(x, 1), 1);
+        this.$saveFormats(x => this.$splice(x, pos, 1));
+    }
+
+    toggle(pos) {
+        this.$saveFormats(x => { x[pos].toggle(); this.$splice(x, pos); });
     }
 
     change(pos, edit) {
-        this.#process(pos, x => this.#items[x].set(edit));
+        this.$saveFormats(x => { x[pos].set(edit); this.$splice(x, pos); });
     }
 
     vfunc_get_item_type() {
@@ -291,27 +292,33 @@ class FormatRow extends Adw.ActionRow {
         this.set_activatable_widget(change);
         fmt.bind_property('name', this, 'title', BIND);
         fmt.bind_property_full('format', this, 'subtitle', BIND, (_b, data) => [true, Color.toSample(data)], null);
-        this._buildDND(fmt);
+        this.$buildDND(fmt);
     }
 
-    _buildDND(fmt) {
+    $buildDND(fmt) {
         this.add_controller(hook({
-            prepare: (_src, x, y) => {
-                this._drag_x = x; this._drag_y = y;
+            prepare: (_s, x, y) => {
+                this.$drag_x = x; this.$drag_y = y;
                 return Gdk.ContentProvider.new_for_value(this);
             },
-            drag_begin: (_src, drag) => {
+            drag_begin: (_s, drag) => {
                 let {width: width_request, height: height_request} = this.get_allocation(),
                     box = new Gtk.ListBox({width_request, height_request}),
                     row = new FormatRow(fmt);
                 box.append(row);
                 box.drag_highlight_row(row);
                 Gtk.DragIcon.get_for_drag(drag).set_child(box);
-                drag.set_hotspot(this._drag_x, this._drag_y);
+                drag.set_hotspot(this.$drag_x, this.$drag_y);
             },
         }, new Gtk.DragSource({actions: Gdk.DragAction.MOVE})));
         this.add_controller(hook({
-            drop: (_t, src) => { this.emit('moved', src.get_index(), this.get_index()); return true; },
+            drop: (_t, src) => {
+                let drag = src.get_index();
+                let drop = this.get_index();
+                if(drag === drop) return false;
+                this.emit('moved', drag, drop);
+                return true;
+            },
         }, Gtk.DropTarget.new(FormatRow, Gdk.DragAction.MOVE)));
     }
 }
@@ -319,43 +326,43 @@ class FormatRow extends Adw.ActionRow {
 class FormatList extends Adw.PreferencesGroup {
     static {
         GObject.registerClass(this);
-        this.install_action('format.add', null, self => self._newFormat());
+        this.install_action('format.add', null, self => self.$newFormat());
     }
 
     constructor(gset) {
         super({title: _('Custom')});
-        this._fmts = new FormatModel(gset, Field.CFMT);
+        this.$fmts = new FormatModel(gset, Field.CFMT);
         let store = new Gio.ListStore({item_type: Gio.ListModel}),
             model = new Gtk.FlattenListModel({model: store}),
             list = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.NONE, css_classes: ['boxed-list']});
-        store.append(this._fmts);
+        store.append(this.$fmts);
         store.append(new NewFormatModel());
         list.bind_model(model, x => x instanceof NewFormatItem ? new NewFormatRow() : hook({
-            moved: (_w, src, aim) => this._fmts.move(src, aim),
-            changed: (_w, pos) => this._editFormat(pos),
-            removed: (_w, pos) => this._fmts.remove(pos),
-            toggled: (_w, pos) => this._fmts.toggle(pos),
+            moved: (_w, src, aim) => this.$fmts.move(src, aim),
+            changed: (_w, pos) => this.$editFormat(pos),
+            removed: (_w, pos) => this.$fmts.remove(pos),
+            toggled: (_w, pos) => this.$fmts.toggle(pos),
         }, new FormatRow(x)));
         this.add(list);
     }
 
-    get _dlg() {
-        return (this._dialog ??= new FormatDialog());
+    get $dlg() {
+        return (this.$dialog ??= new FormatDialog());
     }
 
-    _editFormat(pos) {
-        this._dlg.choose_sth(this.get_root(), this._fmts.get_item(pos))
-            .then(x => this._fmts.change(pos, JSON.parse(x))).catch(noop);
+    $editFormat(pos) {
+        this.$dlg.choose_sth(this.get_root(), this.$fmts.get_item(pos))
+            .then(x => this.$fmts.change(pos, JSON.parse(x))).catch(noop);
     }
 
-    _newFormat() {
-        this._dlg.choose_sth(this.get_root()).then(x => this._fmts.append(JSON.parse(x))).catch(noop);
+    $newFormat() {
+        this.$dlg.choose_sth(this.get_root()).then(x => this.$fmts.append({enable: true, ...JSON.parse(x)})).catch(noop);
     }
 }
 
 class PresetRow extends Adw.ActionRow {
     static {
-        GObject.registerClass(wrapValue('string', ''), this);
+        GObject.registerClass(vprop('string', ''), this);
     }
 
     constructor(param, callback) {
@@ -379,15 +386,15 @@ class PresetList extends Adw.PreferencesGroup {
         super({title: _('Preset')});
         Preset.forEach(name => {
             let key = Field[name];
-            let row = new PresetRow({title: name}, format => this._dlg.choose_sth(this.get_root(), {name, format})
-                          .then(x => gset.set_string(key, JSON.parse(x).format)).catch(noop));
+            let row = new PresetRow({title: name}, format => this.$dlg.choose_sth(this.get_root(), {name, format})
+                                    .then(x => gset.set_string(key, JSON.parse(x).format)).catch(noop));
             gset.bind(key, row, 'value', Gio.SettingsBindFlags.DEFAULT);
             this.add(row);
         });
     }
 
-    get _dlg() {
-        return (this._dialog ??= new FormatDialog({preset: true}));
+    get $dlg() {
+        return (this.$dialog ??= new FormatDialog({preset: true}));
     }
 }
 

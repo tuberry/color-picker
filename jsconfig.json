@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "noUnusedLocals": true,
+    "noImplicitAny": true,
+    "noEmit": true,
+    "target": "ES2023",
+    "allowJs": true,
+    "checkJs": false,
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["@girs/gjs", "@girs/gnome-shell/ambient"]
+  }
+}

@@ -10,6 +10,7 @@ elif(target == 'local')
     output: 'gschemas.compiled',
     command: [
       find_program('glib-compile-schemas'),
+      '--strict',
       '--targetdir=@OUTDIR@',
       '@CURRENT_SOURCE_DIR@'
     ],
