@@ -11,6 +11,7 @@ export const Field = {
     COPY: 'auto-copy',
     MSIZ: 'menu-size',
     MSTL: 'menu-style',
+    MENU: 'format-menu',
     NTFS: 'notify-style',
     SND:  'enable-sound',
     SNDS: 'notify-sound',

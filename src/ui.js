@@ -9,9 +9,10 @@ import Pango from 'gi://Pango';
 import GObject from 'gi://GObject';
 import * as Gettext from 'gettext';
 
-import {Field} from './const.js';
-import {fopen, omap, noop, fquery, hook, BIND} from './util.js';
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+
+import {Field} from './const.js';
+import {BIND, fopen, omap, noop, fquery, hook, vmap} from './util.js';
 
 Gio._promisify(Gtk.FileDialog.prototype, 'open');
 Gio._promisify(Gtk.FileDialog.prototype, 'select_folder');
@@ -20,7 +21,7 @@ export {_};
 export const _GTK = Gettext.domain('gtk40').gettext;
 export const myself = () => ExtensionPreferences.lookupByURL(import.meta.url);
 export const gprop = o => omap(o, ([k, [x, ...ys]]) => [[k, GObject.ParamSpec[x](k, k, k, GObject.ParamFlags.READWRITE, ...ys)]]);
-export const vprop = (...args) => ({Properties: gprop({value: [...args]})});
+export const vprop = (...xs) => ({Properties: gprop({value: [...xs]})});
 
 /**
  * @template T
@@ -29,16 +30,34 @@ export const vprop = (...args) => ({Properties: gprop({value: [...args]})});
  */
 export const block = (o, s, p) => omap(o, ([k, v]) => [[k, (s.bind(Field[k], v, p?.[k] ?? 'value', Gio.SettingsBindFlags.DEFAULT), v)]]);
 
-export class Hook {
-    static #map = new WeakMap();
-    static attach(cbs, obj) {
-        this.detach(obj);
-        this.#map.set(obj, cbs);
-        return hook(cbs, obj);
+export class Broker {
+    static #hooks = new WeakMap();
+    static #binds = new WeakMap();
+
+    static #get = (key, value, map) => {
+        if(!map.has(key)) map.set(key, new WeakMap());
+        if(!map.get(key).has(value)) map.get(key).set(value, []);
+        return map.get(key).get(value);
+    };
+
+    static bind(source, prop, target, prop1, to = null, from = null, flag = GObject.BindingFlags.SYNC_CREATE) {
+        this.#get(source, target, this.#binds).push(source.bind_property_full(prop, target, prop1, flag, to, from));
     }
 
-    static detach(obj) {
-        Object.values(this.#map.get(obj) ?? {}).forEach(x => GObject.signal_handlers_disconnect_by_func(obj, x));
+    static unbind(source, target) {
+        this.#get(source, target, this.#binds).splice(0).forEach(x => x.unbind());
+    }
+
+    static attach(tracker, ...args) {
+        args.forEach((x, i, a) => i % 2 || this.#get(tracker, x, this.#hooks).push(...Object.entries(a[i + 1]).map(ys => x.connect(...ys))));
+    }
+
+    static detach(tracker, ...args) {
+        args.forEach(x => this.#get(tracker, x, this.#hooks).splice(0).forEach(y => x.disconnect(y)));
+    }
+
+    static race(emitter, hooks) {
+        this.attach(emitter, emitter, vmap(hooks, f => (...xs) => { f(...xs); Broker.detach(emitter, emitter); }));
     }
 }
 
@@ -122,8 +141,8 @@ export class Font extends Gtk.FontDialogButton {
 
     constructor(param) {
         super({valign: Gtk.Align.CENTER, dialog: new Gtk.FontDialog(), ...param});
-        this.bind_property_full('value', this, 'font-desc', BIND, (_b, data) =>
-            [true, Pango.FontDescription.from_string(data)], (_b, data) => [true, data.to_string()]);
+        this.bind_property_full('value', this, 'font-desc', BIND, (_b, v) =>
+            [true, Pango.FontDescription.from_string(v)], (_b, v) => [true, v.to_string()]);
     }
 }
 
@@ -134,8 +153,8 @@ export class Color extends Gtk.ColorDialogButton {
 
     constructor(param) {
         super({tooltip_text: param?.title ?? '', valign: Gtk.Align.CENTER, dialog: new Gtk.ColorDialog(param)});
-        this.bind_property_full('value', this, 'rgba', BIND, (_b, data) =>
-            (color => [color.parse(data), color])(new Gdk.RGBA()), (_b, data) => [true, data.to_string()]);
+        this.bind_property_full('value', this, 'rgba', BIND, (_b, v) =>
+            (color => [color.parse(v), color])(new Gdk.RGBA()), (_b, v) => [true, v.to_string()]);
     }
 }
 
@@ -144,12 +163,13 @@ export class IconLabel extends Gtk.Box {
         GObject.registerClass(this);
     }
 
-    constructor(fallback_icon) {
+    constructor(fallback_icon, reverse) {
         super({spacing: 5});
         this.$icon = new Gtk.Image();
         this.$label = new Gtk.Label();
         this.$fallback_icon = fallback_icon;
-        [this.$icon, this.$label].forEach(x => this.append(x));
+        if(reverse) [this.$label, this.$icon].forEach(x => this.append(x));
+        else [this.$icon, this.$label].forEach(x => this.append(x));
     }
 
     setContent(icon, label) {
@@ -168,13 +188,13 @@ export class DialogBase extends Adw.Window {
         }, this);
     }
 
-    constructor(title, param) {
-        super({title, modal: true, hide_on_close: true, width_request: 360, height_request: 320});
-        this.$buildContent(param);
+    constructor(title, opt, param) {
+        super({title, modal: true, hide_on_close: true, width_request: 360, height_request: 320, ...param});
+        this.$buildContent(opt);
     }
 
-    $buildContent(param) {
-        let {content, filter, title} = this.$buildWidgets(param),
+    $buildContent(opt) {
+        let {content, filter, title} = this.$buildWidgets(opt),
             eck = hook({'key-pressed': this.$onKeyPress.bind(this)}, new Gtk.EventControllerKey()),
             close = hook({clicked: () => this.close()}, Gtk.Button.new_with_mnemonic(_GTK('_Cancel'))),
             select = hook({clicked: () => this.$onSelect()}, Gtk.Button.new_with_mnemonic(_GTK('_OK'))),
@@ -218,10 +238,10 @@ export class DialogBase extends Adw.Window {
         this.initSelected?.(initial);
         if(this.transient_for !== root) this.set_transient_for(root);
         this.present();
-        return new Promise((resolve, reject) => Hook.attach({
+        return new Promise((resolve, reject) => Broker.race(this, {
             selected: (_d, value) => resolve(value),
             close_request: () => reject(Error('cancelled')),
-        }, this));
+        }));
     }
 }
 
@@ -230,11 +250,11 @@ export class AppDialog extends DialogBase {
         GObject.registerClass(this);
     }
 
-    constructor(param) {
-        super(_GTK('Select Application'), param);
+    constructor(opt, param) {
+        super(_GTK('Select Application'), opt, param);
     }
 
-    $buildWidgets(param) {
+    $buildWidgets(opt) {
         let factory = hook({
                 setup: (_f, x) => x.set_child(new IconLabel('application-x-executable-symbolic')),
                 bind: (_f, x) => x.get_child().setContent(...(y => [y.get_icon() || '', y.get_display_name()])(x.get_item())),
@@ -243,7 +263,7 @@ export class AppDialog extends DialogBase {
             model = new Gio.ListStore({item_type: Gio.DesktopAppInfo}),
             select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model, filter})}),
             content = hook({activate: () => this.$onSelect()}, new Gtk.ListView({model: select, factory, vexpand: true}));
-        if(param?.no_display) Gio.AppInfo.get_all().forEach(x => model.append(x));
+        if(opt?.no_display) Gio.AppInfo.get_all().forEach(x => model.append(x));
         else Gio.AppInfo.get_all().filter(x => x.should_show()).forEach(x => model.append(x));
         filter.set_search = s => filter.set_filter_func(s ? (a => x => a.has(x.get_id()))(new Set(Gio.DesktopAppInfo.search(s).flat())) : null);
         this.getSelected = () => select.get_selected_item().get_id();
@@ -256,8 +276,8 @@ export class KeysDialog extends DialogBase {
         GObject.registerClass(this);
     }
 
-    constructor(param) {
-        super('', param);
+    constructor(opt, param) {
+        super('', opt, param);
     }
 
     $buildContent({title}) {
@@ -309,11 +329,11 @@ class IconDialog extends DialogBase {
         }, this);
     }
 
-    constructor(param) {
-        super('', param);
+    constructor(opt, param) {
+        super('', opt, param);
     }
 
-    $buildWidgets(param) {
+    $buildWidgets(opt) {
         let factory = hook({
                 setup: (_f, x) => x.set_child(new Gtk.Image({icon_size: Gtk.IconSize.LARGE})),
                 bind: (_f, {child, item: {string}}) => { child.icon_name = child.tooltip_text = string; },
@@ -327,7 +347,7 @@ class IconDialog extends DialogBase {
         filter.append(new Gtk.StringFilter({expression: new Gtk.PropertyExpression(Gtk.StringObject, null, 'string')}));
         this.connect('notify::icon-type', () => filter.get_item(0).set_expression(this.$genIconExpression()));
         this.bind_property('icon-type', title, 'selected', BIND);
-        if(param?.icon_type) this.icon_type = param.icon_type;
+        if(opt?.icon_type) this.icon_type = opt.icon_type;
         this.getSelected = () => select.get_selected_item().get_string();
         return {content, title, filter: filter.get_item(1)};
     }
@@ -346,9 +366,9 @@ export class DialogButtonBase extends Box {
         GObject.registerClass(vprop('string', ''), this);
     }
 
-    constructor(child, gtype, reset) {
+    constructor(param, child, gtype, reset) {
         super();
-        this.$btn = hook({clicked: () => this.$onClick().then(x => { this.value = x; }).catch(noop)}, new Gtk.Button({child}));
+        this.$btn = hook({clicked: () => this.$onClick().then(x => { this.value = x; }).catch(noop)}, new Gtk.Button({child, ...param}));
         if(gtype) this.$buildDND(gtype);
         if(reset) this.$buildReset();
         this.prepend(this.$btn);
@@ -411,8 +431,8 @@ export class App extends DialogButtonBase {
         GObject.registerClass(this);
     }
 
-    constructor() {
-        super(new IconLabel('application-x-executable-symbolic'), Gio.DesktopAppInfo.$gtype, true);
+    constructor(param) {
+        super(param, new IconLabel('application-x-executable-symbolic'), Gio.DesktopAppInfo.$gtype, true);
     }
 
     $setValue(v) {
@@ -438,16 +458,16 @@ export class File extends DialogButtonBase {
         GObject.registerClass(this);
     }
 
-    constructor(param) {
-        super(new IconLabel('document-open-symbolic'), Gio.File.$gtype, true);
-        if(param?.select_folder) param.filter = {mime_types:  ['inode/directory']};
-        if(param?.filter) this.$filter = new Gtk.FileFilter(param.filter);
-        this.$param = param;
+    constructor(opt, param) {
+        super(param, new IconLabel('document-open-symbolic'), Gio.File.$gtype, true);
+        if(opt?.select_folder) opt.filter = {mime_types:  ['inode/directory']};
+        if(opt?.filter) this.$filter = new Gtk.FileFilter(opt.filter);
+        this.$opt = opt;
     }
 
     $genDialog() {
         let dialog = new Gtk.FileDialog({modal: true});
-        if(this.$param?.title) dialog.set_title(this.$param.title);
+        if(this.$opt?.title) dialog.set_title(this.$opt.title);
         if(this.$filter) dialog.set_default_filter(this.$filter);
         return dialog;
     }
@@ -474,7 +494,7 @@ export class File extends DialogButtonBase {
 
     $onClick() {
         this.dlg.set_initial_file(this.$gvalue);
-        return this.dlg[this.$param?.select_folder ? 'select_folder' : 'open'](this.get_root(), null);
+        return this.dlg[this.$opt?.select_folder ? 'select_folder' : 'open'](this.get_root(), null);
     }
 
     $setContent(value, icon, text) {
@@ -488,8 +508,8 @@ export class Icon extends DialogButtonBase {
         GObject.registerClass(this);
     }
 
-    constructor() {
-        super(new IconLabel('image-missing'), Gio.ThemedIcon.$gtype, true);
+    constructor(param) {
+        super(param, new IconLabel('image-missing'), Gio.ThemedIcon.$gtype, true);
     }
 
     $genDragSwatch() {
@@ -515,19 +535,18 @@ export class Keys extends DialogButtonBase {
         GObject.registerClass(this);
     }
 
-    constructor(param) {
-        super(new Gtk.ShortcutLabel({disabled_text: _GTK('New accelerator…')}));
-        this.$btn.set_has_frame(false);
-        this.$param = param;
+    constructor(opt, param) {
+        super({has_frame: false, ...param}, new Gtk.ShortcutLabel({disabled_text: _GTK('New accelerator…')}));
+        this.$opt = opt;
         this.value = this.shortcut ?? '';
     }
 
     get shortcut() {
-        return this.$param?.gset.get_strv(this.$param?.key).at(0);
+        return this.$opt?.gset.get_strv(this.$opt?.key).at(0);
     }
 
     set shortcut(shortcut) {
-        if(shortcut !== this.shortcut) this.$param?.gset.set_strv(this.$param?.key, [shortcut]);
+        if(shortcut !== this.shortcut) this.$opt?.gset.set_strv(this.$opt?.key, [shortcut]);
     }
 
     $setValue(v) {

@@ -31,7 +31,11 @@
         </key>
         <key type="b" name="enable-format">
             <default>true</default>
-            <summary>enable format</summary>
+            <summary>enable default format</summary>
+        </key>
+        <key type="b" name="format-menu">
+            <default>true</default>
+            <summary>enable format menu</summary>
         </key>
         <key type="as" name="color-picker-shortcut">
             <default><![CDATA[['<Super>0']]]></default>
@@ -39,7 +43,7 @@
         </key>
         <key type="s" name="menu-key">
             <default>"m"</default>
-            <summary>key to open menu</summary>
+            <summary>key to open formats menu</summary>
         </key>
         <key type="s" name="quit-key">
             <default>"q"</default>

@@ -91,7 +91,7 @@ export class Color {
         return new Color(format << 24, formats);
     }
 
-    static toSample(data) {
+    static sample(data) {
         return data && new Color(0x26f3ba, [data]).toText();
     }
 
@@ -160,16 +160,13 @@ export class Color {
     }
 
     toText(format) {
-        let txt = this.formats[format ?? this.format] || '#%Rex%Grx%Blx';
-        let pos = txt.indexOf('%') + 1;
-        while(pos !== 0) {
+        let pos, txt = this.formats[format ?? this.format] || '#%Rex%Grx%Blx';
+        while((pos = txt.indexOf('%', pos) + 1)) {
             let end = pos + 2;
             let type = txt.slice(pos, end);
-            if(Type.has(type)) {
-                let base = txt.charAt(end);
-                txt = `${txt.slice(0, pos - 1)}${this.$form(type, base)}${txt.slice(Base.has(base) ? end + 1 : end)}`;
-            }
-            pos = txt.indexOf('%', pos) + 1;
+            if(!Type.has(type)) continue;
+            let base = txt.charAt(end);
+            txt = `${txt.slice(0, pos - 1)}${this.$form(type, base)}${txt.slice(Base.has(base) ? end + 1 : end)}`;
         }
         this.#fmt = {};
         return txt;

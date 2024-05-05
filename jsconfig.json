@@ -3,7 +3,7 @@
     "noUnusedLocals": true,
     "noImplicitAny": true,
     "noEmit": true,
-    "target": "ES2023",
+    "target": "ESNext",
     "allowJs": true,
     "checkJs": false,
     "strict": true,

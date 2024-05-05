@@ -6,12 +6,6 @@ $pfx: 'color-picker';
     @return if($variant==if($reverse, 'light', 'dark'), darken($color, $percent), lighten($color, $percent))
 }
 
-@mixin inner_border($radius: 0.15em, $width: 0.15em) {
-    border-radius: $radius;
-    background-color: $bg_color;
-    box-shadow: inset 0 0 0 $width transparentize($selected_bg_color, 0.3);
-}
-
 .#{$pfx}-label {
     color: $fg_color;
     padding: 0.3em;
@@ -19,7 +13,7 @@ $pfx: 'color-picker';
     font-size: 1.4em;
     border-radius: 0.4em;
     background-color: tone($bg_color);
-    box-shadow: 0 0.08em 0.15em 0 $shadow_color;
+    border: 0.05em solid transparentize($fg_color, 0.6); /* box-shadow leads afterimage when moving */
 }
 
 .#{$pfx}-button {
@@ -32,11 +26,11 @@ $pfx: 'color-picker';
 
 .#{$pfx}-item-label {
     font-family: monospace;
-    &:focus { @include inner_border(); }
+    &:focus { outline: 0.15em solid transparentize($selected_bg_color, 0.3); }
 }
 
 .#{$pfx}-icon {
     padding: 0 0.15em;
-    &:focus { @include inner_border(0.5em); }
     &:hover { color: tone($selected_bg_color, 5%); }
+    &:focus { outline: 0.15em solid transparentize($selected_bg_color, 0.3); }
 }

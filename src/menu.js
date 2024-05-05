@@ -12,7 +12,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import {ROOT, noop} from './util.js';
-import {Source, view, degrade, myself, connect} from './fubar.js';
+import {Source, view, myself, connect} from './fubar.js';
 
 export const offstage = x => !Main.uiGroup.contains(x);
 export const lookupIcon = x => St.IconTheme.new().lookup_icon(x, -1, St.IconLookupFlags.FORCE_SVG);
@@ -62,9 +62,9 @@ export class IconButton extends St.Button {
         let mutable = Array.isArray(icon);
         let accessible_role = mutable ? Atk.Role.TOGGLE_BUTTON : Atk.Role.PUSH_BUTTON;
         super({can_focus: true, accessible_role, ...param});
-        this.$src = degrade({
+        this.$src = Source.fuse({
             tip: new Source((...xs) => this.$genTip(...xs)),
-            show: new Source(() => setTimeout(() => this.$showTip(true), 250), x => { clearTimeout(x); this.$showTip(false); }),
+            show: Source.newTimer(() => [() => this.$showTip(true), 250], true, () => this.$showTip(false)),
         }, this);
         if(icon !== null) this.$buildWidgets(mutable, icon, tip);
         this.connect('clicked', callback);
@@ -103,12 +103,12 @@ export class IconButton extends St.Button {
         if(!tip) return;
         if(show) {
             tip.updateText();
-            tip.setPosition(this, 0);
+            tip.setPosition(this, 0.1);
             if(offstage(tip)) Main.layoutManager.addTopChrome(tip);
             tip.open(BoxPointer.PopupAnimation.FULL);
         } else {
             if(offstage(tip)) return;
-            tip.close(BoxPointer.PopupAnimation.NONE);
+            tip.close(BoxPointer.PopupAnimation.FADE);
             Main.layoutManager.removeChrome(tip);
         }
     }
