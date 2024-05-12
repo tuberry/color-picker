@@ -78,10 +78,10 @@ class PrefsBasic extends UI.PrefPage {
     $buildUI() {
         [
             [this.$blk.COPY, [_('Automatically copy'), _('Copy the color to clipboard after picking')]],
-            [this.$blk.FMT,  [_('Default format'), _('Support custom color formats')], this.$blk.FMTS],
+            [this.$blk.FMT,  [_('Default format'), _('Also apply to the first Format menu item')], this.$blk.FMTS],
             [this.$blk.KEY,  [_('Enable shortcut'), _('Press arrow keys / wasd / hjkl to move by pixel')], this.$blk.KEYS],
             [this.$blk.STRY, [_('Enable systray'), _('Right click to open menu')], this.$blk.TICN, this.$blk.MSIZ],
-            [this.$blk.MENU, [_('Format menu'), _('Middle click or press Menu key to open menu')], this.$blk.MKEY],
+            [this.$blk.MENU, [_('Format menu'), _('Middle click or press Menu key to open')], this.$blk.MKEY],
             [this.$blk.PRST, [_('Persistent mode'), _('Right click or press Esc key to quit')], this.$blk.QKEY],
             [this.$blk.PVW,  [_('Preview style'), _('Scroll or press Ctrl key to toggle when picking')], this.$blk.PVWS],
             [this.$blk.NTF,  [_('Notification style'), _('Notify the color after picking')], this.$blk.NTFS],

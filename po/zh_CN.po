@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-02 14:18+0800\n"
+"POT-Creation-Date: 2024-05-12 16:46+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -37,7 +37,7 @@ msgstr "清除"
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:626
+#: src/ui.js:625
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
 
@@ -93,13 +93,13 @@ msgstr "自动复制"
 msgid "Copy the color to clipboard after picking"
 msgstr "选取后复制颜色到剪贴板"
 
-#: src/prefs.js:81 src/extension.js:651
+#: src/prefs.js:81 src/extension.js:654
 msgid "Default format"
 msgstr "默认格式"
 
 #: src/prefs.js:81
-msgid "Support custom color formats"
-msgstr "支持自定义颜色格式"
+msgid "Also apply to the first Format menu item"
+msgstr "也适用于格式菜单首项"
 
 #: src/prefs.js:82
 msgid "Enable shortcut"
@@ -122,8 +122,8 @@ msgid "Format menu"
 msgstr "格式菜单"
 
 #: src/prefs.js:84
-msgid "Middle click or press Menu key to open menu"
-msgstr "中键或按菜单键打开菜单"
+msgid "Middle click or press Menu key to open"
+msgstr "中键或按菜单键打开"
 
 #: src/prefs.js:85
 msgid "Persistent mode"
@@ -157,43 +157,39 @@ msgstr "通知声音"
 msgid "Play the sound after picking"
 msgstr "选取颜色后响铃"
 
-#: src/prefs.js:107 src/prefs.js:110
+#: src/prefs.js:103 src/prefs.js:108 src/prefs.js:147
 msgid "New Color Format"
 msgstr "新建颜色格式"
 
-#: src/prefs.js:114
+#: src/prefs.js:112
 msgid "Name"
 msgstr "名称"
 
-#: src/prefs.js:114 src/prefs.js:333
+#: src/prefs.js:112 src/prefs.js:331
 msgid "Format"
 msgstr "格式"
 
-#: src/prefs.js:125
+#: src/prefs.js:123
 msgid "The following parameters can be used:"
 msgstr "下列参数可用:"
 
-#: src/prefs.js:126
+#: src/prefs.js:124
 msgid "The red/green/blue value can be formatted with:"
 msgstr "红/绿/蓝色值可格式化为:"
 
-#: src/prefs.js:127
+#: src/prefs.js:125
 msgid "i.e. <b>%Blx</b> means hex lowercase 2 digits blue value."
 msgstr "例如，<b>%Blx</b> 意为两位小写十六进制蓝色值。"
 
-#: src/prefs.js:149
-msgid "Add Format"
-msgstr "添加格式"
-
-#: src/prefs.js:236
+#: src/prefs.js:234
 msgid "Custom"
 msgstr "自便"
 
-#: src/prefs.js:302
+#: src/prefs.js:300
 msgid "Preset"
 msgstr "预设"
 
-#: src/prefs.js:332
+#: src/prefs.js:330
 msgid "Basic"
 msgstr "基本"
 
@@ -201,14 +197,20 @@ msgstr "基本"
 msgid "Others"
 msgstr "其它"
 
-#: src/extension.js:675
+#: src/extension.js:677
 msgid "Color picked"
 msgstr "已拾取颜色"
 
-#: src/extension.js:683
+#: src/extension.js:685
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"
+
+#~ msgid "Support custom color formats"
+#~ msgstr "支持自定义颜色格式"
+
+#~ msgid "Add Format"
+#~ msgstr "添加格式"
 
 #~ msgid "Shortcut to pick"
 #~ msgstr "快捷键"

@@ -1,7 +1,7 @@
 project(
   'gnome-shell-extension-color-picker',
   license: 'GPL-3.0-or-later',
-  version: '46.rc',
+  version: '46.1',
 )
 
 _name = meson.project_name().replace('gnome-shell-extension-', '')
