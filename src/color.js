@@ -144,8 +144,8 @@ export class Color {
         return this;
     }
 
-    fromPixel(pixel, start = 0) {
-        for(let i = 0; i < 3; i++) this.#rgb[i] = pixel[start + i];
+    fromPixels(pixels, start = 0) {
+        for(let i = 0; i < 3; i++) this.#rgb[i] = pixels[start + i];
     }
 
     toRGBHSL() { // -> {(0-1)}

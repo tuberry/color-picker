@@ -112,7 +112,7 @@ export class Source {
             : new Source((...xs) => setInterval(...callback(...xs)), clear ? x => clear(clearInterval(x)) : clearInterval, ...args);
     }
 
-    static newConnect(emitter, signal, callback, ...args) {
+    static newHandler(emitter, signal, callback, ...args) {
         return new Source(() => emitter.connect(signal, callback), x => x && emitter.disconnect(x), ...args);
     }
 
@@ -166,7 +166,7 @@ export class Setting {
         this.#map.has(host) ? Object.assign(this.#map.get(host), prop) : this.#map.set(host, prop);
         last &&= Object.keys(prop).at(-1);
         let call = (f, v, k) => f?.(v, k) ?? v,
-            bind = (k, f, g) => call(g, host[k] = call(f, this.get(k, host), k), k), /* eslint no-return-assign: off */
+            bind = (k, f, g) => call(g, seq(x => { host[k] = x; }, call(f, this.get(k, host), k)), k),
             sync = last ? (k, f, g) => call((...xs) => has(host, last) && func(...xs), bind(k, f, g), k) : (k, f, g) => call(func, bind(k, f, g), k);
         connect(host, this.gset, ...Object.entries(prop).flatMap(([k, [x,, f, g]]) => (sync(k, f, g), [`changed::${x}`, () => sync(k, f, g)])));
         return this;

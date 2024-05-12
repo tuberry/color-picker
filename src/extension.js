@@ -243,15 +243,15 @@ class ColorLens extends St.DrawingArea {
 
     constructor(param) {
         super({style_class: 'color-picker-lens', ...param});
+        this.$data = {x: 0, y: 0, color: new Color(), pixels: [], area: [0, 0, 0, 0, 0]};
         this.$zoom = 8 * St.ThemeContext.get_for_stage(global.stage).scaleFactor; // grid length
         this.$unit = 1 / this.$zoom;
-        this.$data = {x: 0, y: 0, color: new Color(), pixels: [], area: [0, 0, 0, 0, 0]};
     }
 
     setData(data) {
         this.$data = data;
         let s = this.$zoom;
-        let {x, y, area: [w, h, c_x, c_y]} = this.$data;
+        let {x, y, area: [w, h, c_x, c_y]} = data;
         this.set_size((w + 2) * s, (h + 2) * s);
         this.set_position(x - (c_x + 1) * s, y - (c_y + 1) * s);
         this.queue_repaint();
@@ -364,7 +364,7 @@ class ColorArea extends St.Widget {
         super({reactive: true, style_class: 'screenshot-ui-screen-screenshot'});
         Main.layoutManager.addTopChrome(this);
         Main.pushModal(this, {actionMode: Shell.ActionMode.POPUP});
-        Main.uiGroup.set_child_above_sibling(Main.messageTray, this); // show notifications in persistent mode
+        Main.uiGroup.set_child_above_sibling(Main.messageTray, this); // NOTE: show notifications in persistent mode
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
 
         this.$once = once;
@@ -406,8 +406,9 @@ class ColorArea extends St.Widget {
         let [content, scale] = await new Shell.Screenshot().screenshot_stage_to_content();
         this.set_content(content);
         let texture = content.get_texture();
-        this.$data = {scale, width: texture.get_width() - 1, height: texture.get_height() - 1};
-        if(this.$coords) this.$pickColor(this.$coords);
+        this.$data = {scale, texture, width: texture.get_width() - 1, height: texture.get_height() - 1};
+        this.pickColor = this.$pickColor; // HACK: workaround for unexpected motion events when using shortcut on Xorg
+        if(this.$coords) this.pickColor(this.$coords);
     }
 
     get viewer() {
@@ -421,27 +422,31 @@ class ColorArea extends St.Widget {
     $onViewerPut() {
         this.$src.cursor.summon();
         this.$src.format.reboot(this.menuset, this.$src.viewer.hub);
-        if(this.$coords) this.$pickColor(this.$coords);
+        if(this.$coords) this.pickColor(this.$coords);
+    }
+
+    pickColor(coords) {
+        this.$coords = coords;
     }
 
     async $pickColor(coords) {
+        this.$coords = coords;
         try {
             let [x, y] = coords.map(Math.round),
-                texture = this.get_content().get_texture(),
-                [a, b, w, h, c_x, c_y, r] = this.$getLoupe(x, y),
+                {scale, width, height, texture} = this.$data,
                 stream = Gio.MemoryOutputStream.new_resizable(),
-                pixbuf = await Shell.Screenshot.composite_to_stream(texture, a, b, w, h, this.$data.scale, null, 0, 0, 1, stream),
+                [a, b, w, h, c_x, c_y, r] = this.$getLoupe(x, y, scale, width, height),
+                pixbuf = await Shell.Screenshot.composite_to_stream(texture, a, b, w, h, scale, null, 0, 0, 1, stream),
                 pixels = pixbuf.get_pixels();
             stream.close(null);
-            this.$color.fromPixel(pixels, (c_y * w + c_x) * 4);
+            this.$color.fromPixels(pixels, (c_y * w + c_x) * 4);
             this.viewer?.setContent({x, y, color: this.$color, pixels, area: [w, h, c_x, c_y, r]});
         } catch(e) {
             this.emit('end-pick', true);
         }
     }
 
-    $getLoupe(x, y) {
-        let {width, height, scale} = this.$data;
+    $getLoupe(x, y, scale, width, height) {
         x = Math.clamp(Math.round(x * scale), 0, width);
         y = Math.clamp(Math.round(y * scale), 0, height);
         if(this.preview) return [x, y, 1, 1, 0, 0, 0];
@@ -459,14 +464,12 @@ class ColorArea extends St.Widget {
     }
 
     vfunc_motion_event(event) {
-        this.$coords = event.get_coords();
-        this.$pickColor(this.$coords);
+        this.pickColor(event.get_coords());
         return Clutter.EVENT_PROPAGATE;
     }
 
     vfunc_enter_event(event) {
-        this.$coords = event.get_coords();
-        if(this.$data) this.$pickColor(this.$coords);
+        this.pickColor(event.get_coords());
         return super.vfunc_enter_event(event);
     }
 
@@ -663,8 +666,7 @@ class ColorPicker extends Mortal {
     dispel() {
         if(!this.$src.area.active) return;
         this.$src.tray.hub?.remove_style_pseudo_class('state-busy');
-        if(this.auto_copy && this.$picked.length) copy(this.$picked.join(' '));
-        this.$picked.length = 0;
+        if(this.auto_copy && this.$picked.length) copy(this.$picked.splice(0).join(' '));
         this.$src.area.dispel();
     }
 

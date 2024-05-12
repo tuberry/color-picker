@@ -95,18 +95,16 @@ class FormatDialog extends UI.DialogBase {
         GObject.registerClass(this);
     }
 
-    constructor(param) {
-        super('', param);
-        this.width_request = 400;
-        this.height_request = 485;
+    constructor(opt) {
+        super('', opt, {width_request: 400, height_request: 485});
     }
 
-    $buildWidgets(param) {
-        let genLabel = (label, end) => new Gtk.Label({label, use_markup: true, halign: end ? Gtk.Align.END : Gtk.Align.START}),
+    $buildWidgets(opt) {
+        let title = Adw.WindowTitle.new(_('New Color Format'), ''),
+            genLabel = (label, end) => new Gtk.Label({label, use_markup: true, halign: end ? Gtk.Align.END : Gtk.Align.START}),
             [edit, type, base] = array(3, () => new Gtk.Grid({vexpand: true, row_spacing: 12, column_spacing: 12})),
-            title = Adw.WindowTitle.new(_('New Color Format'), ''),
             format = hook({activate: () => this.$onSelect()}, new Gtk.Entry({hexpand: true, placeholder_text: '#%Rex%Grx%Blx'})),
-            name = hook({activate: () => this.$onSelect()}, new Gtk.Entry({hexpand: true, placeholder_text: 'HEX', sensitive: !param?.preset}));
+            name = hook({activate: () => this.$onSelect()}, new Gtk.Entry({hexpand: true, placeholder_text: 'HEX', sensitive: !opt?.preset}));
         name.bind_property_full('text', title, 'title', GObject.BindingFlags.DEFAULT, (_b, v) => [true, v || _('New Color Format')], null);
         format.bind_property_full('text', title, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, v) => [true, Color.sample(v)], null);
         this.initSelected = x => { name.set_text(x?.name ?? ''); format.set_text(x?.format ?? ''); };
@@ -146,7 +144,7 @@ class NewFormatRow extends Gtk.ListBoxRow {
                 margin_top: 16, margin_bottom: 16, margin_start: 16, margin_end: 16,
             }),
         });
-        this.update_property([Gtk.AccessibleProperty.LABEL], [_('Add Format')]);
+        this.update_property([Gtk.AccessibleProperty.LABEL], [_('New Color Format')]);
     }
 }
 
