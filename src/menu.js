@@ -42,9 +42,9 @@ export class Systray extends PanelMenu.Button {
     constructor(menu, icon, pos, box, prop, text) {
         let {uuid, metadata: {name}} = myself();
         super(0.5, text ?? name, !menu);
-        this.$box = new St.BoxLayout({style_class: 'panel-status-indicators-box'});
+        this.$box = new St.BoxLayout({styleClass: 'panel-status-indicators-box'});
         this.add_child(this.$box);
-        this.$icon = new StIcon({icon, style_class: 'system-status-icon'});
+        this.$icon = new StIcon({icon, styleClass: 'system-status-icon'});
         this.$box.add_child(this.$icon);
         this.append = x => this.$box.add_child(x);
         Main.panel.addToStatusArea(uuid, this, pos, box);
@@ -60,8 +60,8 @@ export class IconButton extends St.Button {
 
     constructor(param, callback, icon = '', tip) {
         let mutable = Array.isArray(icon);
-        let accessible_role = mutable ? Atk.Role.TOGGLE_BUTTON : Atk.Role.PUSH_BUTTON;
-        super({can_focus: true, accessible_role, ...param});
+        let accessibleRole = mutable ? Atk.Role.TOGGLE_BUTTON : Atk.Role.PUSH_BUTTON;
+        super({canFocus: true, accessibleRole, ...param});
         this.$src = Source.fuse({
             tip: new Source((...xs) => this.$genTip(...xs)),
             show: Source.newTimer(() => [() => this.$showTip(true), 250], true, () => this.$showTip(false)),
@@ -78,11 +78,11 @@ export class IconButton extends St.Button {
     $buildWidgets(mutable, icon, tip) {
         if(mutable) {
             let [status, on, off] = icon;
-            this.set_child(new StIcon({style_class: 'popup-menu-icon', icon: status ? on : off}));
+            this.set_child(new StIcon({styleClass: 'popup-menu-icon', icon: status ? on : off}));
             this.connect('clicked', () => this.setIcon({[on]: off, [off]: on}[this.child.get_icon_name()]));
             if(tip) this.$src.tip.summon(() => ({[on]: tip[0], [off]: tip[1]}[this.child.get_icon_name()]));
         } else {
-            this.set_child(new StIcon({style_class: 'popup-menu-icon', icon}));
+            this.set_child(new StIcon({styleClass: 'popup-menu-icon', icon}));
             if(tip) this.$src.tip.summon(tip);
         }
     }
@@ -91,9 +91,9 @@ export class IconButton extends St.Button {
         if(!arg) return;
         let cb = arg instanceof Function;
         let tip = new BoxPointer.BoxPointer(St.Side.TOP);
-        tip.set({visible: false, style_class: 'popup-menu-boxpointer'});
+        tip.set({visible: false, styleClass: 'popup-menu-boxpointer'});
         tip.updateText = cb ? () => tip.bin.child.set_text(arg()) : noop;
-        tip.bin.set_child(new St.Label({text: cb ? arg() : arg, style_class: 'dash-label'}));
+        tip.bin.set_child(new St.Label({text: cb ? arg() : arg, styleClass: 'dash-label'}));
         connect(tip, this, 'notify::hover', () => this.$src.show.toggle(this.hover));
         return tip;
     }
@@ -121,7 +121,7 @@ export class IconItem extends PopupMenu.PopupBaseMenuItem {
 
     constructor(icons, param, prop) {
         super({activate: false, can_focus: false, ...param});
-        Object.entries(icons).forEach(([k, [p, ...v]]) => this.add_child(new IconButton({x_expand: true, label: k, ...p}, ...v)));
+        Object.entries(icons).forEach(([k, [p, ...v]]) => this.add_child(new IconButton({xExpand: true, label: k, ...p}, ...v)));
         this.$updateVisible();
         this.set(prop);
     }

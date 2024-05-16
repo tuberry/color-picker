@@ -1,9 +1,7 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-export const Preset = ['HEX', 'RGB', 'HSL'];
-
-export const Format = {HEX: 0, RGB: 1, HSL: 2};
+export const Preset = ['HEX', 'RGB', 'HSL', 'LCH'];
 
 export const Field = {
     MKEY: 'menu-key',
@@ -17,6 +15,7 @@ export const Field = {
     SNDS: 'notify-sound',
     FMT:  'enable-format',
     HEX:  'hex-formatter',
+    LCH:  'lch-formatter',
     HIST: 'color-history',
     HSL:  'hsl-formatter',
     NTF:  'enable-notify',

@@ -1,93 +1,154 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {array} from './util.js';
+import {id, array} from './util.js';
 
-const percent = x => `${Math.round(x * 100)}%`; // 0.111 => '11%'
-const genStops = (n, f, r) => array(n + 1, i => (x => [r ? 1 - x : x].concat(f(x), 1))(i / n));
+const Grey = 0.569; // L in OKLab <=> 18% grey #777777
 
-const Index = {r: 0, g: 1, b: 2, h: 0, s: 1, l: 2};
-const Base = new Set(['b', 'h', 'H', 'x', 'X', 'f', 'F']);
-const Type = new Set(['Re', 'Gr', 'Bl', 'Hu', 'Sl', 'Ll', 'Va', 'Cy', 'Ma', 'Ye', 'Bk']);
+const showNum = (x, n = 0, r) => Number(x.toFixed(n)).toString(r);
+const showHex = x => showNum(x, 0, 16).padStart(2, '0');
+const showPct = (x, n) => `${showNum(x * 100, n)}%`;
 
-function formatByte(byte, base) {
-    switch(base) {
-    case 'b': return byte;
-    case 'h': return (byte >> 4).toString(16);
-    case 'H': return (byte >> 4).toString(16).toUpperCase();
-    case 'x': return byte.toString(16).padStart(2, '0');
-    case 'X': return byte.toString(16).padStart(2, '0').toUpperCase();
-    case 'f': return (byte / 255).toLocaleString(undefined, {maximumFractionDigits: 3});
-    case 'F': return (byte / 255).toLocaleString(undefined, {maximumFractionDigits: 3}).slice(1);
-    default: return byte;
-    }
-}
-
-function lstar([r, g, b]) { // L* in CIELAB, Ref: https://stackoverflow.com/a/56678483
-    let f = x => x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92;
-    let y = 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-    return y > 216 / 24389 ? Math.pow(y, 1 / 3) * 116 - 16 : y * 24389 / 27;
-}
+const RGB = {
+    get: ({Re, Gr, Bl}) => ({r: Re / 255, g: Gr / 255, b: Bl / 255}), set: id,
+    alter: (x, {r, g, b}) => { x.Re = r * 255; x.Gr = g * 255; x.Bl = b * 255; },
+    unbox: ({r, g, b}) => [r, g, b],
+};
 
 // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
-function rgb2hsv([r, g, b]) {
-    let [min, , max] = [r, g, b].sort(),
-        d = max - min,
-        s = max === 0 ? 0 : d / max,
-        k = 0;
-    if(d !== 0) { // chromatic
-        switch(max) {
-        case r: k = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: k = (b - r) / d + 2; break;
-        case b: k = (r - g) / d + 4; break;
+const HSV = {
+    get: ({r, g, b}) => {
+        let [mn, , v] = [r, g, b].sort(),
+            d = v - mn,
+            s = v === 0 ? 0 : d / v,
+            k = 0;
+        if(d !== 0) { // chromatic
+            switch(v) {
+            case r: k = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: k = (b - r) / d + 2; break;
+            case b: k = (r - g) / d + 4; break;
+            }
         }
-    }
-    return [k * 60, s, max];
-}
+        return {Hu: k * 60, Sv: s, Va: v};
+    },
+    set: ({Hu: h, Sv: s, Va: v}) => {
+        h = h / 60 % 6;
+        let k = Math.floor(h),
+            f = h - k,
+            p = v * (1 - s),
+            q = v * (1 - f * s),
+            t = v * (1 - (1 - f) * s);
+        return {
+            r: [v, q, p, p, t, v][k],
+            g: [t, v, v, q, p, p][k],
+            b: [p, p, t, v, v, q][k],
+        };
+    },
+};
 
-function hsv2rgb([h, s, v]) {
-    h = h / 60 % 6;
-    let k = Math.floor(h),
-        f = h - k,
-        p = v * (1 - s),
-        q = v * (1 - f * s),
-        t = v * (1 - (1 - f) * s);
-    return [
-        [v, q, p, p, t, v][k],
-        [t, v, v, q, p, p][k],
-        [p, p, t, v, v, q][k],
-    ];
-}
+const HSL = {
+    get: ({Hu, Sv: s, Va: v}) => {
+        let l = v * (1 - s / 2);
+        return {Hu, Sl: l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l), Ll: l};
+    },
+    set: ({Hu, Sl: s, Ll: l}) => {
+        let v = l + s * Math.min(l, 1 - l);
+        return HSV.set({Hu, Sv: v === 0 ? 0 : 2 * (1 - l / v), Va: v});
+    },
+};
 
-function hsl2hsv([h, s, l]) {
-    let v = l + s * Math.min(l, 1 - l);
-    return [h, v === 0 ? 0 : 2 * (1 - l / v), v];
-}
+// Ref: https://bottosson.github.io/posts/oklab/
+const OKLAB = {
+    get: ({r, g, b}) => {
+        [r, g, b] = [r, g, b].map(x => x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92); // linear srgb
+        let l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b),
+            m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b),
+            s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+        return {
+            Lo: 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+            Ao: 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            Bo: 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+        };
+    },
+    set: ({Lo, Ao, Bo}) => {
+        let l = (Lo + 0.3963377774 * Ao + 0.2158037573 * Bo) ** 3,
+            m = (Lo - 0.1055613458 * Ao - 0.0638541728 * Bo) ** 3,
+            s = (Lo - 0.0894841775 * Ao - 1.2914855480 * Bo) ** 3,
+            [r, g, b] = [
+                +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+                -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+                -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+            ].map(x => Math.clamp(x >= 0.0031308 ? Math.pow(x, 1 / 2.4) * 1.055 - 0.055 : x * 12.92, 0, 1)); // |OKLab| > |RGB|
+        return {r, g, b};
+    },
+};
 
-function hsv2hsl([h, s, v]) {
-    let l = v * (1 - s / 2);
-    return [h, l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l), l];
-}
+const OKLCH = {
+    get: ({Lo, Ao, Bo}) => ({Lo, Co: Math.hypot(Ao, Bo), Ho: 180 * (Math.atan2(Bo, Ao) / Math.PI + 2) % 360}),
+    set: ({Lo, Co, Ho}) => OKLAB.set({Lo, Ao: Co * Math.cos(Math.PI * Ho / 180), Bo: Co * Math.sin(Math.PI * Ho / 180)}),
+};
 
-function hsl2rgb(hsl) {
-    return hsv2rgb(hsl2hsv(hsl));
-}
-
-function rgb2hsl(rgb) {
-    return hsv2hsl(rgb2hsv(rgb));
-}
-
-function cmyk2rgb(cmyk) { // Ref: http://www.easyrgb.com/en/math.php
-    return cmyk.slice(0, 3).map(x => 1 - x * (1 - cmyk[3]) - cmyk[3]);
-}
-
-function rgb2cmyk(rgb) {
-    let max = Math.max(...rgb);
-    return max === 0 ? [0, 0, 0, 1] : rgb.map(x => (max - x) / max).concat(1 - max);
-}
+// Ref: http://www.easyrgb.com/en/math.php
+const CMYK = {
+    get: ({r, g, b}) => {
+        let mx = Math.max(r, g, b);
+        return mx === 0 ? {Cy: 0, Ma: 0, Ye: 0, Bk: 1} : {Cy: 1 - r / mx, Ma: 1 - g / mx, Ye: 1 - b / mx, Bk: 1 - mx};
+    },
+    set: ({Cy,  Ma, Ye, Bk}) => {
+        let mx = 1 - Bk;
+        return {r: (1 - Cy) * mx, g: (1 - Ma) * mx, b: (1 - Ye) * mx};
+    },
+};
 
 export class Color {
-    static new_for_format(format, formats) {
+    static Form = {
+        r:  {meta: RGB,   stop: 1},
+        g:  {meta: RGB,   stop: 1},
+        b:  {meta: RGB,   stop: 1},
+        Re: {unit: 255,   info: 'red'},
+        Gr: {unit: 255,   info: 'green'},
+        Bl: {unit: 255,   info: 'blue'},
+        Hu: {meta: HSV,   stop: 12, unit: 360, info: 'hue (HSL)'},
+        Sl: {meta: HSL,   stop: 1, info: 'saturation (HSL)'},
+        Ll: {meta: HSL,   stop: 5, info: 'lightness (HSL)'},
+        Sv: {meta: HSV,   info: 'saturation (HSV)'},
+        Va: {meta: HSV,   info: 'value'},
+        Lo: {meta: OKLAB, stop: 12, info: 'lightness (OKLch)'},
+        Co: {meta: OKLCH, stop: 12, unit: 0.4, info: 'chroma (OKLch)'},
+        Ho: {meta: OKLCH, stop: 12, unit: 360, info: 'hue (OKLch)'},
+        Ao: {meta: OKLAB, unit: 0.4, info: 'chroma A (OKLab)'},
+        Bo: {meta: OKLAB, unit: 0.4, info: 'chroma B (OKLab)'},
+        Cy: {meta: CMYK,  info: 'cyan'},
+        Ma: {meta: CMYK,  info: 'magenta'},
+        Ye: {meta: CMYK,  info: 'yellow'},
+        Bk: {meta: CMYK,  info: 'black'},
+    };
+
+    static Base = new Proxy({
+        x: {info: 'hex lowercase 2 digits', show: showHex},
+        X: {info: 'hex uppercase 2 digits', show: x => showHex(x).toUpperCase()},
+        h: {info: 'hex lowercase 1 digit', show: x => showNum(x >> 4, 0, 16)},
+        H: {info: 'hex uppercase 1 digit', show: x => showNum(x >> 4, 0, 16).toUpperCase()},
+        f: {info: 'float with leading zero', show: x => showNum(x / 255, 3)},
+        F: {info: 'float without leading zero', show: x => showNum(x / 255, 3).slice(1)},
+        b: {info: 'byte value (default)', show: showNum},
+    }, {get: (t, s) => t[s] ?? {info: 'unknown format', show: showNum}});
+
+
+    static bases = new Set(Object.keys(this.Base));
+    static items = Object.keys(this.Form).filter(t => this.Form[t].stop);
+    static types = new Set(Object.keys(this.Form).filter(t => this.Form[t].info));
+
+    static show(value, unit, base) {
+        switch(unit) {
+        case 360: return showNum(value);
+        case 255: return this.Base[base].show(value);
+        case 0.4: return showPct(value * 2.5);
+        default: return showPct(value);
+        }
+    }
+
+    static newForFormat(format, formats) {
         return new Color(format << 24, formats);
     }
 
@@ -95,68 +156,64 @@ export class Color {
         return data && new Color(0x26f3ba, [data]).toText();
     }
 
-    #rgb; // [0-255]{3}
-    #fmt = {}; // format cache
+    #rgb = {Re: 0, Gr: 0, Bl: 0};
+    #fmt = new Proxy(new Map(), {
+        get: (t, s, r) => this.#rgb[s] ?? t.get(s) ?? Object.entries(Color.Form[s].meta.get(r)).reduce((p, [k, v]) => p.set(k, v), t).get(s),
+        set: (t, s, v, r) => {
+            if(s in this.#rgb) {
+                this.#rgb[s] = v;
+            } else {
+                t.set(s, v);
+                RGB.alter(this.#rgb, Color.Form[s].meta.set(r));
+            }
+            t.clear();
+            return true;
+        },
+    }); // format cache
+
+    set $rgb([r, g, b]) {
+        this.#rgb.Re = r;
+        this.#rgb.Gr = g;
+        this.#fmt.Bl = b;
+    }
+
+    get $rgb() {
+        return [this.#rgb.Re, this.#rgb.Gr, this.#rgb.Bl];
+    }
 
     constructor(raw = 0, formats = []) { // raw <- 0x0FRRGGBB
-        [this.format, ...this.#rgb] = [24, 16, 8, 0].map(x => raw >>> x & 0xff);
+        [this.format, ...this.$rgb] = [24, 16, 8, 0].map(x => raw >>> x & 0xff);
         this.formats = formats;
     }
 
-    set rgb(rgb) {
-        this.#rgb = rgb.map(x => Math.round(x * 255));
-    }
-
-    get rgb() {
-        return this.#rgb.map(x => x / 255);
-    }
-
-    set hsv(hsv) {
-        this.rgb = hsv2rgb(hsv);
-    }
-
-    get hsv() {
-        return rgb2hsv(this.rgb);
-    }
-
-    set hsl(hsl) {
-        this.rgb = hsl2rgb(hsl);
-    }
-
-    get hsl() {
-        return rgb2hsl(this.rgb);
-    }
-
-    get cmyk() {
-        return rgb2cmyk(this.rgb);
-    }
-
-    set cmyk(cmyk) {
-        this.rgb = cmyk2rgb(cmyk);
+    fromPixels(pixels, start = 0) {
+        this.$rgb = pixels.slice(start);
     }
 
     update(type, value) {
-        switch(type) {
-        case 'r': case 'g': case 'b': this.rgb = this.rgb.with([Index[type]], value); break;
-        case 's': case 'l': this.hsl = this.hsl.with(Index[type], value); break;
-        case 'h': this.hsl = this.hsl.with(Index[type], value * 360); break;
-        }
-        return this;
-    }
-
-    fromPixels(pixels, start = 0) {
-        for(let i = 0; i < 3; i++) this.#rgb[i] = pixels[start + i];
-    }
-
-    toRGBHSL() { // -> {(0-1)}
-        let {rgb} = this,
-            [r, g, b] = rgb,
-            [h, s, l] = rgb2hsl(rgb);
-        return {r, g, b, h: h / 360, s, l};
+        this.#fmt[type] = value * (Color.Form[type].unit ?? 1);
     }
 
     toRaw() { // 0x0FRRGGBB
-        return [this.format, ...this.#rgb].reduce((p, x) => p << 8 | x);
+        return [this.format, ...this.$rgb].reduce((p, x) => p << 8 | x);
+    }
+
+    toItems(func) {
+        return Color.items.reduce((p, x) => {
+            let {unit = 1} = Color.Form[x];
+            p[x] = func(x, this.#fmt[x] / unit, Math.max(unit, 100));
+            return p;
+        }, {});
+    }
+
+    toStops(type, rtl) {
+        let {meta: {set, get}, unit = 1, stop = 1} = Color.Form[type];
+        let color = get(this.#fmt);
+        return array(stop + 1, i => {
+            let step = i / stop;
+            color[type] = step * unit;
+            return [rtl ? 1 - step : step, ...RGB.unbox(set(color)), 1];
+        });
     }
 
     toText(format) {
@@ -164,67 +221,33 @@ export class Color {
         while((pos = txt.indexOf('%', pos) + 1)) {
             let end = pos + 2;
             let type = txt.slice(pos, end);
-            if(!Type.has(type)) continue;
-            let base = txt.charAt(end);
-            txt = `${txt.slice(0, pos - 1)}${this.$form(type, base)}${txt.slice(Base.has(base) ? end + 1 : end)}`;
+            if(!Color.types.has(type)) continue;
+            let base = txt.charAt(end),
+                value = this.#fmt[type],
+                {unit} = Color.Form[type];
+            txt = `${txt.slice(0, pos - 1)}${Color.show(value, unit, base)}${txt.slice(Color.bases.has(base) ? end + 1 : end)}`;
         }
-        this.#fmt = {};
         return txt;
     }
 
-    $get(kind) {
-        switch(kind) {
-        case 'hsl': return (this.#fmt.hsl ??= this.hsl);
-        case 'cmyk': return (this.#fmt.cmyk ??= this.cmyk);
-        }
-    }
-
-    $form(type, base) {
-        switch(type) {
-        case 'Re': return formatByte(this.#rgb[0], base);
-        case 'Gr': return formatByte(this.#rgb[1], base);
-        case 'Bl': return formatByte(this.#rgb[2], base);
-        case 'Hu': return Math.round(this.$get('hsl')[0]);
-        case 'Sl': return percent(this.$get('hsl')[1]);
-        case 'Ll': return percent(this.$get('hsl')[2]);
-        case 'Va': return percent(Math.max(...this.rgb));
-        case 'Cy': return percent(this.$get('cmyk')[0]);
-        case 'Ma': return percent(this.$get('cmyk')[1]);
-        case 'Ye': return percent(this.$get('cmyk')[2]);
-        case 'Bk': return percent(this.$get('cmyk')[3]);
-        default: return '';
-        }
-    }
-
     toHEX() {
-        return `#${this.#rgb.map(x => x.toString(16).padStart(2, '0')).join('')}`;
+        return `#${this.$rgb.map(showHex).join('')}`;
     }
 
     toMarkup(format) { // HACK: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-        return ` <span face="monospace" fgcolor="${lstar(this.rgb) > 50 ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${this.toText(format)}</span>`;
+        return ` <span face="monospace" fgcolor="${this.#fmt.Lo > Grey ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${this.toText(format)}</span>`;
     }
 
     toPreview() {
         return `<span bgcolor="${this.toHEX()}">\u2001 </span> ${this.toText()}`;
     }
 
-    toNamed() {
-        let [r, g, b] = this.#rgb;
-        return {red: r, green: g, blue: b, alpha: 255};
+    toRGB() {
+        return RGB.unbox(this.#fmt);
     }
 
     toComplement() {
-        let [h, s] = this.hsl;
-        return hsl2rgb(s < 0.1 ? [0, 0, lstar(this.rgb) < 50 ? 1 : 0] : [(h + 180) % 360, 1, 0.5]);
-    }
-
-    toStops(type, rtl) { // linear gradient
-        let index = Index[type];
-        switch(type) {
-        case 'r': case 'g': case 'b': { let {rgb} = this; return genStops(1, x => rgb.with(index, x), rtl); }
-        case 's': { let {hsl} = this; return genStops(1, x => hsl2rgb(hsl.with(index, x)), rtl); }
-        case 'l': { let {hsl} = this; return genStops(5, x => hsl2rgb(hsl.with(index, x)), rtl); }
-        case 'h': { let {hsl} = this; return genStops(12, x => hsl2rgb(hsl.with(index, x * 360)), rtl); }
-        }
+        let {Hu, Sl, Lo} = this.#fmt;
+        return RGB.unbox(HSL.set(Sl < 0.1 ? {Hu: 0, Sl: 0, Ll: Lo < Grey ? 1 : 0} : {Hu: (Hu + 180) % 360, Sl: 1, Ll: 0.5}));
     }
 }

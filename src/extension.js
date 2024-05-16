@@ -17,14 +17,15 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {Color} from './color.js';
-import {Field, Format, Preset} from './const.js';
-import {encode, hook, array, pickle} from './util.js';
+import {Field, Preset} from './const.js';
+import {encode, hook, array, pickle, omap} from './util.js';
 import {IconButton, MenuItem, RadioItem, IconItem, Systray} from './menu.js';
 import {Setting, Extension, Mortal, Source, hub, view, _, myself, copy} from './fubar.js';
 
 const Notify = {MSG: 0, OSD: 1};
 const Preview = {LENS: 0, LABEL: 1};
 const Sound = {SCREENSHOT: 0, COMPLETE: 1};
+const Format = omap(Preset, ([k, v]) => [[v, k]]);
 const CP_IFACE = `<node>
     <interface name="org.gnome.Shell.Extensions.ColorPicker">
         <method name="Pick">
@@ -44,9 +45,9 @@ class ColorItem extends MenuItem {
 
     constructor(callback, color) {
         super('', () => copy(this.$color.toText()), {can_focus: false});
-        this.label.set({x_expand: true, can_focus: true});
+        this.label.set({xExpand: true, canFocus: true});
         this.label.add_style_class_name('color-picker-item-label');
-        this.$btn = new IconButton({style_class: 'color-picker-icon'}, () => callback(this.$color.toRaw()));
+        this.$btn = new IconButton({styleClass: 'color-picker-icon'}, () => callback(this.$color.toRaw()));
         this.add_child(this.$btn);
         this.setColor(color);
     }
@@ -56,7 +57,7 @@ class ColorItem extends MenuItem {
         let [icon, raw, fmts] = color;
         this.$btn.setIcon(icon ? 'starred-symbolic' : 'non-starred-symbolic');
         this.$color = new Color(raw, fmts);
-        this.label.clutter_text.set_markup(this.$color.toMarkup());
+        this.label.clutterText.set_markup(this.$color.toMarkup());
     }
 }
 
@@ -103,7 +104,7 @@ class ColorSlider extends Slider.Slider {
             handleX = ceiledHandleRadius + (width - 2 * ceiledHandleRadius) * this._value / this._maxValue,
             handleY = height / 2;
         if(rtl) handleX = width - handleX;
-        cr.setSourceRGB(...color.rgb);
+        cr.setSourceRGB(...color.toRGB());
         cr.arc(handleX, handleY, this._handleRadius, 0, 2 * Math.PI);
         if(this._handleBorderColor && this._handleBorderWidth) {
             cr.fillPreserve();
@@ -151,7 +152,7 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
     constructor(type, value, step, color, callback) {
         super({activate: false});
         let slider = new ColorSlider(type, value, step, color, callback);
-        let label = new St.Label({text: type.toUpperCase(), x_expand: false});
+        let label = new St.Label({text: type.substring(0, 1).toUpperCase(), xExpand: false});
         this.connect('key-press-event', (_a, event) => slider.vfunc_key_press_event(event));
         this.setValue = v => { slider._value = v; slider.queue_repaint(); };
         [label, slider].forEach(x => this.add_child(x));
@@ -172,30 +173,21 @@ class ColorMenu extends PopupMenu.PopupMenu {
     }
 
     $addMenuItems() {
-        let {r, g, b, h, s, l} = this.$color.toRGBHSL();
+        let {r, g, b, Hu, Sl, Ll, Lo, Co, Ho} = this.$color
+            .toItems((k, v, u) => new SliderItem(k, v, 1 / u, this.$color, this.$updateSlider.bind(this)));
         this.$menu = {
             HEX: this.$genHEXItem(),
-            RGB: new PopupMenu.PopupSeparatorMenuItem(),
-            r: this.$genSliderItem({r}, 1 / 255),
-            g: this.$genSliderItem({g}, 1 / 255),
-            b: this.$genSliderItem({b}, 1 / 255),
-            HSL: new PopupMenu.PopupSeparatorMenuItem(),
-            h: this.$genSliderItem({h}, 1 / 360),
-            s: this.$genSliderItem({s}, 1 / 100),
-            l: this.$genSliderItem({l}, 1 / 100),
+            RGB: new PopupMenu.PopupSeparatorMenuItem(), r, g, b,
+            HSL: new PopupMenu.PopupSeparatorMenuItem(), Hu, Sl, Ll,
+            LCH: new PopupMenu.PopupSeparatorMenuItem(), Lo, Co, Ho, // NOTE: irregular space differs from RGB/HSL, see also https://oklch.com/
             custom: this.$genCustomSection(),
         };
         Object.values(this.$menu).forEach(x => this.addMenuItem(x));
     }
 
-    $genSliderItem(initial, step) {
-        let [[type, value]] = Object.entries(initial);
-        return new SliderItem(type, value, step, this.$color, this.$updateSlider.bind(this));
-    }
-
     $updateSlider(type, value) {
-        this.$color.update(type, value);
-        Object.entries(this.$color.toRGBHSL()).forEach(([k, v]) => k === type || this.$menu[k].setValue(v));
+        if(type) this.$color.update(type, value);
+        this.$color.toItems((k, v) => k === type || this.$menu[k].setValue(v));
         this.$updateLabels();
     }
 
@@ -209,7 +201,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
     }
 
     $updateLabels() {
-        ['RGB', 'HSL'].forEach(x => this.$menu[x].label.set_text(this.$color.toText(Format[x])));
+        ['RGB', 'HSL', 'LCH'].forEach(x => this.$menu[x].label.set_text(this.$color.toText(Format[x])));
         this.$menu.HEX.label.clutter_text.set_markup(this.$color.toMarkup(Format.HEX));
         this.$menu.custom.updateLabels();
     }
@@ -218,9 +210,9 @@ class ColorMenu extends PopupMenu.PopupMenu {
         let item = new MenuItem('', () => this.emit('color-selected', this.$color), {can_focus: false});
         item.label.add_style_class_name('color-picker-item-label');
         item.label.set_can_focus(true);
-        ['RGB', 'HSL', 'HEX'].forEach((x, i) => item.insert_child_at_index(hook({
+        ['RGB', 'HSL', 'LCH', 'HEX'].forEach((x, i) => item.insert_child_at_index(hook({
             clicked: () => { this.close(); this.$emitSelected(Format[x]); },
-        }, new St.Button({can_focus: true, label: x, style_class: 'color-picker-button button'})), i));
+        }, new St.Button({canFocus: true, label: x, styleClass: 'color-picker-button button'})), i));
         return item;
     }
 
@@ -242,7 +234,7 @@ class ColorLens extends St.DrawingArea {
     }
 
     constructor(param) {
-        super({style_class: 'color-picker-lens', ...param});
+        super({styleClass: 'color-picker-lens', ...param});
         this.$data = {x: 0, y: 0, color: new Color(), pixels: [], area: [0, 0, 0, 0, 0]};
         this.$zoom = 8 * St.ThemeContext.get_for_stage(global.stage).scaleFactor; // grid length
         this.$unit = 1 / this.$zoom;
@@ -273,7 +265,7 @@ class ColorLens extends St.DrawingArea {
     $clipRing(cr, color, c_x, c_y, r) {
         cr.save();
         cr.setLineWidth(1);
-        cr.setSourceRGB(...color.rgb);
+        cr.setSourceRGB(...color.toRGB());
         cr.arc(c_x + 1 / 2, c_y + 1 / 2, r + 1 / 2, 0, Math.PI * 2);
         cr.strokePreserve();
         cr.setLineWidth(1 / 2);
@@ -323,8 +315,8 @@ class ColorViewer extends BoxPointer.BoxPointer {
     constructor(plain) {
         super(St.Side.TOP);
         Main.layoutManager.addTopChrome(this);
-        this.set({visible: false, style_class: 'color-picker-boxpointer'});
-        this.bin.set_child(new St.Label({style_class: 'color-picker-label'}));
+        this.set({visible: false, styleClass: 'color-picker-boxpointer'});
+        this.bin.set_child(new St.Label({styleClass: 'color-picker-label'}));
         this.$src = Source.fuse({lens: this.$genLens(plain)}, this);
     }
 
@@ -361,14 +353,14 @@ class ColorArea extends St.Widget {
     }
 
     constructor(set, once, format, formats) {
-        super({reactive: true, style_class: 'screenshot-ui-screen-screenshot'});
+        super({reactive: true, styleClass: 'screenshot-ui-screen-screenshot'});
         Main.layoutManager.addTopChrome(this);
         Main.pushModal(this, {actionMode: Shell.ActionMode.POPUP});
         Main.uiGroup.set_child_above_sibling(Main.messageTray, this); // NOTE: show notifications in persistent mode
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
 
         this.$once = once;
-        this.$color = Color.new_for_format(format, formats);
+        this.$color = Color.newForFormat(format, formats);
         this.$buildWidgets();
         this.$bindSettings(set);
         this.$initContents();
@@ -392,11 +384,11 @@ class ColorArea extends St.Widget {
 
     $bindSettings(set) {
         this.$set = set.attach({
-            menukey: [Field.MKEY, 'string'],
-            quitkey: [Field.QKEY, 'string'],
+            menuKey: [Field.MKEY, 'string'],
+            quitKey: [Field.QKEY, 'string'],
             persist: [Field.PRST, 'boolean', x => { this.$once ||= !x; }],
         }, this).attach({
-            menuset: [Field.MENU, 'boolean'],
+            menuSet: [Field.MENU, 'boolean'],
             preview: [Field.PVWS, 'uint',    x => x === Preview.LABEL, x => this.$src.viewer.reload(x)],
             viewing: [Field.PVW,  'boolean', x => this.$src.viewer.toggle(x, this.preview)],
         }, this, () => this.$onViewerPut(), true);
@@ -421,7 +413,7 @@ class ColorArea extends St.Widget {
 
     $onViewerPut() {
         this.$src.cursor.summon();
-        this.$src.format.reboot(this.menuset, this.$src.viewer.hub);
+        this.$src.format.reboot(this.menuSet, this.$src.viewer.hub);
         if(this.$coords) this.pickColor(this.$coords);
     }
 
@@ -473,32 +465,34 @@ class ColorArea extends St.Widget {
         return super.vfunc_enter_event(event);
     }
 
-    $movePointerBy(dx, dy) {
-        this.$ptr.notify_relative_motion(global.get_current_time(), dx, dy);
+    $movePointerBy(dx, dy, event) {
+        let step = event.get_state() & Clutter.ModifierType.CONTROL_MASK ? 8 : 1;
+        this.$ptr.notify_relative_motion(global.get_current_time(), dx * step, dy * step);
     }
 
     vfunc_key_press_event(event) {
         switch(event.get_key_symbol()) {
         case Clutter.KEY_Escape:
-        case Clutter[`KEY_${this.quitkey}`]: this.emit('end-pick', true); break;
-        case Clutter[`KEY_${this.menukey}`]: this.openMenu(); break;
+        case Clutter[`KEY_${this.quitKey}`]: this.emit('end-pick', true); break;
+        case Clutter[`KEY_${this.menuKey}`]: this.openMenu(); break;
         case Clutter.KEY_a:
         case Clutter.KEY_h:
-        case Clutter.KEY_Left: this.$movePointerBy(-1, 0); break;
+        case Clutter.KEY_Left: this.$movePointerBy(-1, 0, event); break;
         case Clutter.KEY_w:
         case Clutter.KEY_k:
-        case Clutter.KEY_Up: this.$movePointerBy(0, -1); break;
+        case Clutter.KEY_Up: this.$movePointerBy(0, -1, event); break;
         case Clutter.KEY_d:
         case Clutter.KEY_l:
-        case Clutter.KEY_Right: this.$movePointerBy(1, 0); break;
+        case Clutter.KEY_Right: this.$movePointerBy(1, 0, event); break;
         case Clutter.KEY_s:
         case Clutter.KEY_j:
-        case Clutter.KEY_Down: this.$movePointerBy(0, 1); break;
+        case Clutter.KEY_Down: this.$movePointerBy(0, 1, event); break;
         case Clutter.KEY_space:
         case Clutter.KEY_Return:
         case Clutter.KEY_KP_Enter:
         case Clutter.KEY_ISO_Enter: this.$emitColor(); break;
-        case Clutter.KEY_Control_L: this.$set.set('preview', this.preview ? Preview.LENS : Preview.LABEL, this); break;
+        case Clutter.KEY_Shift_L:
+        case Clutter.KEY_Shift_R: this.$set.set('preview', this.preview ? Preview.LENS : Preview.LABEL, this); break;
         default: return super.vfunc_key_press_event(event);
         }
         return Clutter.EVENT_PROPAGATE;
@@ -527,24 +521,25 @@ class ColorButton extends Systray {
         GObject.registerClass(this);
     }
 
-    constructor(set, callback, menu) {
+    constructor(set, callback, formats, menu) {
         super(menu);
         this.$bindSettings(set);
-        this.$buildWidgets(callback);
+        this.$buildWidgets(callback, formats);
     }
 
-    $buildWidgets(callback) {
+    $buildWidgets(callback, formats) {
+        this.$formats = formats;
         this.$callback = callback;
         this.menu.actor.add_style_class_name('color-picker-menu');
         this.add_style_class_name('color-picker-systray');
-        let param = {style_class: 'color-picker-icon'};
+        let param = {styleClass: 'color-picker-icon'};
         let items = {
             sep0:   new PopupMenu.PopupSeparatorMenuItem(),
             colors: new ColorSection(...this.$getColors()),
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
             prefs:  new IconItem({
                 pick: [param, () => { this.menu.close(); this.$callback(); }, 'find-location-symbolic'],
-                star: [param, () => this.$set.set('menu_style', !this.menu_style, this), [this.menu_style, 'semi-starred-symbolic', 'starred-symbolic']],
+                star: [param, () => this.$set.set('menuStyle', !this.menuStyle, this), [this.menuStyle, 'semi-starred-symbolic', 'starred-symbolic']],
                 gear: [param, () => { this.menu.close(); myself().openPreferences(); }, 'emblem-system-symbolic'],
             }),
         };
@@ -554,12 +549,12 @@ class ColorButton extends Systray {
 
     $bindSettings(set) {
         this.$set = set.attach({
-            menu_size:  [Field.MSIZ, 'uint'],
-            icon_name:  [Field.TICN, 'string',  x => this.$icon.set_icon_name(x || 'color-select-symbolic')],
+            menuSize:  [Field.MSIZ, 'uint'],
+            iconName:  [Field.TICN, 'string',  x => this.$icon.set_icon_name(x || 'color-select-symbolic')],
         }, this).attach({
-            collect:    [Field.CLCT, 'value', x => x.deepUnpack()],
-            history:    [Field.HIST, 'value', x => x.deepUnpack()],
-            menu_style: [Field.MSTL, 'boolean'],
+            collect:   [Field.CLCT, 'value', x => x.deepUnpack()],
+            history:   [Field.HIST, 'value', x => x.deepUnpack()],
+            menuStyle: [Field.MSTL, 'boolean'],
         }, this, () => this.$onColorsPut());
     }
 
@@ -568,7 +563,7 @@ class ColorButton extends Systray {
     }
 
     $getColors() {
-        return [this.menu_style ? this.collect.map(x => [true, x, this.$formats])
+        return [this.menuStyle ? this.collect.map(x => [true, x, this.$formats])
             : this.history.map(x => [this.collect.includes(x), x, this.$formats]), x => this.starColor(x)];
     }
 
@@ -581,12 +576,12 @@ class ColorButton extends Systray {
     starColor(color) {
         let collect = this.collect.includes(color)
             ? this.collect.filter(x => x !== color)
-            : [color].concat(this.collect).slice(0, this.menu_size);
+            : [color].concat(this.collect).slice(0, this.menuSize);
         this.$set.set('collect', new GLib.Variant('au', collect), this);
     }
 
     addHistory(color) {
-        let history = [color, ...this.history].slice(0, this.menu_size);
+        let history = [color, ...this.history].slice(0, this.menuSize);
         this.$set.set('history', new GLib.Variant('au', history), this);
     }
 
@@ -619,25 +614,26 @@ class ColorPicker extends Mortal {
 
     $bindSettings() {
         this.$set.attach({
-            fmt_hex: [Field.HEX, 'string'],
-            fmt_rgb: [Field.RGB, 'string'],
-            fmt_hsl: [Field.HSL, 'string'],
-            fmt_custom: [Field.CFMT, 'value', x => x.recursiveUnpack().filter(y => y.enable)],
+            hexFormat: [Field.HEX, 'string'],
+            rgbFormat: [Field.RGB, 'string'],
+            hslFormat: [Field.HSL, 'string'],
+            lchFormat: [Field.LCH, 'string'],
+            customFormat: [Field.CFMT, 'value', x => x.recursiveUnpack().filter(y => y.enable)],
         }, this, () => this.$onFormatsPut(), true).attach({
-            fmt_enable:    [Field.FMT,  'boolean', x => view(x, this.$menu?.format)],
-            fmt_chosen:    [Field.FMTS, 'uint',    x => this.$menu?.format.setChosen(x)],
-            auto_copy:     [Field.COPY, 'boolean'],
-            systray:       [Field.STRY, 'boolean', x => this.$src.tray.toggle(x)],
-            shortcut:      [Field.KEY,  'boolean', x => this.$src.keys.toggle(x)],
-            enable_sound:  [Field.SND,  'boolean'],
-            notify_sound:  [Field.SNDS, 'uint', x => x === Sound.COMPLETE ? 'complete' : 'screen-capture'],
-            notify_style:  [Field.NTFS, 'uint'],
-            enable_notify: [Field.NTF,  'boolean'],
+            enableSound:  [Field.SND,  'boolean'],
+            notifySound:  [Field.SNDS, 'uint', x => x === Sound.COMPLETE ? 'complete' : 'screen-capture'],
+            notifyStyle:  [Field.NTFS, 'uint'],
+            enableNotify: [Field.NTF,  'boolean'],
+            enableFormat: [Field.FMT,  'boolean', x => view(x, this.$menu?.format)],
+            chosenFormat: [Field.FMTS, 'uint',    x => this.$menu?.format.setChosen(x)],
+            autoCopy:     [Field.COPY, 'boolean'],
+            shortcut:     [Field.KEY,  'boolean', x => this.$src.keys.toggle(x)],
+            systray:      [Field.STRY, 'boolean', x => this.$src.tray.toggle(x)],
         }, this);
     }
 
     $onFormatsPut() {
-        this.$formats = [this.fmt_hex, this.fmt_rgb, this.fmt_hsl, ...this.fmt_custom.map(x => x.format)];
+        this.$formats = [this.hexFormat, this.rgbFormat, this.hslFormat, this.lchFormat, ...this.customFormat.map(x => x.format)];
         this.$src.tray.hub?.setFormats(this.$formats, this.$options);
     }
 
@@ -646,13 +642,13 @@ class ColorPicker extends Mortal {
     }
 
     get $options() {
-        return Preset.concat(this.fmt_custom.map(y => y.name));
+        return Preset.concat(this.customFormat.map(y => y.name));
     }
 
     $genSystray() {
-        return new ColorButton(this.$set, () => this.summon(), {
-            format: new RadioItem(_('Default format'), this.$options, this.fmt_chosen,
-                x => this.$set.set('fmt_chosen', x, this), {visible: this.fmt_enable}),
+        return new ColorButton(this.$set, () => this.summon(), this.$formats, {
+            format: new RadioItem(_('Default format'), this.$options, this.chosenFormat,
+                x => this.$set.set('chosenFormat', x, this), {visible: this.enableFormat}),
         });
     }
 
@@ -660,13 +656,13 @@ class ColorPicker extends Mortal {
         if(this.$src.area.active) return;
         this.$src.tray.hub?.add_style_pseudo_class('state-busy');
         this.$src.area.summon({'end-pick': () => this.dispel(), 'notify-color': this.inform.bind(this)},
-            this.$set, false, this.fmt_enable ? this.fmt_chosen : null, this.$formats);
+            this.$set, false, this.enableFormat ? this.chosenFormat : null, this.$formats);
     }
 
     dispel() {
         if(!this.$src.area.active) return;
         this.$src.tray.hub?.remove_style_pseudo_class('state-busy');
-        if(this.auto_copy && this.$picked.length) copy(this.$picked.splice(0).join(' '));
+        if(this.autoCopy && this.$picked.length) copy(this.$picked.splice(0).join(' '));
         this.$src.area.dispel();
     }
 
@@ -674,10 +670,10 @@ class ColorPicker extends Mortal {
         let text = color.toText();
         this.$picked.push(text);
         this.$src.tray.hub?.addHistory(color.toRaw());
-        if(this.enable_sound) global.display.get_sound_player().play_from_theme(this.notify_sound, _('Color picked'), null);
-        if(!this.enable_notify) return;
+        if(this.enableSound) global.display.get_sound_player().play_from_theme(this.notifySound, _('Color picked'), null);
+        if(!this.enableNotify) return;
         let gicon = Gio.BytesIcon.new(genColorSwatch(color.toHEX()));
-        if(this.notify_style === Notify.MSG) {
+        if(this.notifyStyle === Notify.MSG) {
             let source = MessageTray.getSystemSource();
             let message = new MessageTray.Notification({
                 gicon, source, isTransient: true,

@@ -42,9 +42,9 @@ export class DBusProxy extends Gio.DBusProxy {
 
     [hub] = new TransientSignalHolder(this);
 
-    constructor(name, object, callback, hooks, signals, xml, cancel = null, bus = Gio.DBus.session, g_flags = Gio.DBusProxyFlags.NONE) {
+    constructor(name, object, callback, hooks, signals, xml, cancel = null, bus = Gio.DBus.session, gFlags = Gio.DBusProxyFlags.NONE) {
         let info = Gio.DBusInterfaceInfo.new_for_xml(xml ?? loadInterfaceXML(name));
-        super({g_connection: bus, g_name: name, g_object_path: object, g_interface_info: info, g_flags, g_interface_name: info.name});
+        super({gConnection: bus, gName: name, gObjectPath: object, gInterfaceInfo: info, gFlags, gInterfaceName: info.name});
         if(signals) for(let i = 0; i < signals.length; i += 2) this.connectSignal(signals[i], signals[i + 1]);
         if(hooks) connect(this, this, ...hooks);
         this.init_async(GLib.PRIORITY_DEFAULT, cancel).then(() => callback(this, null)).catch(e => callback(null, e));

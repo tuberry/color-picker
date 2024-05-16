@@ -83,8 +83,12 @@
             <default>"hsl(%Hu, %Sl, %Ll)"</default>
             <summary>preset HSL format string</summary>
         </key>
+        <key type="s" name="lch-formatter">
+            <default>"oklch(%Lo %Co %Ho)"</default>
+            <summary>preset OKLch format string</summary>
+        </key>
         <key type="av" name="custom-formats">
-        <default><![CDATA[[<{'enable': <true>, 'name': <'HSV'>, 'format': <'hsv(%Hu, %Sl, %Va)'>}>, <{'enable': <false>, 'name': <'CMYK'>, 'format': <'cmyk(%Cy, %Ma, %Ye, %Bk)'>}>]]]></default>
+        <default><![CDATA[[<{'enable': <true>, 'name': <'HSV'>, 'format': <'hsv(%Hu, %Sv, %Va)'>}>, <{'enable': <false>, 'name': <'CMYK'>, 'format': <'cmyk(%Cy, %Ma, %Ye, %Bk)'>}>]]]></default>
             <summary>custom color formats</summary>
         </key>
         <key type="u" name="notify-style">
