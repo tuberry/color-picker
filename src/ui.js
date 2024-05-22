@@ -40,11 +40,11 @@ export class Broker {
         return map.get(key).get(value);
     };
 
-    static bind(source, prop, target, prop1, to = null, from = null, flag = GObject.BindingFlags.SYNC_CREATE) {
-        this.#get(source, target, this.#binds).push(source.bind_property_full(prop, target, prop1, flag, to, from));
+    static tie(source, sourceProp, target, targetProp, to = null, from = null, flag = GObject.BindingFlags.SYNC_CREATE) {
+        this.#get(source, target, this.#binds).push(source.bind_property_full(sourceProp, target, targetProp, flag, to, from));
     }
 
-    static unbind(source, target) {
+    static untie(source, target) {
         this.#get(source, target, this.#binds).splice(0).forEach(x => x.unbind());
     }
 
@@ -162,11 +162,11 @@ export class IconLabel extends Gtk.Box {
         GObject.registerClass(this);
     }
 
-    constructor(fallbackIcon, reverse) {
+    constructor(fallbackIcon, reverse, labelParam, iconParam) {
         super({spacing: 5});
-        this.$icon = new Gtk.Image();
-        this.$label = new Gtk.Label();
         this.$fallbackIcon = fallbackIcon;
+        this.$icon = new Gtk.Image(iconParam);
+        this.$label = new Gtk.Label(labelParam);
         if(reverse) [this.$label, this.$icon].forEach(x => this.append(x));
         else [this.$icon, this.$label].forEach(x => this.append(x));
     }
@@ -363,8 +363,9 @@ export class DialogButtonBase extends Box {
         GObject.registerClass(vprop('string', ''), this);
     }
 
-    constructor(param, child, gtype, reset) {
+    constructor(opt, param, child, gtype, reset) {
         super();
+        this.$opt = opt;
         this.$btn = hook({clicked: () => this.$onClick().then(x => { this.value = x; }).catch(noop)}, new Gtk.Button({child, ...param}));
         if(gtype) this.$buildDND(gtype);
         if(reset) this.$buildReset();
@@ -393,7 +394,7 @@ export class DialogButtonBase extends Box {
     }
 
     get dlg() {
-        return (this.$dialog ??= this.$genDialog());
+        return (this.$dialog ??= this.$genDialog(this.$opt));
     }
 
     $onClick() {
@@ -428,8 +429,8 @@ export class App extends DialogButtonBase {
         GObject.registerClass(this);
     }
 
-    constructor(param) {
-        super(param, new IconLabel('application-x-executable-symbolic'), Gio.DesktopAppInfo.$gtype, true);
+    constructor(opt, param) {
+        super(opt, param, new IconLabel('application-x-executable-symbolic'), Gio.DesktopAppInfo.$gtype, true);
     }
 
     $setValue(v) {
@@ -445,8 +446,8 @@ export class App extends DialogButtonBase {
             .lookup_by_gicon(this.$gvalue.get_icon(), 32, 1, Gtk.TextDirection.NONE, Gtk.IconLookupFlags.FORCE_SVG);
     }
 
-    $genDialog() {
-        return new AppDialog();
+    $genDialog(opt) {
+        return new AppDialog(opt);
     }
 }
 
@@ -456,10 +457,9 @@ export class File extends DialogButtonBase {
     }
 
     constructor(opt, param) {
-        super(param, new IconLabel('document-open-symbolic'), Gio.File.$gtype, true);
+        super(opt, param, new IconLabel('document-open-symbolic'), Gio.File.$gtype, true);
         if(opt?.folder) opt.filter = {mime_types:  ['inode/directory']};
         if(opt?.filter) this.$filter = new Gtk.FileFilter(opt.filter);
-        this.$opt = opt;
     }
 
     $genDialog() {
@@ -502,8 +502,8 @@ export class Icon extends DialogButtonBase {
         GObject.registerClass(this);
     }
 
-    constructor(param) {
-        super(param, new IconLabel('image-missing'), Gio.ThemedIcon.$gtype, true);
+    constructor(opt, param) {
+        super(opt, param, new IconLabel('image-missing'), Gio.ThemedIcon.$gtype, true);
     }
 
     $genDragSwatch() {
@@ -519,8 +519,8 @@ export class Icon extends DialogButtonBase {
         else this.$btn.child.setContent();
     }
 
-    $genDialog() {
-        return new IconDialog();
+    $genDialog(opt) {
+        return new IconDialog(opt);
     }
 }
 
@@ -529,23 +529,16 @@ export class Keys extends DialogButtonBase {
         GObject.registerClass(this);
     }
 
-    constructor(opt, param) {
-        super({hasFrame: false, ...param}, new Gtk.ShortcutLabel({disabledText: _GTK('New accelerator…')}));
-        this.$opt = opt;
-        this.value = this.shortcut ?? '';
-    }
-
-    get shortcut() {
-        return this.$opt?.gset.get_strv(this.$opt?.key).at(0);
-    }
-
-    set shortcut(shortcut) {
-        if(shortcut !== this.shortcut) this.$opt?.gset.set_strv(this.$opt?.key, [shortcut]);
+    constructor({gset, key}, param) {
+        super(null, {hasFrame: false, ...param}, new Gtk.ShortcutLabel({disabledText: _GTK('New accelerator…')}));
+        this.$getShortcut = () => gset.get_strv(key).at(0);
+        this.value = this.$getShortcut();
+        this.$setShortcut = x => gset.set_strv(key, [x]);
     }
 
     $setValue(v) {
         this.$value = v;
-        this.shortcut = v;
+        this.$setShortcut?.(v);
         this.$btn.child.set_accelerator(this.$value);
     }
 

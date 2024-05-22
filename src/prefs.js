@@ -19,8 +19,8 @@ class Key extends UI.DialogButtonBase {
         GObject.registerClass(this);
     }
 
-    constructor(param) {
-        super(param, new Gtk.ShortcutLabel({disabledText: _('(Key)')}), null, true);
+    constructor(opt, param) {
+        super(opt, param, new Gtk.ShortcutLabel({disabledText: _('(Key)')}), null, true);
     }
 
     $setValue(v) {
@@ -28,8 +28,8 @@ class Key extends UI.DialogButtonBase {
         this.$btn.child.set_accelerator(this.$value);
     }
 
-    $genDialog() {
-        let key = new UI.KeysDialog({title: _('Press any key.')});
+    $genDialog(opt) {
+        let key = new UI.KeysDialog({title: _('Press any key.'), ...opt});
         key.$onKeyPress = (_w, keyval, keycode, state) => {
             let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
             if(!mask && keyval === Gdk.KEY_Escape) return key.close();
@@ -67,7 +67,7 @@ class PrefsBasic extends UI.PrefPage {
             FMTS: new UI.Drop(this.getFormats()),
             NTFS: new UI.Drop([_('MSG'), _('OSD')]),
             MSIZ: new UI.Spin(1, 16, 1, _('History size')),
-            TICN: new UI.Icon({tooltipText: _('Systray icon')}),
+            TICN: new UI.Icon(null, {tooltipText: _('Systray icon')}),
             SNDS: new UI.Drop([_('Screenshot'), _('Complete')], _('Sound effect')),
             PVWS: new UI.Drop([_('Lens'), _('Label')], _('Scroll or press Shift key to toggle when picking')),
         }, gset);
@@ -101,8 +101,9 @@ class FormatDialog extends UI.DialogBase {
 
     $buildWidgets(opt) {
         let title = Adw.WindowTitle.new(_('New Color Format'), ''),
+            genForm = ({desc, info}) => info ? `${_(desc)} (${info.replace(/_(.)/, '<b><u>$1</u></b>')})` : _(desc),
             genLabel = (label, end) => new Gtk.Label({label, useMarkup: true, halign: end ? Gtk.Align.END : Gtk.Align.START}),
-            [edit, type, base] = array(3, () => new Gtk.Grid({vexpand: true, rowSpacing: 12, columnSpacing: 12})),
+            [edit, form, type] = array(3, () => new Gtk.Grid({vexpand: true, rowSpacing: 12, columnSpacing: 12})),
             format = hook({activate: () => this.$onSelect()}, new Gtk.Entry({hexpand: true, placeholderText: '#%Rex%Grx%Blx'})),
             name = hook({activate: () => this.$onSelect()}, new Gtk.Entry({hexpand: true, placeholderText: 'HEX', sensitive: !opt?.preset}));
         name.bind_property_full('text', title, 'title', GObject.BindingFlags.DEFAULT, (_b, v) => [true, v || _('New Color Format')], null);
@@ -110,12 +111,12 @@ class FormatDialog extends UI.DialogBase {
         this.initSelected = x => { name.set_text(x?.name ?? ''); format.set_text(x?.format ?? ''); };
         this.getSelected = () => JSON.stringify({name: name.get_text(), format: format.get_text()});
         [genLabel(_('Name'), true), name, genLabel(_('Format'), true), format].forEach((x, i) => edit.attach(x, i % 2, i / 2 >> 0, 1, 1));
-        Array.from(Color.types.keys()).forEach((x, i) => type.attach(genLabel(`<b>%${x}</b> ${Color.Form[x].info}`), i % 3, i / 3 >> 0, 1, 1));
-        Array.from(Color.bases.keys()).forEach((x, i) => base.attach(genLabel(`<b>${x}</b> ${Color.Base[x].info}`), i % 2, i / 2 >> 0, 1, 1));
+        Array.from(Color.forms.keys()).forEach((x, i) => form.attach(genLabel(`<b>%${x}</b> ${genForm(Color.Form[x])}`), i % 3, i / 3 >> 0, 1, 1));
+        Array.from(Color.types.keys()).forEach((x, i) => type.attach(genLabel(`<b>${x}</b> ${_(Color.Type[x].desc)}`), i % 2, i / 2 >> 0, 1, 1));
         return {
             content: new UI.Box([edit, genLabel(_('The following parameters can be used:')),
-                type, genLabel(_('The red/green/blue value can be formatted with:')),
-                base, genLabel(_('i.e. <b>%Blx</b> means hex lowercase 2 digits blue value.'))], {
+                form, genLabel(_('The color values can be formatted with (optional tailing precision):')),
+                type, genLabel(_('i.e. <b>%Blf3</b> express the normalized blue value accurate to 3 decimal places.'))], {
                 orientation: Gtk.Orientation.VERTICAL, valign: Gtk.Align.START, spacing: 12,
                 marginTop: 12, marginBottom: 12, marginStart: 12, marginEnd: 12,
             }, false), title,

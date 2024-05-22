@@ -83,7 +83,7 @@
             <default>"hsl(%Hu, %Sl, %Ll)"</default>
             <summary>preset HSL format string</summary>
         </key>
-        <key type="s" name="lch-formatter">
+        <key type="s" name="oklch-formatter">
             <default>"oklch(%Lo %Co %Ho)"</default>
             <summary>preset OKLch format string</summary>
         </key>

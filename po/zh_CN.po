@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-16 15:58+0800\n"
+"POT-Creation-Date: 2024-05-21 22:34+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -29,7 +29,7 @@ msgstr "常规"
 msgid "Symbolic"
 msgstr "符号"
 
-#: src/ui.js:377
+#: src/ui.js:378
 msgid "Clear"
 msgstr "清除"
 
@@ -37,7 +37,7 @@ msgstr "清除"
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:619
+#: src/ui.js:612
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
 
@@ -97,7 +97,7 @@ msgstr "自动复制"
 msgid "Copy the color to clipboard after picking"
 msgstr "选取后复制颜色到剪贴板"
 
-#: src/prefs.js:81 src/extension.js:650
+#: src/prefs.js:81 src/extension.js:649
 msgid "Default format"
 msgstr "默认格式"
 
@@ -163,54 +163,148 @@ msgstr "通知声音"
 msgid "Play the sound after picking"
 msgstr "选取颜色后响铃"
 
-#: src/prefs.js:103 src/prefs.js:108 src/prefs.js:140
+#: src/prefs.js:103 src/prefs.js:109 src/prefs.js:141
 msgid "New Color Format"
 msgstr "新建颜色格式"
 
-#: src/prefs.js:112
+#: src/prefs.js:113
 msgid "Name"
 msgstr "名称"
 
-#: src/prefs.js:112 src/prefs.js:324
+#: src/prefs.js:113 src/prefs.js:325
 msgid "Format"
 msgstr "格式"
 
-#: src/prefs.js:116
+#: src/prefs.js:117
 msgid "The following parameters can be used:"
 msgstr "下列参数可用:"
 
-#: src/prefs.js:117
-msgid "The red/green/blue value can be formatted with:"
-msgstr "红/绿/蓝色值可格式化为:"
-
 #: src/prefs.js:118
-msgid "i.e. <b>%Blx</b> means hex lowercase 2 digits blue value."
-msgstr "例如，<b>%Blx</b> 意为两位小写十六进制蓝色值。"
+msgid "The color values can be formatted with (optional tailing precision):"
+msgstr "颜色值可格式化为(后可跟精度):"
 
-#: src/prefs.js:227
+#: src/prefs.js:119
+msgid ""
+"i.e. <b>%Blf3</b> express the normalized blue value accurate to 3 decimal "
+"places."
+msgstr "例如，<b>%Blf3</b> 表示精确到千分位的归一化蓝色值。"
+
+#: src/prefs.js:228
 msgid "Custom"
 msgstr "自便"
 
-#: src/prefs.js:293
+#: src/prefs.js:294
 msgid "Preset"
 msgstr "预设"
 
-#: src/prefs.js:323
+#: src/prefs.js:324
 msgid "Basic"
 msgstr "基本"
 
-#: src/extension.js:197
+#: src/extension.js:199
 msgid "Others"
 msgstr "其它"
 
-#: src/extension.js:673
+#: src/extension.js:672
 msgid "Color picked"
 msgstr "已拾取颜色"
 
-#: src/extension.js:681
+#: src/extension.js:680
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"
+
+#: src/color.js:108
+msgid "red"
+msgstr "红"
+
+#: src/color.js:109
+msgid "green"
+msgstr "绿"
+
+#: src/color.js:110
+msgid "blue"
+msgstr "蓝"
+
+#: src/color.js:111
+msgid "alpha"
+msgstr "不透明度"
+
+#: src/color.js:115 src/color.js:122
+msgid "hue"
+msgstr "色相"
+
+#: src/color.js:116 src/color.js:118
+msgid "saturation"
+msgstr "饱和度"
+
+#: src/color.js:117 src/color.js:120
+msgid "lightness"
+msgstr "亮度"
+
+#: src/color.js:119
+msgid "value"
+msgstr "明度"
+
+#: src/color.js:121
+msgid "chroma"
+msgstr "色度"
+
+#: src/color.js:123
+msgid "chroma A"
+msgstr "色度A"
+
+#: src/color.js:124
+msgid "chroma B"
+msgstr "色度B"
+
+#: src/color.js:125
+msgid "cyan"
+msgstr "青"
+
+#: src/color.js:126
+msgid "magenta"
+msgstr "洋红"
+
+#: src/color.js:127
+msgid "yellow"
+msgstr "黄"
+
+#: src/color.js:128
+msgid "black"
+msgstr "黑"
+
+#: src/color.js:132
+msgid "hex lowercase 2 digits"
+msgstr "两位小写十六进制"
+
+#: src/color.js:133
+msgid "hex uppercase 2 digits"
+msgstr "两位大写十六进制"
+
+#: src/color.js:134
+msgid "hex lowercase 1 digit"
+msgstr "一位小写十六进制"
+
+#: src/color.js:135
+msgid "hex uppercase 1 digit"
+msgstr "一位大写十六进制"
+
+#: src/color.js:136
+msgid "float with leading zero"
+msgstr "带个位零的小数"
+
+#: src/color.js:137
+msgid "float without leading zero"
+msgstr "不带个位零的小数"
+
+#: src/color.js:138
+msgid "number value (original)"
+msgstr "(原始)数值"
+
+#: src/color.js:139
+msgid "percent value"
+msgstr "百分数"
 
 #~ msgid "Enable preview"
 #~ msgstr "启用预览"

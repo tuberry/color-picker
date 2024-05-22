@@ -81,22 +81,22 @@ class ColorSlider extends Slider.Slider {
         GObject.registerClass(this);
     }
 
-    constructor(type, value, step, color, callback) {
+    constructor(form, value, step, color, callback) {
         super(value);
-        this.$data = {type, step, color};
-        this.connect('notify::value', () => callback(type, this.value));
+        this.$data = {form, step, color};
+        this.connect('notify::value', () => callback(form, this.value));
     }
 
     vfunc_repaint() {
         let cr = this.get_context(),
-            {color, type} = this.$data,
+            {color, form} = this.$data,
             [width, height] = this.get_surface_size(),
             gradient = new Cairo.LinearGradient(0, 0, width, 0),
             barLevelRadius = Math.min(width, this._barLevelHeight) / 2,
             rtl = this.get_text_direction() === Clutter.TextDirection.RTL;
         cr.arc(barLevelRadius, height / 2, barLevelRadius, Math.PI * (1 / 2), Math.PI * (3 / 2));
         cr.arc(width - barLevelRadius, height / 2, barLevelRadius, Math.PI * 3 / 2, Math.PI / 2);
-        color.toStops(type, rtl).forEach(x => gradient.addColorStopRGBA(...x));
+        color.toStops(form, rtl).forEach(x => gradient.addColorStopRGBA(...x));
         cr.setSource(gradient);
         cr.fill();
 
@@ -149,10 +149,10 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
         GObject.registerClass(this);
     }
 
-    constructor(type, value, step, color, callback) {
+    constructor(form, value, step, color, callback) {
         super({activate: false});
-        let slider = new ColorSlider(type, value, step, color, callback);
-        let label = new St.Label({text: type.substring(0, 1).toUpperCase(), xExpand: false});
+        let slider = new ColorSlider(form, value, step, color, callback);
+        let label = new St.Label({text: form.substring(0, 1).toUpperCase(), xExpand: false});
         this.connect('key-press-event', (_a, event) => slider.vfunc_key_press_event(event));
         this.setValue = v => { slider._value = v; slider.queue_repaint(); };
         [label, slider].forEach(x => this.add_child(x));
@@ -161,7 +161,7 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
 
 class ColorMenu extends PopupMenu.PopupMenu {
     constructor(source, color) {
-        super(source ?? Main.layoutManager.dummyCursor, 0.15, St.Side.LEFT);
+        super(source ?? Main.layoutManager.dummyCursor, 0, St.Side.TOP);
         this.$color = color;
         this.$formats = array(color.formats.length).slice(Preset.length);
         this.$manager = new PopupMenu.PopupMenuManager(source);
@@ -173,22 +173,24 @@ class ColorMenu extends PopupMenu.PopupMenu {
     }
 
     $addMenuItems() {
-        let {r, g, b, Hu, Sl, Ll, Lo, Co, Ho} = this.$color
-            .toItems((k, v, u) => new SliderItem(k, v, 1 / u, this.$color, this.$updateSlider.bind(this)));
+        let {r, g, b, Hu, Sl, Ll, Lo, Co, Ho} = this.$color.toItems((k, v, u, s) =>
+            new SliderItem(k, v, s ?? 1 / Math.max(u ?? 1, 100), this.$color, this.$updateSlider.bind(this)));
         this.$menu = {
-            HEX: this.$genHEXItem(),
+            HEX: this.$genTitleItem(),
             RGB: new PopupMenu.PopupSeparatorMenuItem(), r, g, b,
             HSL: new PopupMenu.PopupSeparatorMenuItem(), Hu, Sl, Ll,
-            LCH: new PopupMenu.PopupSeparatorMenuItem(), Lo, Co, Ho, // NOTE: irregular space differs from RGB/HSL, see also https://oklch.com/
+            OKLCH: new PopupMenu.PopupSeparatorMenuItem(), Lo, Co, Ho, // NOTE: irregular space differs from RGB/HSL, see also https://oklch.com/
             custom: this.$genCustomSection(),
         };
         Object.values(this.$menu).forEach(x => this.addMenuItem(x));
     }
 
-    $updateSlider(type, value) {
-        if(type) this.$color.update(type, value);
-        this.$color.toItems((k, v) => k === type || this.$menu[k].setValue(v));
-        this.$updateLabels();
+    $updateSlider(form, value) {
+        if(form) this.$color.update(form, value);
+        this.$color.toItems((k, v) => k === form || this.$menu[k].setValue(v));
+        Preset.slice(1).forEach(x => this.$menu[x].label.set_text(this.$color.toText(Format[x])));
+        this.$menu.custom.updateLabels();
+        this.emit('color-changed');
     }
 
     $genCustomSection() {
@@ -200,17 +202,9 @@ class ColorMenu extends PopupMenu.PopupMenu {
         return section;
     }
 
-    $updateLabels() {
-        ['RGB', 'HSL', 'LCH'].forEach(x => this.$menu[x].label.set_text(this.$color.toText(Format[x])));
-        this.$menu.HEX.label.clutter_text.set_markup(this.$color.toMarkup(Format.HEX));
-        this.$menu.custom.updateLabels();
-    }
-
-    $genHEXItem() {
+    $genTitleItem() {
         let item = new MenuItem('', () => this.emit('color-selected', this.$color), {can_focus: false});
-        item.label.add_style_class_name('color-picker-item-label');
-        item.label.set_can_focus(true);
-        ['RGB', 'HSL', 'LCH', 'HEX'].forEach((x, i) => item.insert_child_at_index(hook({
+        Preset.forEach((x, i) => item.insert_child_at_index(hook({
             clicked: () => { this.close(); this.$emitSelected(Format[x]); },
         }, new St.Button({canFocus: true, label: x, styleClass: 'color-picker-button button'})), i));
         return item;
@@ -335,10 +329,14 @@ class ColorViewer extends BoxPointer.BoxPointer {
     }
 
     setContent(data) {
-        this.bin.child.clutter_text.set_markup(data.color.toPreview());
+        this.setPreview(data.color);
         this.setPosition(this.$src.lens, this.$pos);
         this.$src.lens.setData(data);
         this.open(BoxPointer.PopupAnimation.NONE);
+    }
+
+    setPreview(color) {
+        this.bin.child.clutterText.set_markup(color.toPreview());
     }
 }
 
@@ -372,10 +370,11 @@ class ColorArea extends St.Widget {
         this.$src = Source.fuse({
             format: new Source(x => hook({
                 'open-state-changed': onMenuToggle,
-                'color-selected': (_a, color) => this.$emitColor(color),
+                'color-selected': () => this.$emitColor(),
+                'color-changed': () => this.viewer?.setPreview(this.$color),
             }, new ColorMenu(x, this.$color))),
-            cursor: new Source((x = this.cursor) => x && setCursor(x), () => setCursor(Meta.Cursor.DEFAULT)),
             viewer: new Source(x => new ColorViewer(x)),
+            cursor: new Source((x = this.cursor) => x && setCursor(x), () => setCursor(Meta.Cursor.DEFAULT)),
         }, this);
         this.$ptr = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         this.openMenu = () => this.$src.format.hub?.summon(this.$coords);
@@ -413,7 +412,7 @@ class ColorArea extends St.Widget {
 
     $onViewerPut() {
         this.$src.cursor.summon();
-        this.$src.format.reboot(this.menuSet, this.$src.viewer.hub);
+        this.$src.format.reboot(this.menuSet, this.viewer);
         if(this.$coords) this.pickColor(this.$coords);
     }
 
@@ -450,8 +449,8 @@ class ColorArea extends St.Widget {
         return [a, b, w, h, x - a, y - b, r];
     }
 
-    $emitColor(color) {
-        this.emit('notify-color', color || this.$color);
+    $emitColor() {
+        this.emit('notify-color', this.$color);
         if(this.$once) this.emit('end-pick', false);
     }
 
@@ -617,7 +616,7 @@ class ColorPicker extends Mortal {
             hexFormat: [Field.HEX, 'string'],
             rgbFormat: [Field.RGB, 'string'],
             hslFormat: [Field.HSL, 'string'],
-            lchFormat: [Field.LCH, 'string'],
+            oklchFormat: [Field.OKLCH, 'string'],
             customFormat: [Field.CFMT, 'value', x => x.recursiveUnpack().filter(y => y.enable)],
         }, this, () => this.$onFormatsPut(), true).attach({
             enableSound:  [Field.SND,  'boolean'],
@@ -633,7 +632,7 @@ class ColorPicker extends Mortal {
     }
 
     $onFormatsPut() {
-        this.$formats = [this.hexFormat, this.rgbFormat, this.hslFormat, this.lchFormat, ...this.customFormat.map(x => x.format)];
+        this.$formats = [this.hexFormat, this.rgbFormat, this.hslFormat, this.oklchFormat, ...this.customFormat.map(x => x.format)];
         this.$src.tray.hub?.setFormats(this.$formats, this.$options);
     }
 
@@ -691,7 +690,7 @@ class ColorPicker extends Mortal {
             if(this.$src.area.active) reject(Error('busy'));
             this.$src.tray.hub?.add_style_pseudo_class('state-busy');
             this.$src.area.summon({
-                'notify-color': (_a, {rgb}) => resolve(rgb),
+                'notify-color': (_a, color) => resolve(color.toRGB()),
                 'end-pick': (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); },
             }, this.$set, true);
         });

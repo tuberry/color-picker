@@ -5,9 +5,12 @@ import {id, array} from './util.js';
 
 const Grey = 0.569; // L in OKLab <=> 18% grey #777777
 
-const showNum = (x, n = 0, r) => Number(x.toFixed(n)).toString(r);
-const showHex = x => showNum(x, 0, 16).padStart(2, '0');
-const showPct = (x, n) => `${showNum(x * 100, n)}%`;
+const _ = id; // HACK: workaround for gettext
+const number = (x, n, r) => n === undefined ? x : Number(x.toFixed(n)).toString(r);
+const percent = (x, n) => `${number(x * 100, n)}%`;
+const hex = x => number(x, 0, 16).padStart(2, '0');
+const denorm = (v, u) => u ? v * u : v;
+const norm = (v, u) => u ? v / u : v;
 
 const RGB = {
     get: ({Re, Gr, Bl}) => ({r: Re / 255, g: Gr / 255, b: Bl / 255}), set: id,
@@ -94,7 +97,7 @@ const CMYK = {
         let mx = Math.max(r, g, b);
         return mx === 0 ? {Cy: 0, Ma: 0, Ye: 0, Bk: 1} : {Cy: 1 - r / mx, Ma: 1 - g / mx, Ye: 1 - b / mx, Bk: 1 - mx};
     },
-    set: ({Cy,  Ma, Ye, Bk}) => {
+    set: ({Cy, Ma, Ye, Bk}) => {
         let mx = 1 - Bk;
         return {r: (1 - Cy) * mx, g: (1 - Ma) * mx, b: (1 - Ye) * mx};
     },
@@ -102,51 +105,43 @@ const CMYK = {
 
 export class Color {
     static Form = {
-        r:  {meta: RGB,   stop: 1},
-        g:  {meta: RGB,   stop: 1},
-        b:  {meta: RGB,   stop: 1},
-        Re: {unit: 255,   info: 'red'},
-        Gr: {unit: 255,   info: 'green'},
-        Bl: {unit: 255,   info: 'blue'},
-        Hu: {meta: HSV,   stop: 12, unit: 360, info: 'hue (HSL)'},
-        Sl: {meta: HSL,   stop: 1, info: 'saturation (HSL)'},
-        Ll: {meta: HSL,   stop: 5, info: 'lightness (HSL)'},
-        Sv: {meta: HSV,   info: 'saturation (HSV)'},
-        Va: {meta: HSV,   info: 'value'},
-        Lo: {meta: OKLAB, stop: 12, info: 'lightness (OKLch)'},
-        Co: {meta: OKLCH, stop: 12, unit: 0.4, info: 'chroma (OKLch)'},
-        Ho: {meta: OKLCH, stop: 12, unit: 360, info: 'hue (OKLch)'},
-        Ao: {meta: OKLAB, unit: 0.4, info: 'chroma A (OKLab)'},
-        Bo: {meta: OKLAB, unit: 0.4, info: 'chroma B (OKLab)'},
-        Cy: {meta: CMYK,  info: 'cyan'},
-        Ma: {meta: CMYK,  info: 'magenta'},
-        Ye: {meta: CMYK,  info: 'yellow'},
-        Bk: {meta: CMYK,  info: 'black'},
+        Re: {unit: 255, info: '_RGB', desc: _('red')},
+        Gr: {unit: 255, info: 'R_GB', desc: _('green')},
+        Bl: {unit: 255, info: 'RG_B', desc: _('blue')},
+        Al: {unit: 255, info: '=255', desc: _('alpha')},
+        r:  {meta: RGB, stop: 1, span: 1 / 255},
+        g:  {meta: RGB, stop: 1, span: 1 / 255},
+        b:  {meta: RGB, stop: 1, span: 1 / 255},
+        Hu: {meta: HSV, stop: 12, unit: 360, info: '_HSL', desc: _('hue')},
+        Sl: {meta: HSL, stop: 1, info: 'H_SL', desc: _('saturation')},
+        Ll: {meta: HSL, stop: 5, info: 'HS_L', desc: _('lightness')},
+        Sv: {meta: HSV, info: 'H_SV', desc: _('saturation')},
+        Va: {meta: HSV, info: 'HS_V', desc: _('value')},
+        Lo: {meta: OKLAB, stop: 12, info: 'OK_Lch', desc: _('lightness')},
+        Co: {meta: OKLCH, stop: 12, unit: 0.4, info: 'OKL_ch', desc: _('chroma')},
+        Ho: {meta: OKLCH, stop: 12, unit: 360, info: 'OKLc_h', desc: _('hue')},
+        Ao: {meta: OKLAB, unit: 0.4, info: 'OKL_ab', desc: _('chroma A')},
+        Bo: {meta: OKLAB, unit: 0.4, info: 'OKLa_b', desc: _('chroma B')},
+        Cy: {meta: CMYK, info: '_CMYK', desc: _('cyan')},
+        Ma: {meta: CMYK, info: 'C_MYK', desc: _('magenta')},
+        Ye: {meta: CMYK, info: 'CM_YK', desc: _('yellow')},
+        Bk: {meta: CMYK, info: 'CMY_K', desc: _('black')},
     };
 
-    static Base = new Proxy({
-        x: {info: 'hex lowercase 2 digits', show: showHex},
-        X: {info: 'hex uppercase 2 digits', show: x => showHex(x).toUpperCase()},
-        h: {info: 'hex lowercase 1 digit', show: x => showNum(x >> 4, 0, 16)},
-        H: {info: 'hex uppercase 1 digit', show: x => showNum(x >> 4, 0, 16).toUpperCase()},
-        f: {info: 'float with leading zero', show: x => showNum(x / 255, 3)},
-        F: {info: 'float without leading zero', show: x => showNum(x / 255, 3).slice(1)},
-        b: {info: 'byte value (default)', show: showNum},
-    }, {get: (t, s) => t[s] ?? {info: 'unknown format', show: showNum}});
+    static Type = new Proxy({
+        x: {desc: _('hex lowercase 2 digits'), show: x => hex(x)},
+        X: {desc: _('hex uppercase 2 digits'), show: x => hex(x).toUpperCase()},
+        h: {desc: _('hex lowercase 1 digit'), show: x => number(x >> 4, 0, 16)},
+        H: {desc: _('hex uppercase 1 digit'), show: x => number(x >> 4, 0, 16).toUpperCase()},
+        f: {desc: _('float with leading zero'), show: (x, n, u) => number(norm(x, u), n)},
+        F: {desc: _('float without leading zero'), show: (x, n, u) => number(norm(x, u), n).replace(/^0./, '.')},
+        n: {desc: _('number value (original)'), show: (x, n) => number(x, n)},
+        p: {desc: _('percent value'), show: (x, n, u) => percent(norm(x, u), n)},
+    }, {get: (t, s) => t[s] ?? {show: (x, n) => number(x, n)}});
 
-
-    static bases = new Set(Object.keys(this.Base));
+    static types = new Set(Object.keys(this.Type));
     static items = Object.keys(this.Form).filter(t => this.Form[t].stop);
-    static types = new Set(Object.keys(this.Form).filter(t => this.Form[t].info));
-
-    static show(value, unit, base) {
-        switch(unit) {
-        case 360: return showNum(value);
-        case 255: return this.Base[base].show(value);
-        case 0.4: return showPct(value * 2.5);
-        default: return showPct(value);
-        }
-    }
+    static forms = new Set(Object.keys(this.Form).filter(t => this.Form[t].desc));
 
     static newForFormat(format, formats) {
         return new Color(format << 24, formats);
@@ -156,7 +151,7 @@ export class Color {
         return data && new Color(0x26f3ba, [data]).toText();
     }
 
-    #rgb = {Re: 0, Gr: 0, Bl: 0};
+    #rgb = {Re: 0, Gr: 0, Bl: 0, Al: 255};
     #fmt = new Proxy(new Map(), {
         get: (t, s, r) => this.#rgb[s] ?? t.get(s) ?? Object.entries(Color.Form[s].meta.get(r)).reduce((p, [k, v]) => p.set(k, v), t).get(s),
         set: (t, s, v, r) => {
@@ -190,28 +185,28 @@ export class Color {
         this.$rgb = pixels.slice(start);
     }
 
-    update(type, value) {
-        this.#fmt[type] = value * (Color.Form[type].unit ?? 1);
-    }
-
     toRaw() { // 0x0FRRGGBB
         return [this.format, ...this.$rgb].reduce((p, x) => p << 8 | x);
     }
 
+    update(form, value) {
+        this.#fmt[form] = denorm(value, Color.Form[form].unit);
+    }
+
     toItems(func) {
         return Color.items.reduce((p, x) => {
-            let {unit = 1} = Color.Form[x];
-            p[x] = func(x, this.#fmt[x] / unit, Math.max(unit, 100));
+            let {unit, span} = Color.Form[x];
+            p[x] = func(x, norm(this.#fmt[x], unit), unit, span);
             return p;
         }, {});
     }
 
-    toStops(type, rtl) {
-        let {meta: {set, get}, unit = 1, stop = 1} = Color.Form[type];
+    toStops(form, rtl) {
+        let {meta: {set, get}, unit, stop = 1} = Color.Form[form];
         let color = get(this.#fmt);
         return array(stop + 1, i => {
             let step = i / stop;
-            color[type] = step * unit;
+            color[form] = denorm(step, unit);
             return [rtl ? 1 - step : step, ...RGB.unbox(set(color)), 1];
         });
     }
@@ -219,19 +214,26 @@ export class Color {
     toText(format) {
         let pos, txt = this.formats[format ?? this.format] || '#%Rex%Grx%Blx';
         while((pos = txt.indexOf('%', pos) + 1)) {
-            let end = pos + 2;
-            let type = txt.slice(pos, end);
-            if(!Color.types.has(type)) continue;
-            let base = txt.charAt(end),
-                value = this.#fmt[type],
-                {unit} = Color.Form[type];
-            txt = `${txt.slice(0, pos - 1)}${Color.show(value, unit, base)}${txt.slice(Color.bases.has(base) ? end + 1 : end)}`;
+            let peek = pos + 2;
+            let form = txt.slice(pos, peek);
+            if(!Color.forms.has(form)) continue;
+            let digit, {unit} = Color.Form[form],
+                value = this.#fmt[form],
+                type = txt.charAt(peek);
+            if(Color.types.has(type)) {
+                let n = txt.charCodeAt(++peek) - 48; // '0' = 48
+                if(n >= 0 && n < 10) digit = n, peek++;
+            } else {
+                if(!Number.isInteger(unit)) type = 'p';
+                digit = 0;
+            }
+            txt = `${txt.slice(0, pos - 1)}${Color.Type[type].show(value, digit, unit)}${txt.slice(peek)}`;
         }
         return txt;
     }
 
     toHEX() {
-        return `#${this.$rgb.map(showHex).join('')}`;
+        return `#${this.$rgb.map(hex).join('')}`;
     }
 
     toMarkup(format) { // HACK: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
