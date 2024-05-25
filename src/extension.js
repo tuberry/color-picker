@@ -20,7 +20,7 @@ import {Color} from './color.js';
 import {Field, Preset} from './const.js';
 import {encode, hook, array, pickle, omap} from './util.js';
 import {IconButton, MenuItem, RadioItem, IconItem, Systray} from './menu.js';
-import {Setting, Extension, Mortal, Source, hub, view, _, myself, copy} from './fubar.js';
+import {Setting, Extension, Mortal, Source, hub, view, _, myself, copy, extent} from './fubar.js';
 
 const Notify = {MSG: 0, OSD: 1};
 const Preview = {LENS: 0, LABEL: 1};
@@ -160,8 +160,9 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
 }
 
 class ColorMenu extends PopupMenu.PopupMenu {
-    constructor(source, color) {
-        super(source ?? Main.layoutManager.dummyCursor, 0, St.Side.TOP);
+    constructor(color) {
+        let source = Main.layoutManager.dummyCursor;
+        super(source, 0, St.Side.TOP);
         this.$color = color;
         this.$formats = array(color.formats.length).slice(Preset.length);
         this.$manager = new PopupMenu.PopupMenuManager(source);
@@ -210,9 +211,9 @@ class ColorMenu extends PopupMenu.PopupMenu {
         return item;
     }
 
-    summon(coords) {
+    summon(geometry) {
         this.$updateSlider();
-        if(this.sourceActor === Main.layoutManager.dummyCursor) Main.layoutManager.setDummyCursorGeometry(...coords, 12, 12);
+        Main.layoutManager.setDummyCursorGeometry(...geometry);
         this.open(BoxPointer.PopupAnimation.FULL);
     }
 
@@ -368,16 +369,16 @@ class ColorArea extends St.Widget {
         let setCursor = x => global.display.set_cursor(x);
         let onMenuToggle = (_w, open) => this.$src.cursor.toggle(!open); // HACK: workaround for tsserver autocomplete inability
         this.$src = Source.fuse({
-            format: new Source(x => hook({
+            format: new Source(() => hook({
                 'open-state-changed': onMenuToggle,
                 'color-selected': () => this.$emitColor(),
                 'color-changed': () => this.viewer?.setPreview(this.$color),
-            }, new ColorMenu(x, this.$color))),
+            }, new ColorMenu(this.$color))),
             viewer: new Source(x => new ColorViewer(x)),
             cursor: new Source((x = this.cursor) => x && setCursor(x), () => setCursor(Meta.Cursor.DEFAULT)),
         }, this);
         this.$ptr = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
-        this.openMenu = () => this.$src.format.hub?.summon(this.$coords);
+        this.openMenu = () => this.$src.format.hub?.summon(this.viewer ? extent(this.viewer) : [...this.$coords, 12, 12]);
         this.connect('popup-menu', () => this.openMenu());
     }
 
@@ -386,8 +387,8 @@ class ColorArea extends St.Widget {
             menuKey: [Field.MKEY, 'string'],
             quitKey: [Field.QKEY, 'string'],
             persist: [Field.PRST, 'boolean', x => { this.$once ||= !x; }],
+            menuSet: [Field.MENU, 'boolean', x => this.$src.format.toggle(x)],
         }, this).attach({
-            menuSet: [Field.MENU, 'boolean'],
             preview: [Field.PVWS, 'uint',    x => x === Preview.LABEL, x => this.$src.viewer.reload(x)],
             viewing: [Field.PVW,  'boolean', x => this.$src.viewer.toggle(x, this.preview)],
         }, this, () => this.$onViewerPut(), true);
@@ -412,7 +413,6 @@ class ColorArea extends St.Widget {
 
     $onViewerPut() {
         this.$src.cursor.summon();
-        this.$src.format.reboot(this.menuSet, this.viewer);
         if(this.$coords) this.pickColor(this.$coords);
     }
 
