@@ -116,7 +116,7 @@ class FormatDialog extends UI.DialogBase {
         return {
             content: new UI.Box([edit, genLabel(_('The following parameters can be used:')),
                 form, genLabel(_('The color values can be formatted with (optional tailing precision):')),
-                type, genLabel(_('i.e. <b>%Blf3</b> express the normalized blue value accurate to 3 decimal places.'))], {
+                type, genLabel(_('i.e. <b>%Blf3</b> means the normalized blue value accurate to 3 decimal places.'))], {
                 orientation: Gtk.Orientation.VERTICAL, valign: Gtk.Align.START, spacing: 12,
                 marginTop: 12, marginBottom: 12, marginStart: 12, marginEnd: 12,
             }, false), title,

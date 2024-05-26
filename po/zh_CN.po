@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-21 22:34+0800\n"
+"POT-Creation-Date: 2024-05-26 09:32+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -185,7 +185,7 @@ msgstr "颜色值可格式化为(后可跟精度):"
 
 #: src/prefs.js:119
 msgid ""
-"i.e. <b>%Blf3</b> express the normalized blue value accurate to 3 decimal "
+"i.e. <b>%Blf3</b> means the normalized blue value accurate to 3 decimal "
 "places."
 msgstr "例如，<b>%Blf3</b> 表示精确到千分位的归一化蓝色值。"
 
@@ -201,7 +201,7 @@ msgstr "预设"
 msgid "Basic"
 msgstr "基本"
 
-#: src/extension.js:199
+#: src/extension.js:200
 msgid "Others"
 msgstr "其它"
 
