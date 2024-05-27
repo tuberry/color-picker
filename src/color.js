@@ -167,6 +167,7 @@ export class Color {
     }); // format cache
 
     set $rgb([r, g, b]) {
+        if(r === this.#rgb.Re && g === this.#rgb.Gr && b === this.#rgb.Bl) return;
         this.#rgb.Re = r;
         this.#rgb.Gr = g;
         this.#fmt.Bl = b;
