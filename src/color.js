@@ -183,7 +183,7 @@ export class Color {
     }
 
     fromPixels(pixels, start = 0) {
-        this.$rgb = pixels.slice(start);
+        this.$rgb = pixels.slice(start, start + 3);
     }
 
     toRaw() { // 0x0FRRGGBB
