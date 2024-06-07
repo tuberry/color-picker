@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-26 09:32+0800\n"
+"POT-Creation-Date: 2024-06-07 12:16+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -58,12 +58,12 @@ msgid "OSD"
 msgstr "屏内提示"
 
 #: src/prefs.js:69
-msgid "History size"
-msgstr "历史大小"
-
-#: src/prefs.js:70
 msgid "Systray icon"
 msgstr "托盘图标"
+
+#: src/prefs.js:70
+msgid "History and collection size"
+msgstr "历史和收藏大小"
 
 #: src/prefs.js:71
 msgid "Screenshot"
@@ -97,7 +97,7 @@ msgstr "自动复制"
 msgid "Copy the color to clipboard after picking"
 msgstr "选取后复制颜色到剪贴板"
 
-#: src/prefs.js:81 src/extension.js:649
+#: src/prefs.js:81 src/extension.js:650
 msgid "Default format"
 msgstr "默认格式"
 
@@ -171,7 +171,7 @@ msgstr "新建颜色格式"
 msgid "Name"
 msgstr "名称"
 
-#: src/prefs.js:113 src/prefs.js:325
+#: src/prefs.js:113 src/prefs.js:314
 msgid "Format"
 msgstr "格式"
 
@@ -193,11 +193,16 @@ msgstr "例如，<b>%Blf3</b> 表示精确到千分位的归一化蓝色值。"
 msgid "Custom"
 msgstr "自便"
 
-#: src/prefs.js:294
+#: src/prefs.js:253
+#, javascript-format
+msgid "Format %s has been removed"
+msgstr "%s 格式已被移除"
+
+#: src/prefs.js:283
 msgid "Preset"
 msgstr "预设"
 
-#: src/prefs.js:324
+#: src/prefs.js:313
 msgid "Basic"
 msgstr "基本"
 
@@ -205,11 +210,11 @@ msgstr "基本"
 msgid "Others"
 msgstr "其它"
 
-#: src/extension.js:672
+#: src/extension.js:673
 msgid "Color picked"
 msgstr "已拾取颜色"
 
-#: src/extension.js:680
+#: src/extension.js:681
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"

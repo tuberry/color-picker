@@ -12,7 +12,7 @@ import {Color} from './color.js';
 import {Field, Preset} from './const.js';
 import {array, hook, noop, pickle} from './util.js';
 
-const {_, vprop, gprop} = UI;
+const {_, _GTK, vprop, gprop} = UI;
 
 class Key extends UI.DialogButtonBase {
     static {
@@ -66,8 +66,8 @@ class PrefsBasic extends UI.PrefPage {
             MENU: new UI.Check(),
             FMTS: new UI.Drop(this.getFormats()),
             NTFS: new UI.Drop([_('MSG'), _('OSD')]),
-            MSIZ: new UI.Spin(1, 16, 1, _('History size')),
             TICN: new UI.Icon(null, {tooltipText: _('Systray icon')}),
+            MSIZ: new UI.Spin(0, 16, 1, _('History and collection size')),
             SNDS: new UI.Drop([_('Screenshot'), _('Complete')], _('Sound effect')),
             PVWS: new UI.Drop([_('Lens'), _('Label')], _('Scroll or press Shift key to toggle when picking')),
         }, gset);
@@ -221,7 +221,7 @@ class FormatRow extends Adw.ActionRow {
 class FormatList extends Adw.PreferencesGroup {
     static {
         GObject.registerClass(this);
-        this.install_action('format.add', null, self => self.$onAppend());
+        this.install_action('format.add', null, self => self.$onAdd());
     }
 
     constructor(gset) {
@@ -235,12 +235,12 @@ class FormatList extends Adw.PreferencesGroup {
             list = new Gtk.ListBox({selectionMode: Gtk.SelectionMode.NONE, cssClasses: ['boxed-list']});
         neo.append(new GObject.Object());
         store.splice(0, 0, [this.$fmts, neo]);
-        list.bind_model(model, x => x instanceof FormatItem ? hook({
-            dropped: this.$onDrop.bind(this),
-            removed: this.$onRemove.bind(this),
-            toggled: this.$onToggle.bind(this),
-            changed: this.$onChange.bind(this),
-        }, new FormatRow(x)) : new NewFormatRow());
+        list.bind_model(model, r => r instanceof FormatItem ? hook({
+            toggled: (_w, p) => this.$save(x => x.get_item(p).toggle()),
+            dropped: (_w, p, a) => this.$save(x => { let item = x.get_item(p); x.remove(p); x.insert(a, item); }),
+            removed: (_w, p) => this.$save(x => { let item = x.get_item(p); x.remove(p); this.$toastRemove(item); }),
+            changed: (_w, p) => this.dlg.choose_sth(this.get_root(), this.$fmts.get_item(p)).then(x => this.$save(y => y.get_item(p).set(JSON.parse(x)))).catch(noop),
+        }, new FormatRow(r)) : new NewFormatRow());
         this.add(list);
     }
 
@@ -248,24 +248,13 @@ class FormatList extends Adw.PreferencesGroup {
         return (this.$dialog ??= new FormatDialog());
     }
 
-    $onChange(_w, pos) {
-        this.dlg.choose_sth(this.get_root(), this.$fmts.get_item(pos)).then(x => this.$save(y => y.get_item(pos).set(JSON.parse(x)))).catch(noop);
+    $toastRemove(item) {
+        this.get_root().add_toast(hook({'button-clicked': () => this.$save(x => x.append(new FormatItem(item)))},
+            new Adw.Toast({title: _('Format %s has been removed').format(item.name ?? ''), buttonLabel: _GTK('_Undo')})));
     }
 
-    $onAppend() {
+    $onAdd() {
         this.dlg.choose_sth(this.get_root()).then(x => this.$save(y => y.append(new FormatItem({enable: true, ...JSON.parse(x)})))).catch(noop);
-    }
-
-    $onDrop(_w, pos, aim) {
-        this.$save(x => { let item = x.get_item(pos).copy(); x.remove(pos); x.insert(aim, item); });
-    }
-
-    $onToggle(_w, pos) {
-        this.$save(x => x.get_item(pos).toggle());
-    }
-
-    $onRemove(_w, pos) {
-        this.$save(x => x.remove(pos));
     }
 }
 

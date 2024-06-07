@@ -162,7 +162,7 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
 class ColorMenu extends PopupMenu.PopupMenu {
     constructor(color) {
         let source = Main.layoutManager.dummyCursor;
-        super(source, 0, St.Side.TOP);
+        super(source, 0.1, St.Side.LEFT);
         this.$color = color;
         this.$formats = array(color.formats.length).slice(Preset.length);
         this.$manager = new PopupMenu.PopupMenuManager(source);
@@ -538,7 +538,8 @@ class ColorButton extends Systray {
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
             prefs:  new IconItem({
                 pick: [param, () => { this.menu.close(); this.$callback(); }, 'find-location-symbolic'],
-                star: [param, () => this.$set.set('menuStyle', !this.menuStyle, this), [this.menuStyle, 'semi-starred-symbolic', 'starred-symbolic']],
+                star: [{visible: this.menuSize > 0, ...param}, () => this.$set.set('menuStyle', !this.menuStyle, this),
+                    [this.menuStyle, 'semi-starred-symbolic', 'starred-symbolic']],
                 gear: [param, () => { this.menu.close(); myself().openPreferences(); }, 'emblem-system-symbolic'],
             }),
         };
@@ -548,7 +549,7 @@ class ColorButton extends Systray {
 
     $bindSettings(set) {
         this.$set = set.attach({
-            menuSize:  [Field.MSIZ, 'uint'],
+            menuSize:  [Field.MSIZ, 'uint', x => this.$menu.prefs?.viewIcon('star', x > 0)],
             iconName:  [Field.TICN, 'string',  x => this.$icon.set_icon_name(x || 'color-select-symbolic')],
         }, this).attach({
             collect:   [Field.CLCT, 'value', x => x.deepUnpack()],

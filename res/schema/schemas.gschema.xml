@@ -30,7 +30,7 @@
             <summary>enable preview</summary>
         </key>
         <key type="b" name="enable-format">
-            <default>true</default>
+            <default>false</default>
             <summary>enable default format</summary>
         </key>
         <key type="b" name="format-menu">
@@ -102,7 +102,7 @@
             <summary>notify sound - (0 - screenshot, 1 - complete)</summary>
         </key>
         <key type="u" name="menu-size">
-            <range min="1" max="16"/>
+            <range min="0" max="16"/>
             <default>8</default>
             <summary>menu item size</summary>
         </key>
