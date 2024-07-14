@@ -1,0 +1,307 @@
+# Chinese translations for gnome-shell-extension-color-picker package
+# Traditional Chinese translation for gnome-shell-extension-color-picker.
+# Copyright (C) 2024 THE gnome-shell-extension-color-picker'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-color-picker package.
+# Automatically generated, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extension-color-picker\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-07-13 20:10+0800\n"
+"PO-Revision-Date: 2024-07-13 20:10+0800\n"
+"Last-Translator: Peter Dave Hello <hsu@peterdavehello.org>\n"
+"Language-Team: none\n"
+"Language: zh_TW\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/ui.js:339
+msgid "All"
+msgstr "全部"
+
+#: src/ui.js:339
+msgid "Normal"
+msgstr "一般"
+
+#: src/ui.js:339
+msgid "Symbolic"
+msgstr "符號"
+
+#: src/ui.js:378
+msgid "Clear"
+msgstr "清除"
+
+#: src/ui.js:476
+msgid "Mismatched filetype"
+msgstr "檔案類型不符"
+
+#: src/ui.js:612
+msgid "Click or press ENTER to commit changes"
+msgstr "點選或按 ENTER 鍵送出變更"
+
+#: src/prefs.js:23
+msgid "(Key)"
+msgstr "（鍵）"
+
+#: src/prefs.js:32
+msgid "Press any key."
+msgstr "請按任意鍵。"
+
+#: src/prefs.js:68
+msgid "MSG"
+msgstr "訊息"
+
+#: src/prefs.js:68
+msgid "OSD"
+msgstr "螢幕顯示"
+
+#: src/prefs.js:69
+msgid "History size"
+msgstr "歷史記錄大小"
+
+#: src/prefs.js:70
+msgid "Systray icon"
+msgstr "系統工具列圖示"
+
+#: src/prefs.js:71
+msgid "Screenshot"
+msgstr "螢幕截圖"
+
+#: src/prefs.js:71
+msgid "Complete"
+msgstr "完成"
+
+#: src/prefs.js:71
+msgid "Sound effect"
+msgstr "音效"
+
+#: src/prefs.js:72
+msgid "Lens"
+msgstr "放大鏡"
+
+#: src/prefs.js:72
+msgid "Label"
+msgstr "標籤"
+
+#: src/prefs.js:72
+msgid "Scroll or press Shift key to toggle when picking"
+msgstr "選取時捲動或按 Shift 鍵切換"
+
+#: src/prefs.js:80
+msgid "Automatically copy"
+msgstr "自動複製"
+
+#: src/prefs.js:80
+msgid "Copy the color to clipboard after picking"
+msgstr "選取後將顏色複製到剪貼簿"
+
+#: src/prefs.js:81 src/extension.js:649
+msgid "Default format"
+msgstr "預設格式"
+
+#: src/prefs.js:81
+msgid "Also apply to the first Format menu item"
+msgstr "也適用於第一個格式選單項目"
+
+#: src/prefs.js:82
+msgid "Enable systray"
+msgstr "啟用系統工具列"
+
+#: src/prefs.js:82
+msgid "Right click to open menu"
+msgstr "右鍵點選以開啟選單"
+
+#: src/prefs.js:83
+msgid "Enable shortcut"
+msgstr "啟用快捷鍵"
+
+#: src/prefs.js:83
+msgid "Left click or press Enter / Space key to pick"
+msgstr "左鍵點選或按 Enter / Space 鍵進行選取"
+
+#: src/prefs.js:84
+msgid "Format menu"
+msgstr "格式選單"
+
+#: src/prefs.js:84
+msgid "Middle click or press Menu key to open"
+msgstr "中鍵點選或按選單鍵以開啟"
+
+#: src/prefs.js:85
+msgid "Persistent mode"
+msgstr "持續模式"
+
+#: src/prefs.js:85
+msgid "Right click or press Esc key to quit"
+msgstr "右鍵點選或按 Esc 鍵以結束"
+
+#: src/prefs.js:86
+msgid "Preview style"
+msgstr "預覽樣式"
+
+#: src/prefs.js:86
+msgid ""
+"Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to "
+"accelerate"
+msgstr "按方向鍵 / wasd / hjkl 以畫素為單位移動，按住 Ctrl 鍵可加速"
+
+#: src/prefs.js:87
+msgid "Notification style"
+msgstr "通知樣式"
+
+#: src/prefs.js:87
+msgid "Notify the color after picking"
+msgstr "選取後通知顏色"
+
+#: src/prefs.js:88
+msgid "Notification sound"
+msgstr "通知音效"
+
+#: src/prefs.js:88
+msgid "Play the sound after picking"
+msgstr "選取後播放音效"
+
+#: src/prefs.js:103 src/prefs.js:109 src/prefs.js:141
+msgid "New Color Format"
+msgstr "新增顏色格式"
+
+#: src/prefs.js:113
+msgid "Name"
+msgstr "名稱"
+
+#: src/prefs.js:113 src/prefs.js:325
+msgid "Format"
+msgstr "格式"
+
+#: src/prefs.js:117
+msgid "The following parameters can be used:"
+msgstr "可使用以下參數："
+
+#: src/prefs.js:118
+msgid "The color values can be formatted with (optional tailing precision):"
+msgstr "顏色值可以格式化為（可選的小數位數）："
+
+#: src/prefs.js:119
+msgid ""
+"i.e. <b>%Blf3</b> means the normalized blue value accurate to 3 decimal "
+"places."
+msgstr "即 <b>%Blf3</b> 表示標準化藍色值精確到小數點後三位。"
+
+#: src/prefs.js:228
+msgid "Custom"
+msgstr "自訂"
+
+#: src/prefs.js:294
+msgid "Preset"
+msgstr "預設"
+
+#: src/prefs.js:324
+msgid "Basic"
+msgstr "基本"
+
+#: src/extension.js:200
+msgid "Others"
+msgstr "其他"
+
+#: src/extension.js:672
+msgid "Color picked"
+msgstr "顏色已選取"
+
+#: src/extension.js:680
+#, javascript-format
+msgid "%s is picked."
+msgstr "%s 已選取。"
+
+#: src/color.js:108
+msgid "red"
+msgstr "紅色"
+
+#: src/color.js:109
+msgid "green"
+msgstr "綠色"
+
+#: src/color.js:110
+msgid "blue"
+msgstr "藍色"
+
+#: src/color.js:111
+msgid "alpha"
+msgstr "透明度"
+
+#: src/color.js:115 src/color.js:122
+msgid "hue"
+msgstr "色調"
+
+#: src/color.js:116 src/color.js:118
+msgid "saturation"
+msgstr "飽和度"
+
+#: src/color.js:117 src/color.js:120
+msgid "lightness"
+msgstr "亮度"
+
+#: src/color.js:119
+msgid "value"
+msgstr "值"
+
+#: src/color.js:121
+msgid "chroma"
+msgstr "彩度"
+
+#: src/color.js:123
+msgid "chroma A"
+msgstr "彩度 A"
+
+#: src/color.js:124
+msgid "chroma B"
+msgstr "彩度 B"
+
+#: src/color.js:125
+msgid "cyan"
+msgstr "青色"
+
+#: src/color.js:126
+msgid "magenta"
+msgstr "洋紅色"
+
+#: src/color.js:127
+msgid "yellow"
+msgstr "黃色"
+
+#: src/color.js:128
+msgid "black"
+msgstr "黑色"
+
+#: src/color.js:132
+msgid "hex lowercase 2 digits"
+msgstr "十六進位小寫兩位數"
+
+#: src/color.js:133
+msgid "hex uppercase 2 digits"
+msgstr "十六進位大寫兩位數"
+
+#: src/color.js:134
+msgid "hex lowercase 1 digit"
+msgstr "十六進位小寫一位數"
+
+#: src/color.js:135
+msgid "hex uppercase 1 digit"
+msgstr "十六進位大寫一位數"
+
+#: src/color.js:136
+msgid "float with leading zero"
+msgstr "包含前置零的浮點數"
+
+#: src/color.js:137
+msgid "float without leading zero"
+msgstr "不包含前置零的浮點數"
+
+#: src/color.js:138
+msgid "number value (original)"
+msgstr "數值（原始）"
+
+#: src/color.js:139
+msgid "percent value"
+msgstr "百分比值"
