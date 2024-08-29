@@ -3,7 +3,7 @@
 $pfx: 'color-picker';
 
 @function tone($color, $percent: 10%, $reverse: true){
-    @return if($variant==if($reverse, 'light', 'dark'), darken($color, $percent), lighten($color, $percent))
+    @return if($variant==if($reverse, 'light', 'dark'), st-darken($color, $percent), st-lighten($color, $percent))
 }
 
 .#{$pfx}-label {
@@ -21,16 +21,16 @@ $pfx: 'color-picker';
 }
 
 .#{$pfx}-systray:state-busy {
-    color: tone($selected_bg_color);
+    color: tone(-st-accent-color);
 }
 
 .#{$pfx}-item-label {
     font-family: monospace;
-    &:focus { outline: 0.15em solid transparentize($selected_bg_color, 0.3); }
+    &:focus { outline: 0.15em solid st-transparentize(-st-accent-color, 0.3); }
 }
 
 .#{$pfx}-icon {
     padding: 0 0.15em;
-    &:hover { color: tone($selected_bg_color, 5%); }
-    &:focus { outline: 0.15em solid transparentize($selected_bg_color, 0.3); }
+    &:hover { color: tone(-st-accent-color, 5%); }
+    &:focus { outline: 0.15em solid st-transparentize(-st-accent-color, 0.3); }
 }

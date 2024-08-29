@@ -1,11 +1,10 @@
 # color-picker
 
 Simple color picker for GNOME Shell.
-> 春水碧于天，画船听雨眠。 —— *韦庄《菩萨蛮》*<br>
+> 春水碧于天，画船听雨眠。 —— *韦庄《菩萨蛮》*\
 [![license]](/LICENSE.md)
-</br>
 
-![color-picker-menu](https://user-images.githubusercontent.com/17917040/229520114-8e023786-fe8a-47bc-952e-263b8bf20b69.png)
+![color-picker-menu](https://github.com/user-attachments/assets/46718c65-42e5-4445-8cab-be26d8d75e55)
 
 ## Installation
 
@@ -19,7 +18,7 @@ meson setup build && meson install -C build
 # meson setup build -Dtarget=system && meson install -C build # system-wide, default --prefix=/usr/local
 ```
 
-For older versions (< 44), it's recommended to install via:
+For older versions, it's recommended to install via:
 
 ### E.G.O
 
@@ -27,7 +26,7 @@ For older versions (< 44), it's recommended to install via:
 
 ## Features
 
-![cppref](https://user-images.githubusercontent.com/17917040/155882315-739d0ec7-9947-49a8-a58c-31475feafdc6.png)
+![cppref](https://github.com/user-attachments/assets/f3e60e8d-de9b-40e2-8fae-1a5b54f75026)
 
 ### DBus
 

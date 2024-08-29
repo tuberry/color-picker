@@ -12,7 +12,7 @@ import * as Gettext from 'gettext';
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {Field} from './const.js';
-import {BIND, fopen, omap, noop, fquery, hook, vmap} from './util.js';
+import {BIND, fopen, omap, noop, fquery, hook, string} from './util.js';
 
 Gio._promisify(Gtk.FileDialog.prototype, 'open');
 Gio._promisify(Gtk.FileDialog.prototype, 'select_folder');
@@ -54,10 +54,6 @@ export class Broker {
 
     static detach(tracker, ...args) {
         args.forEach(x => this.#get(tracker, x, this.#hooks).splice(0).forEach(y => x.disconnect(y)));
-    }
-
-    static race(emitter, hooks) {
-        this.attach(emitter, emitter, vmap(hooks, f => (...xs) => { f(...xs); this.detach(emitter, emitter); }));
     }
 }
 
@@ -116,6 +112,10 @@ export class Check extends Gtk.CheckButton {
         GObject.registerClass(vprop('boolean', false), this);
     }
 
+    static mock() {
+        return new Gtk.CheckButton({inconsistent: true, sensitive: false});
+    }
+
     constructor(param) {
         super(param);
         this.bind_property('active', this, 'value', BIND);
@@ -145,18 +145,6 @@ export class Font extends Gtk.FontDialogButton {
     }
 }
 
-export class Color extends Gtk.ColorDialogButton {
-    static {
-        GObject.registerClass(vprop('string', ''), this);
-    }
-
-    constructor(param) {
-        super({tooltipText: param?.title ?? '', valign: Gtk.Align.CENTER, dialog: new Gtk.ColorDialog(param)});
-        this.bind_property_full('value', this, 'rgba', BIND, (_b, v) =>
-            (color => [color.parse(v), color])(new Gdk.RGBA()), (_b, v) => [true, v.to_string()]);
-    }
-}
-
 export class IconLabel extends Gtk.Box {
     static {
         GObject.registerClass(this);
@@ -178,7 +166,7 @@ export class IconLabel extends Gtk.Box {
     }
 }
 
-export class DialogBase extends Adw.Window {
+export class DialogBase extends Adw.Dialog {
     static {
         GObject.registerClass({
             Signals: {
@@ -188,13 +176,15 @@ export class DialogBase extends Adw.Window {
     }
 
     constructor(title, opt, param) {
-        super({title, modal: true, hideOnClose: true, widthRequest: 360, heightRequest: 320, ...param});
+        super({title, contentWidth: 360, contentHeight: 320, ...param});
+        this.connect('selected', (_d, value) => this.$chosen?.resolve(value));
+        this.connect('closed', () => this.$chosen?.reject(Error('cancelled')));
         this.$buildContent(opt);
     }
 
     $buildContent(opt) {
         let {content, filter, title} = this.$buildWidgets(opt),
-            eck = hook({'key-pressed': this.$onKeyPress.bind(this)}, new Gtk.EventControllerKey()),
+            eck = hook({'key-pressed': (...xs) => this.$onKeyPress(...xs)}, new Gtk.EventControllerKey()),
             close = hook({clicked: () => this.close()}, Gtk.Button.new_with_mnemonic(_GTK('_Cancel'))),
             select = hook({clicked: () => this.$onSelect()}, Gtk.Button.new_with_mnemonic(_GTK('_OK'))),
             header = new Adw.HeaderBar({showEndTitleButtons: false, showStartTitleButtons: false, titleWidget: title || null});
@@ -210,10 +200,10 @@ export class DialogBase extends Adw.Window {
             search = new Gtk.SearchBar({showCloseButton: false, child: entry, keyCaptureWidget: this});
             search.connect_entry(entry);
             button.bind_property('active', search, 'search-mode-enabled', BIND);
-            this.connect('close-request', () => { button.set_active(false); content.scroll_to(0, Gtk.ListScrollFlags.FOCUS, null); });
+            this.connect('closed', () => { button.set_active(false); content.scroll_to(0, Gtk.ListScrollFlags.FOCUS, null); });
             header.pack_end(button);
         }
-        this.set_content(new Box([header, search, new Gtk.ScrolledWindow({child: content})],
+        this.set_child(new Box([header, search, new Gtk.ScrolledWindow({child: content})],
             {orientation: Gtk.Orientation.VERTICAL, valign: Gtk.Align.FILL}, false));
     }
 
@@ -233,13 +223,10 @@ export class DialogBase extends Adw.Window {
     }
 
     choose_sth(root, initial) {
+        this.$chosen = Promise.withResolvers();
         this.initSelected?.(initial);
-        if(this.transient_for !== root) this.set_transient_for(root);
-        this.present();
-        return new Promise((resolve, reject) => Broker.race(this, {
-            selected: (_d, value) => resolve(value),
-            close_request: () => reject(Error('cancelled')),
-        }));
+        this.present(root);
+        return this.$chosen.promise;
     }
 }
 
@@ -269,27 +256,6 @@ export class AppDialog extends DialogBase {
 }
 
 export class KeysDialog extends DialogBase {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(opt, param) {
-        super('', opt, param);
-    }
-
-    $buildContent({title}) {
-        this.set_content(new Adw.StatusPage({iconName: 'preferences-desktop-keyboard-symbolic', title}));
-        this.add_controller(hook({'key-pressed': this.$onKeyPress.bind(this)}, new Gtk.EventControllerKey()));
-    }
-
-    $onKeyPress(_w, keyval, keycode, state) {
-        let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
-        if(!mask && keyval === Gdk.KEY_Escape) return this.close();
-        if(keyval === Gdk.KEY_BackSpace) return this.$onSelect('');
-        if(!KeysDialog.isValidBinding(mask, keycode, keyval) || !KeysDialog.isValidAccel(mask, keyval)) return;
-        this.$onSelect(Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
-    }
-
     static keyvalIsForbidden(keyval) {
         return [Gdk.KEY_Home, Gdk.KEY_Left, Gdk.KEY_Up, Gdk.KEY_Right, Gdk.KEY_Down, Gdk.KEY_Page_Up,
             Gdk.KEY_Page_Down, Gdk.KEY_End, Gdk.KEY_Tab, Gdk.KEY_KP_Enter, Gdk.KEY_Return, Gdk.KEY_Mode_switch].includes(keyval);
@@ -315,6 +281,30 @@ export class KeysDialog extends DialogBase {
     static isValidAccel(mask, keyval) {
         return Gtk.accelerator_valid(keyval, mask) || (keyval === Gdk.KEY_Tab && mask !== 0);
     }
+
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(opt, param) {
+        super('', opt, param);
+    }
+
+    $buildContent({title}) {
+        this.set_child(new Adw.StatusPage({iconName: 'preferences-desktop-keyboard-symbolic', title}));
+        this.add_controller(hook({'key-pressed': (...xs) => this.$onKeyPress(...xs)}, new Gtk.EventControllerKey()));
+    }
+
+    $onKeyPress(_w, keyval, keycode, state) {
+        let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
+        if(!mask && keyval === Gdk.KEY_Escape) return this.close();
+        if(keyval === Gdk.KEY_BackSpace) return this.$onSelect('');
+        if(this.$validate(mask, keyval, keycode)) this.$onSelect(Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
+    }
+
+    $validate(mask, keyval, keycode) {
+        return KeysDialog.isValidAccel(mask, keyval) && KeysDialog.isValidBinding(mask, keycode, keyval);
+    }
 }
 
 class IconDialog extends DialogBase {
@@ -333,7 +323,7 @@ class IconDialog extends DialogBase {
     $buildWidgets(opt) {
         let factory = hook({
                 setup: (_f, x) => x.set_child(new Gtk.Image({iconSize: Gtk.IconSize.LARGE})),
-                bind: (_f, {child, item: {string}}) => { child.iconName = child.tooltipText = string; },
+                bind: (_f, {child, item}) => { child.iconName = child.tooltipText = item.string; },
             }, new Gtk.SignalListItemFactory()),
             filter = new Gtk.EveryFilter(),
             title = new Drop([_('All'), _('Normal'), _('Symbolic')]),
@@ -379,8 +369,8 @@ export class DialogButtonBase extends Box {
     }
 
     $buildDND(gtype) {
-        this.$btn.add_controller(hook({drop: this.$onDrop.bind(this)}, Gtk.DropTarget.new(gtype, Gdk.DragAction.COPY)));
-        this.$btn.add_controller(hook({prepare: this.$onDrag.bind(this)}, new Gtk.DragSource({actions: Gdk.DragAction.COPY})));
+        this.$btn.add_controller(hook({drop: (...xs) => this.$onDrop(...xs)}, Gtk.DropTarget.new(gtype, Gdk.DragAction.COPY)));
+        this.$btn.add_controller(hook({prepare: (...xs) => this.$onDrag(...xs)}, new Gtk.DragSource({actions: Gdk.DragAction.COPY})));
     }
 
     $onDrag(src) {
@@ -389,8 +379,8 @@ export class DialogButtonBase extends Box {
         return Gdk.ContentProvider.new_for_value(this.$gvalue);
     }
 
-    $onDrop(_t, v) {
-        this.value = v;
+    $onDrop(_t, value) {
+        this.value = value;
     }
 
     get dlg() {
@@ -405,13 +395,13 @@ export class DialogButtonBase extends Box {
         return this.$gvalue?.equal(gvalue);
     }
 
-    $setValue(v) {
-        this.$value = v;
+    $setValue(value) {
+        this.$value = value;
     }
 
-    set value(v) {
-        if(typeof v === 'string' ? this.$value === v : this.$checkGvalue(v)) return;
-        this.$setValue(v);
+    set value(value) {
+        if(string(value) ? this.$value === value : this.$checkGvalue(value)) return;
+        this.$setValue(value);
         this.notify('value');
     }
 
@@ -433,10 +423,10 @@ export class App extends DialogButtonBase {
         super(opt, param, new IconLabel('application-x-executable-symbolic'), Gio.DesktopAppInfo.$gtype, true);
     }
 
-    $setValue(v) {
-        let type = typeof v === 'string';
-        this.$gvalue = type ? Gio.DesktopAppInfo.new(v) : v;
-        this.$value = type ? v : v.get_id();
+    $setValue(value) {
+        let type = string(value);
+        this.$gvalue = type ? Gio.DesktopAppInfo.new(value) : value;
+        this.$value = type ? value : value.get_id();
         if(this.$gvalue) this.$btn.child.setContent(this.$gvalue.get_icon(), this.$gvalue.get_display_name());
         else this.$btn.child.setContent();
     }
@@ -478,12 +468,12 @@ export class File extends DialogButtonBase {
         }
     }
 
-    $setValue(v) {
-        let type = typeof v === 'string';
-        this.$gvalue = type ? fopen(v) : v;
-        this.$value = type ? v : v.get_path() ?? '';
+    $setValue(value) {
+        let type = string(value);
+        this.$gvalue = type ? fopen(value) : value;
+        this.$value = type ? value : value.get_path() ?? '';
         fquery(this.$gvalue, Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME, Gio.FILE_ATTRIBUTE_STANDARD_ICON)
-            .then(x => this.$setContent(this.$value, x.get_icon(), x.get_display_name())).catch(() => this.$setContent(v));
+            .then(x => this.$setContent(this.$value, x.get_icon(), x.get_display_name())).catch(() => this.$setContent(value));
     }
 
     $onClick() {
@@ -511,10 +501,10 @@ export class Icon extends DialogButtonBase {
             .lookup_by_gicon(this.$gvalue, 32, 1, Gtk.TextDirection.NONE, Gtk.IconLookupFlags.FORCE_SVG);
     }
 
-    $setValue(v) {
-        let type = typeof v === 'string';
-        this.$gvalue = type ? Gio.ThemedIcon.new(v) : v;
-        this.$value = type ? v : v.to_string();
+    $setValue(value) {
+        let type = string(value);
+        this.$gvalue = type ? Gio.ThemedIcon.new(value) : value;
+        this.$value = type ? value : value.to_string();
         if(this.$gvalue) this.$btn.child.setContent(this.$value, this.$value.replace(/-symbolic$/, ''));
         else this.$btn.child.setContent();
     }
@@ -536,9 +526,9 @@ export class Keys extends DialogButtonBase {
         this.$setShortcut = x => gset.set_strv(key, [x]);
     }
 
-    $setValue(v) {
-        this.$value = v;
-        this.$setShortcut?.(v);
+    $setValue(value) {
+        this.$value = value;
+        this.$setShortcut?.(value);
         this.$btn.child.set_accelerator(this.$value);
     }
 
@@ -566,68 +556,54 @@ export class PrefRow extends Adw.ActionRow {
 
     constructor(...args) {
         super();
-        if(Array.isArray(args[0])) {
-            let [title, ...suffix] = args;
-            if(title.length) this.set_title(title[0]), this.set_subtitle(title[1] || '');
-            if(suffix.length) suffix.forEach(x => this.add_suffix(x)), this.set_activatable_widget(suffix[0]);
-        } else {
-            let [prefix, title, ...suffix] = args;
-            if(title.length) this.set_title(title[0]), this.set_subtitle(title[1] || '');
-            this.add_prefix(prefix);
-            if(prefix instanceof Gtk.CheckButton) {
-                this.set_activatable_widget(prefix);
-                if(suffix.length) {
-                    suffix.forEach(x => {
-                        this.add_suffix(x);
-                        prefix.bind_property('active', x, 'sensitive', GObject.BindingFlags.DEFAULT);
-                        x.set_sensitive(prefix.active);
-                    });
-                }
-            } else if(suffix.length) {
-                suffix.forEach(x => this.add_suffix(x));
-                this.set_activatable_widget(suffix[0]);
-            }
+        let [prefix, [title, subtitle], ...suffix] = Array.isArray(args[0]) ? [null, ...args] : args;
+        if(title) this.set_title(title);
+        if(subtitle) this.set_subtitle(subtitle);
+        if(prefix) this.add_prefix(prefix);
+        if(prefix instanceof Gtk.CheckButton && prefix.sensitive) {
+            this.set_activatable_widget(prefix);
+            suffix.forEach(x => {
+                this.add_suffix(x);
+                prefix.bind_property('active', x, 'sensitive', GObject.BindingFlags.SYNC_CREATE);
+            });
+        } else if(suffix.length) {
+            suffix.forEach(x => this.add_suffix(x));
+            this.set_activatable_widget(suffix.find(x => !(x instanceof Gtk.MenuButton)) ?? null);
         }
     }
 }
 
-export class LazyEntry extends Gtk.Stack {
+export class Entry extends Gtk.Stack {
     static {
         GObject.registerClass(vprop('string', ''), this);
     }
 
-    constructor(placeholder, tooltip, param) {
+    constructor(placeholder, open, tooltip, param) {
         super({valign: Gtk.Align.CENTER, hhomogeneous: true, ...param});
-        this.$buildWidgets(placeholder, tooltip);
-        this.value = '';
+        this.$buildWidgets(placeholder, open, tooltip);
     }
 
-    $buildWidgets(placeholderText = '', tooltipText = '') {
-        this.$label = new Gtk.Entry({hexpand: true, sensitive: false, placeholderText});
-        this.$entry = hook({activate: () => { this.value = this.$entry.get_text(); }},
-            new Gtk.Entry({hexpand: true, enableUndo: true, placeholderText}));
-        this.$edit = hook({clicked: () => { this.$entry.set_text(this.value); this.set_visible_child_name('entry'); }},
-            new Gtk.Button({iconName: 'document-edit-symbolic', tooltipText}));
-        this.$done = hook({clicked: () => { this.value = this.$entry.get_text(); }},
-            new Gtk.Button({iconName: 'object-select-symbolic', tooltipText: _('Click or press ENTER to commit changes')}));
-        this.add_named(new Box([this.$label, this.$edit], {hexpand: true}), 'label');
-        this.add_named(new Box([this.$entry, this.$done], {hexpand: true}), 'entry');
-        this.$done.add_css_class('suggested-action');
-    }
-
-    set value(value) {
-        if(this.value !== value) {
-            this.$label.set_text(this.$value = value);
-            this.notify('value');
-        }
-        this.set_visible_child_name('label');
-    }
-
-    get value() {
-        return this.$value;
+    $buildWidgets(placeholderText = '', open, tooltipText = '') {
+        let label = new Gtk.Entry({hexpand: true, sensitive: false, placeholderText}),
+            apply = w => { label.set_text(w.text); this.set_visible_child(label.parent); },
+            entry = open ? hook({
+                activate: w => apply(w),
+                'icon-press': w => new Gtk.FileDialog({modal: true}).open(this.get_root(), null).then(x => w.set_text(x.get_path())).catch(noop),
+            }, new Gtk.Entry({hexpand: true, enableUndo: true, secondaryIconName: 'document-open-symbolic', placeholderText}))
+                : hook({activate: w => apply(w)}, new Gtk.Entry({hexpand: true, enableUndo: true, placeholderText})),
+            edit = hook({clicked: () => { entry.set_text(label.text); entry.grab_focus(); this.set_visible_child(entry.parent); }},
+                new Gtk.Button({iconName: 'document-edit-symbolic', tooltipText})),
+            done = hook({clicked: () => apply(entry)}, new Gtk.Button({
+                cssClasses: ['suggested-action'],
+                iconName: 'object-select-symbolic',
+                tooltipText: _('Click or press ENTER to apply changes'),
+            }));
+        [[label, edit], [entry, done]].forEach(x => this.add_child(new Box(x, {hexpand: true})));
+        this.$toggle = () => this.get_visible_child() === edit.parent ? edit.activate() : done.activate();
+        this.bind_property('value', label, 'text', BIND);
     }
 
     vfunc_mnemonic_activate() {
-        this.get_visible_child_name() === 'label' ? this.$edit.activate() : this.$done.activate();
+        this.$toggle();
     }
 }

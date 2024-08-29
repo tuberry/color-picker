@@ -23,18 +23,13 @@ class Key extends UI.DialogButtonBase {
         super(opt, param, new Gtk.ShortcutLabel({disabledText: _('(Key)')}), null, true);
     }
 
-    $setValue(v) {
-        this.$value = v;
-        this.$btn.child.set_accelerator(this.$value);
+    $setValue(value) {
+        this.$btn.child.set_accelerator(this.$value = value);
     }
 
     $genDialog(opt) {
         let key = new UI.KeysDialog({title: _('Press any key.'), ...opt});
-        key.$onKeyPress = (_w, keyval, keycode, state) => {
-            let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
-            if(!mask && keyval === Gdk.KEY_Escape) return key.close();
-            key.$onSelect(Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
-        };
+        key.$validate = () => true;
         return key;
     }
 }
@@ -124,24 +119,6 @@ class FormatDialog extends UI.DialogBase {
     }
 }
 
-// FIXME: ButtonRow - https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.ButtonRow.html
-class NewFormatRow extends Gtk.ListBoxRow {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor() {
-        super({
-            actionName: 'format.add',
-            child: new Gtk.Image({
-                iconName: 'list-add-symbolic', pixelSize: 16, hexpand: true,
-                marginTop: 16, marginBottom: 16, marginStart: 16, marginEnd: 16,
-            }),
-        });
-        this.update_property([Gtk.AccessibleProperty.LABEL], [_('New Color Format')]);
-    }
-}
-
 class FormatItem extends GObject.Object {
     static {
         GObject.registerClass({
@@ -158,7 +135,6 @@ class FormatItem extends GObject.Object {
         this.set(fmt);
         this.toggle = () => { this.enable = !this.enable; };
         this.dump = () => (({enable, name, format}) => ({enable, name, format}))(this);
-        this.copy = () => new FormatItem(this.dump());
     }
 }
 
@@ -176,7 +152,7 @@ class FormatRow extends Adw.ActionRow {
 
     constructor(item) {
         super();
-        let handle = new Gtk.Image({iconName: 'list-drag-handle-symbolic', cssClasses: ['drag-handle']}),
+        let handle = new Gtk.Image({iconName: 'list-drag-handle-symbolic', cssClasses: ['dim-label']}),
             toggle = hook({toggled: () => this.emit('toggled', this.get_index())}, new Gtk.CheckButton({active: item.enable})),
             change = hook({clicked: () => this.emit('changed', this.get_index())},
                 new Gtk.Button({iconName: 'document-edit-symbolic', hasFrame: false, valign: Gtk.Align.CENTER})),
@@ -198,12 +174,12 @@ class FormatRow extends Adw.ActionRow {
             },
             drag_begin: (_s, drag) => {
                 let {width: widthRequest, height: heightRequest} = this.get_allocation(),
-                    box = new Gtk.ListBox({widthRequest, heightRequest}),
+                    box = new Gtk.ListBox({widthRequest, heightRequest, cssClasses: ['boxed-list']}),
                     row = new FormatRow(item);
                 box.append(row);
                 box.drag_highlight_row(row);
                 Gtk.DragIcon.get_for_drag(drag).set_child(box);
-                drag.set_hotspot(this.$dragX, this.$dragY);
+                drag.set_hotspot(this.$dragX, this.$dragY); // FIXME: not working since GNOME 47, see Settings/IME source list
             },
         }, new Gtk.DragSource({actions: Gdk.DragAction.MOVE})));
         this.add_controller(hook({
@@ -221,14 +197,13 @@ class FormatRow extends Adw.ActionRow {
 class FormatList extends Adw.PreferencesGroup {
     static {
         GObject.registerClass(this);
-        this.install_action('format.add', null, self => self.$onAdd());
     }
 
     constructor(gset) {
         super({title: _('Custom')});
         this.$fmts = new Gio.ListStore({itemType: FormatItem});
         this.$fmts.splice(0, 0, gset.get_value(Field.CFMT).recursiveUnpack().map(x => new FormatItem(x)));
-        this.$save = func => { func(this.$fmts); gset.set_value(Field.CFMT, pickle([...this.$fmts].map(x => x.dump()), false)); };
+        this.$save = f => { f(this.$fmts); gset.set_value(Field.CFMT, pickle([...this.$fmts].map(x => x.dump()), false)); };
         let neo = new Gio.ListStore({itemType: GObject.Object}),
             store = new Gio.ListStore({itemType: Gio.ListStore}),
             model = new Gtk.FlattenListModel({model: store}),
@@ -240,7 +215,9 @@ class FormatList extends Adw.PreferencesGroup {
             dropped: (_w, p, a) => this.$save(x => { let item = x.get_item(p); x.remove(p); x.insert(a, item); }),
             removed: (_w, p) => this.$save(x => { let item = x.get_item(p); x.remove(p); this.$toastRemove(item); }),
             changed: (_w, p) => this.dlg.choose_sth(this.get_root(), this.$fmts.get_item(p)).then(x => this.$save(y => y.get_item(p).set(JSON.parse(x)))).catch(noop),
-        }, new FormatRow(r)) : new NewFormatRow());
+        }, new FormatRow(r)) : hook({
+            activated: () => this.dlg.choose_sth(this.get_root()).then(x => this.$save(y => y.append(new FormatItem({enable: true, ...JSON.parse(x)})))).catch(noop),
+        }, new Adw.ButtonRow({title: _('New Color Format'), startIconName: 'list-add-symbolic'})));
         this.add(list);
     }
 
@@ -251,10 +228,6 @@ class FormatList extends Adw.PreferencesGroup {
     $toastRemove(item) {
         this.get_root().add_toast(hook({'button-clicked': () => this.$save(x => x.append(new FormatItem(item)))},
             new Adw.Toast({title: _('Format %s has been removed').format(item.name ?? ''), buttonLabel: _GTK('_Undo')})));
-    }
-
-    $onAdd() {
-        this.dlg.choose_sth(this.get_root()).then(x => this.$save(y => y.append(new FormatItem({enable: true, ...JSON.parse(x)})))).catch(noop);
     }
 }
 

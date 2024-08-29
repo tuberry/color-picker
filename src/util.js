@@ -24,6 +24,7 @@ export const noop = () => {};
 export const seq = (f, x) => (f(x), x);
 export const xnor = (x, y) => !x === !y;
 export const Y = f => (...xs) => f(Y(f))(...xs); // Y combinator
+export const string = x => x?.constructor === String;
 export const decode = x => new TextDecoder().decode(x);
 export const encode = x => new TextEncoder().encode(x);
 export const vmap = (o, f) => omap(o, ([k, v]) => [[k, f(v)]]);

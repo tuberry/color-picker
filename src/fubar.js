@@ -14,7 +14,7 @@ import {loadInterfaceXML} from 'resource:///org/gnome/shell/misc/fileUtils.js';
 import {TransientSignalHolder} from 'resource:///org/gnome/shell/misc/signalTracker.js';
 import {Extension as ExtensionBase, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {has, seq, xnor, fopen, hook} from './util.js';
+import {has, seq, xnor, fopen, hook, string} from './util.js';
 
 const ruin = o => o?.destroy();
 const raise = x => { throw Error(x); };// NOTE: https://github.com/tc39/proposal-throw-expressions#todo
@@ -24,7 +24,7 @@ const onus = o => [o, o[hub]].find(x => GObject.type_is_a(x, GObject.Object) && 
 export {_};
 export const hub = Symbol('Hidden Unique Binder');
 export const myself = () => Extension.lookupByURL(import.meta.url); // NOTE: https://github.com/tc39/proposal-json-modules
-export const debug = (...xs) => console.debug(`[${myself().uuid}]`, ...xs); // NOTE:see https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/491
+export const debug = (...xs) => console.debug(`[${myself().uuid}]`, ...xs); // NOTE: see https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/491
 export const omit = (o, ...ks) => ks.forEach(k => { ruin(o[k]); delete o[k]; });
 export const extent = x => [...x.get_transformed_position(), ...x.get_transformed_size()];
 export const view = (v, ...ws) => ws.forEach(w => { if(w && v ^ w.visible) v ? w.show() : w.hide(); }); // NOTE: https://github.com/tc39/proposal-optional-chaining-assignment
@@ -150,7 +150,7 @@ export class Setting {
     #map = new WeakMap();
 
     constructor(prop, gset, ...args) {
-        this.gset = typeof gset === 'string' ? new Gio.Settings({schema: gset}) : gset;
+        this.gset = string(gset) ? new Gio.Settings({schema: gset}) : gset;
         if(prop) this.attach(prop, ...args);
     }
 

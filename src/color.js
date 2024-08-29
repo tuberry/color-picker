@@ -6,9 +6,9 @@ import {id, array} from './util.js';
 const Grey = 0.569; // L in OKLab <=> 18% grey #777777
 
 const _ = id; // HACK: workaround for gettext
-const number = (x, n, r) => n === undefined ? x : Number(x.toFixed(n)).toString(r);
-const percent = (x, n) => `${number(x * 100, n)}%`;
-const hex = x => number(x, 0, 16).padStart(2, '0');
+const numeric = (x, n = -1, r) => n < 0 ? x : Number(x.toFixed(n)).toString(r);
+const percent = (x, n) => `${numeric(x * 100, n)}%`;
+const hex = x => numeric(x, 0, 16).padStart(2, '0');
 const denorm = (v, u) => u ? v * u : v;
 const norm = (v, u) => u ? v / u : v;
 
@@ -131,13 +131,13 @@ export class Color {
     static Type = new Proxy({
         x: {desc: _('hex lowercase 2 digits'), show: x => hex(x)},
         X: {desc: _('hex uppercase 2 digits'), show: x => hex(x).toUpperCase()},
-        h: {desc: _('hex lowercase 1 digit'), show: x => number(x >> 4, 0, 16)},
-        H: {desc: _('hex uppercase 1 digit'), show: x => number(x >> 4, 0, 16).toUpperCase()},
-        f: {desc: _('float with leading zero'), show: (x, n, u) => number(norm(x, u), n)},
-        F: {desc: _('float without leading zero'), show: (x, n, u) => number(norm(x, u), n).replace(/^0./, '.')},
-        n: {desc: _('number value (original)'), show: (x, n) => number(x, n)},
+        h: {desc: _('hex lowercase 1 digit'), show: x => numeric(x >> 4, 0, 16)},
+        H: {desc: _('hex uppercase 1 digit'), show: x => numeric(x >> 4, 0, 16).toUpperCase()},
+        f: {desc: _('float with leading zero'), show: (x, n, u) => numeric(norm(x, u), n)},
+        F: {desc: _('float without leading zero'), show: (x, n, u) => numeric(norm(x, u), n).replace(/^0./, '.')},
+        n: {desc: _('number value (original)'), show: (x, n) => numeric(x, n)},
         p: {desc: _('percent value'), show: (x, n, u) => percent(norm(x, u), n)},
-    }, {get: (t, s) => t[s] ?? {show: (x, n) => number(x, n)}});
+    }, {get: (t, s) => t[s] ?? {show: (x, n) => numeric(x, n)}});
 
     static types = new Set(Object.keys(this.Type));
     static items = Object.keys(this.Form).filter(t => this.Form[t].stop);

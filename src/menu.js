@@ -46,7 +46,7 @@ export class Systray extends PanelMenu.Button {
         this.add_child(this.$box);
         this.$icon = new StIcon({icon, styleClass: 'system-status-icon'});
         this.$box.add_child(this.$icon);
-        this.append = x => this.$box.add_child(x);
+        this.addToBox = x => this.$box.add_child(x);
         Main.panel.addToStatusArea(uuid, this, pos, box);
         if(menu) Object.values(this.$menu = menu).forEach(x => this.menu.addMenuItem(x));
         this.set(prop);
@@ -148,7 +148,7 @@ export class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
 
     constructor(text, active, callback, param, prop) {
         super(text, active, param);
-        this.connect('toggled', (_a, x) => callback(x));
+        this.connect('toggled', a => callback(a.state));
         this.set(prop);
     }
 }

@@ -32,7 +32,7 @@ const CP_IFACE = `<node>
             <arg type="a{sv}" direction="out" name="result"/>
         </method>
     </interface>
-</node>`; // same result as XDP Screenshot
+</node>`; // same result as XDP screenshot portal
 
 const genColorSwatch = color => encode(`<svg width="64" height="64" fill="${color}" viewBox="0 0 1 1">
     <rect width=".75" height=".75" x=".125" y=".125" rx=".15"/>
@@ -100,23 +100,17 @@ class ColorSlider extends Slider.Slider {
         cr.setSource(gradient);
         cr.fill();
 
-        let ceiledHandleRadius = Math.ceil(this._handleRadius + this._handleBorderWidth),
+        let ceiledHandleRadius = Math.ceil(this._handleRadius),
             handleX = ceiledHandleRadius + (width - 2 * ceiledHandleRadius) * this._value / this._maxValue,
             handleY = height / 2;
         if(rtl) handleX = width - handleX;
         cr.setSourceRGB(...color.toRGB());
         cr.arc(handleX, handleY, this._handleRadius, 0, 2 * Math.PI);
-        if(this._handleBorderColor && this._handleBorderWidth) {
-            cr.fillPreserve();
-            cr.setSourceColor(this._handleBorderColor);
-            cr.setLineWidth(this._handleBorderWidth);
-            cr.stroke();
-        } else {
-            cr.fill();
-        }
+        cr.fill();
         cr.setSourceColor(this.get_theme_node().get_foreground_color());
         cr.arc(handleX, handleY, barLevelRadius, 0, 2 * Math.PI);
         cr.fill();
+
         cr.$dispose();
     }
 
@@ -175,14 +169,14 @@ class ColorMenu extends PopupMenu.PopupMenu {
 
     $addMenuItems() {
         let {r, g, b, Hu, Sl, Ll, Lo, Co, Ho} = this.$color.toItems((k, v, u, s) =>
-            new SliderItem(k, v, s ?? 1 / Math.max(u ?? 1, 100), this.$color, this.$updateSlider.bind(this)));
+            new SliderItem(k, v, s ?? 1 / Math.max(u ?? 1, 100), this.$color, (...xs) => this.$updateSlider(...xs)));
         this.$menu = {
             HEX: this.$genTitleItem(),
             RGB: new PopupMenu.PopupSeparatorMenuItem(), r, g, b,
             HSL: new PopupMenu.PopupSeparatorMenuItem(), Hu, Sl, Ll,
             OKLCH: new PopupMenu.PopupSeparatorMenuItem(), Lo, Co, Ho, // NOTE: irregular space differs from RGB/HSL, see also https://oklch.com/
             custom: this.$genCustomSection(),
-        };
+        }; // TODO: ? replace HSL and OKLCH with OKHSL, see https://github.com/w3c/csswg-drafts/issues/8659 and https://bottosson.github.io/posts/colorpicker/
         Object.values(this.$menu).forEach(x => this.addMenuItem(x));
     }
 
@@ -250,14 +244,7 @@ class ColorLens extends St.DrawingArea {
             s = this.$zoom;
         cr.scale(s, s);
         cr.translate(1, 1);
-        this.$clipRing(cr, color, c_x, c_y, r);
-        this.$fillGrid(cr, pixels, w, h, c_x, c_y, r + 1);
-        this.$lineGrid(cr, Math.max(w, h));
-        this.$showPixel(cr, color, c_x, c_y);
-        cr.$dispose();
-    }
-
-    $clipRing(cr, color, c_x, c_y, r) {
+        // clipRing
         cr.save();
         cr.setLineWidth(1);
         cr.setSourceRGB(...color.toRGB());
@@ -268,21 +255,19 @@ class ColorLens extends St.DrawingArea {
         cr.strokePreserve();
         cr.restore();
         cr.clip();
-    }
-
-    $fillGrid(cr, pixels, w, h, c_x, c_y, r) {
+        // fillGrid
+        let r1 = r + 1;
         for(let i = 0; i < w; i++) {
             for(let j = 0; j < h; j++) {
-                if(Math.hypot(i - c_x, j - c_y) > r) continue;
+                if(Math.hypot(i - c_x, j - c_y) > r1) continue;
                 let [red, g, b] = pixels.slice((j * w + i) * 4, -1);
                 cr.setSourceRGBA(red / 255, g / 255, b / 255, 1);
                 cr.rectangle(i, j, 1, 1);
                 cr.fill();
             }
         }
-    }
-
-    $lineGrid(cr, l) {
+        // lineGrid
+        let l = Math.max(w, h);
         cr.setLineWidth(this.$unit);
         cr.setSourceRGBA(0, 0, 0, 0.4);
         for(let i = 0; i <= l; i++) {
@@ -292,13 +277,13 @@ class ColorLens extends St.DrawingArea {
             cr.lineTo(l, i);
         }
         cr.stroke();
-    }
-
-    $showPixel(cr, color, c_x, c_y) {
+        // showPixel
         cr.setLineWidth(this.$unit * 2);
         cr.setSourceRGB(...color.toComplement());
         cr.rectangle(c_x, c_y, 1, 1);
         cr.stroke();
+
+        cr.$dispose();
     }
 }
 
@@ -655,7 +640,7 @@ class ColorPicker extends Mortal {
     summon() {
         if(this.$src.area.active) return;
         this.$src.tray.hub?.add_style_pseudo_class('state-busy');
-        this.$src.area.summon({'end-pick': () => this.dispel(), 'notify-color': this.inform.bind(this)},
+        this.$src.area.summon({'end-pick': () => this.dispel(), 'notify-color': (...xs) => this.inform(...xs)},
             this.$set, false, this.enableFormat ? this.chosenFormat : null, this.$formats);
     }
 
