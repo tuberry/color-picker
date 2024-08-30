@@ -20,7 +20,7 @@ import {Color} from './color.js';
 import {Field, Preset} from './const.js';
 import {encode, hook, array, pickle, omap} from './util.js';
 import {IconButton, MenuItem, RadioItem, IconItem, Systray} from './menu.js';
-import {Setting, Extension, Mortal, Source, hub, view, _, myself, copy, extent} from './fubar.js';
+import {Setting, Extension, Mortal, Source, hub, view, _, myself, copy, extent, stageTheme} from './fubar.js';
 
 const Notify = {MSG: 0, OSD: 1};
 const Preview = {LENS: 0, LABEL: 1};
@@ -225,7 +225,7 @@ class ColorLens extends St.DrawingArea {
     constructor(param) {
         super({styleClass: 'color-picker-lens', ...param});
         this.$data = {x: 0, y: 0, color: new Color(), pixels: [], area: [0, 0, 0, 0, 0]};
-        this.$zoom = 8 * St.ThemeContext.get_for_stage(global.stage).scaleFactor; // grid length
+        this.$zoom = 8 * stageTheme().scaleFactor; // grid length
         this.$unit = 1 / this.$zoom;
     }
 

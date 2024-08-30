@@ -91,7 +91,7 @@ export class FoldRow extends Adw.ExpanderRow {
     }
 
     constructor(title, subtitle, param) {
-        super({title, subtitle, showEnableSwitch: true, ...param});
+        super({title, subtitle, showEnableSwitch: true, useUnderline: true, ...param});
         this.bind_property('enable-expansion', this, 'value', BIND);
     }
 }
@@ -543,7 +543,7 @@ export class PrefPage extends Adw.PreferencesPage {
     }
 
     constructor(param, prefs = new Adw.PreferencesGroup()) {
-        super(param);
+        super({useUnderline: true, ...param});
         this.addToGroup = row => prefs.add(row);
         this.add(prefs);
     }
@@ -555,7 +555,7 @@ export class PrefRow extends Adw.ActionRow {
     }
 
     constructor(...args) {
-        super();
+        super({useUnderline: true});
         let [prefix, [title, subtitle], ...suffix] = Array.isArray(args[0]) ? [null, ...args] : args;
         if(title) this.set_title(title);
         if(subtitle) this.set_subtitle(subtitle);

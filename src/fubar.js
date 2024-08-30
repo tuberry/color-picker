@@ -31,6 +31,7 @@ export const view = (v, ...ws) => ws.forEach(w => { if(w && v ^ w.visible) v ? w
 export const connect = (tracker, ...args) => (t => args.reduce((p, x) => (x.connectObject ? p.push([x]) : p.at(-1).push(x), p), [])
     .forEach(([emitter, ...xs]) => emitter.connectObject(...xs, t)))(onus(tracker));
 export const disconnect = (tracker, ...args) => (t => args.forEach(emitter => emitter?.disconnectObject(t)))(onus(tracker));
+export const stageTheme = () => St.ThemeContext.get_for_stage(global.stage);
 export const open = uri => Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
 export const copy = (text, primary) => St.Clipboard.get_default().set_text(primary ? St.ClipboardType.PRIMARY : St.ClipboardType.CLIPBOARD, text);
 export const paste = primary => new Promise(resolve => St.Clipboard.get_default().get_text(primary ? St.ClipboardType.PRIMARY

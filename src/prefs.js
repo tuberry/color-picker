@@ -72,15 +72,15 @@ class PrefsBasic extends UI.PrefPage {
 
     $buildUI() {
         [
-            [this.$blk.COPY, [_('Automatically copy'), _('Copy the color to clipboard after picking')]],
-            [this.$blk.FMT,  [_('Default format'), _('Also apply to the first Format menu item')], this.$blk.FMTS],
-            [this.$blk.STRY, [_('Enable systray'), _('Right click to open menu')], this.$blk.TICN, this.$blk.MSIZ],
-            [this.$blk.KEY,  [_('Enable shortcut'), _('Left click or press Enter / Space key to pick')], this.$blk.KEYS],
-            [this.$blk.MENU, [_('Format menu'), _('Middle click or press Menu key to open')], this.$blk.MKEY],
-            [this.$blk.PRST, [_('Persistent mode'), _('Right click or press Esc key to quit')], this.$blk.QKEY],
-            [this.$blk.PVW,  [_('Preview style'), _('Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to accelerate')], this.$blk.PVWS],
-            [this.$blk.NTF,  [_('Notification style'), _('Notify the color after picking')], this.$blk.NTFS],
-            [this.$blk.SND,  [_('Notification sound'), _('Play the sound after picking')], this.$blk.SNDS],
+            [this.$blk.COPY, [_('_Automatically copy'), _('Copy the color to clipboard after picking')]],
+            [this.$blk.FMT,  [_('_Default format'), _('Also apply to the first Format menu item')], this.$blk.FMTS],
+            [this.$blk.STRY, [_('_Enable systray'), _('Right click to open menu')], this.$blk.TICN, this.$blk.MSIZ],
+            [this.$blk.KEY,  [_('E_nable shortcut'), _('Left click or press Enter / Space key to pick')], this.$blk.KEYS],
+            [this.$blk.MENU, [_('F_ormat menu'), _('Middle click or press Menu key to open')], this.$blk.MKEY],
+            [this.$blk.PRST, [_('_Persistent mode'), _('Right click or press Esc key to quit')], this.$blk.QKEY],
+            [this.$blk.PVW,  [_('P_review style'), _('Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to accelerate')], this.$blk.PVWS],
+            [this.$blk.NTF,  [_('_Notification style'), _('Notify the color after picking')], this.$blk.NTFS],
+            [this.$blk.SND,  [_('No_tification sound'), _('Play the sound after picking')], this.$blk.SNDS],
         ].forEach(xs => this.addToGroup(new UI.PrefRow(...xs)));
     }
 }
@@ -96,7 +96,7 @@ class FormatDialog extends UI.DialogBase {
 
     $buildWidgets(opt) {
         let title = Adw.WindowTitle.new(_('New Color Format'), ''),
-            genForm = ({desc, info}) => info ? `${_(desc)} (${info.replace(/_(.)/, '<b><u>$1</u></b>')})` : _(desc),
+            genForm = ({desc, info}) => info ? `${_(desc)} (${info.replace(/_(.)/, '<span overline="single" weight="bold">$1</span>')})` : _(desc),
             genLabel = (label, end) => new Gtk.Label({label, useMarkup: true, halign: end ? Gtk.Align.END : Gtk.Align.START}),
             [edit, form, type] = array(3, () => new Gtk.Grid({vexpand: true, rowSpacing: 12, columnSpacing: 12})),
             format = hook({activate: () => this.$onSelect()}, new Gtk.Entry({hexpand: true, placeholderText: '#%Rex%Grx%Blx'})),
@@ -217,7 +217,7 @@ class FormatList extends Adw.PreferencesGroup {
             changed: (_w, p) => this.dlg.choose_sth(this.get_root(), this.$fmts.get_item(p)).then(x => this.$save(y => y.get_item(p).set(JSON.parse(x)))).catch(noop),
         }, new FormatRow(r)) : hook({
             activated: () => this.dlg.choose_sth(this.get_root()).then(x => this.$save(y => y.append(new FormatItem({enable: true, ...JSON.parse(x)})))).catch(noop),
-        }, new Adw.ButtonRow({title: _('New Color Format'), startIconName: 'list-add-symbolic'})));
+        }, new Adw.ButtonRow({title: _('_New Color Format'), startIconName: 'list-add-symbolic', useUnderline: true})));
         this.add(list);
     }
 
@@ -237,7 +237,7 @@ class PresetRow extends Adw.ActionRow {
     }
 
     constructor(param, callback) {
-        super(param);
+        super({useUnderline: true, ...param});
         this.bind_property_full('value', this, 'subtitle', GObject.BindingFlags.DEFAULT,
             (_b, v) => [true, Color.sample(v)], null);
         let btn = hook({clicked: () => callback(this.value)},
@@ -256,7 +256,7 @@ class PresetList extends Adw.PreferencesGroup {
         super({title: _('Preset')});
         Preset.forEach(name => {
             let key = Field[name];
-            let row = new PresetRow({title: name}, format => this.dlg.choose_sth(this.get_root(), {name, format})
+            let row = new PresetRow({title: name.replace(/(.)/, '$&_')}, format => this.dlg.choose_sth(this.get_root(), {name, format})
                                     .then(x => gset.set_string(key, JSON.parse(x).format)).catch(noop));
             gset.bind(key, row, 'value', Gio.SettingsBindFlags.DEFAULT);
             this.add(row);
@@ -283,8 +283,8 @@ export default class PrefsWidget extends UI.Prefs {
     fillPreferencesWindow(win) {
         let gset = this.getSettings();
         [
-            new PrefsBasic({title: _('Basic'), iconName: 'applications-system-symbolic'}, gset),
-            new PrefsFormat({title: _('Format'), iconName: 'applications-graphics-symbolic'}, gset),
+            new PrefsBasic({title: _('_Basic'), iconName: 'applications-system-symbolic'}, gset),
+            new PrefsFormat({title: _('_Format'), iconName: 'applications-graphics-symbolic'}, gset),
         ].forEach(x => win.add(x));
     }
 }
