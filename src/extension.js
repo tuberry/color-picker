@@ -251,7 +251,7 @@ class ColorLens extends St.DrawingArea {
         cr.arc(c_x + 1 / 2, c_y + 1 / 2, r + 1 / 2, 0, Math.PI * 2);
         cr.strokePreserve();
         cr.setLineWidth(1 / 2);
-        cr.setSourceRGBA(1, 1, 1, 0.4);
+        cr.setSourceRGBA(1, 1, 1, 0.5);
         cr.strokePreserve();
         cr.restore();
         cr.clip();
@@ -639,7 +639,7 @@ class ColorPicker extends Mortal {
 
     summon() {
         if(this.$src.area.active) return;
-        this.$src.tray.hub?.add_style_pseudo_class('state-busy');
+        this.$src.tray.hub?.add_style_pseudo_class('state-busy'); // FIXME: take effect later than screenshot on first run
         this.$src.area.summon({'end-pick': () => this.dispel(), 'notify-color': (...xs) => this.inform(...xs)},
             this.$set, false, this.enableFormat ? this.chosenFormat : null, this.$formats);
     }

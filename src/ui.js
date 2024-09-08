@@ -224,8 +224,8 @@ export class DialogBase extends Adw.Dialog {
 
     choose_sth(root, initial) {
         this.$chosen = Promise.withResolvers();
-        this.initSelected?.(initial);
         this.present(root);
+        this.initSelected?.(initial);
         return this.$chosen.promise;
     }
 }
@@ -256,6 +256,10 @@ export class AppDialog extends DialogBase {
 }
 
 export class KeysDialog extends DialogBase {
+    static {
+        GObject.registerClass(this);
+    }
+
     static keyvalIsForbidden(keyval) {
         return [Gdk.KEY_Home, Gdk.KEY_Left, Gdk.KEY_Up, Gdk.KEY_Right, Gdk.KEY_Down, Gdk.KEY_Page_Up,
             Gdk.KEY_Page_Down, Gdk.KEY_End, Gdk.KEY_Tab, Gdk.KEY_KP_Enter, Gdk.KEY_Return, Gdk.KEY_Mode_switch].includes(keyval);
@@ -280,10 +284,6 @@ export class KeysDialog extends DialogBase {
 
     static isValidAccel(mask, keyval) {
         return Gtk.accelerator_valid(keyval, mask) || (keyval === Gdk.KEY_Tab && mask !== 0);
-    }
-
-    static {
-        GObject.registerClass(this);
     }
 
     constructor(opt, param) {
@@ -448,7 +448,7 @@ export class File extends DialogButtonBase {
 
     constructor(opt, param) {
         super(opt, param, new IconLabel('document-open-symbolic'), Gio.File.$gtype, true);
-        if(opt?.folder) opt.filter = {mime_types:  ['inode/directory']};
+        if(opt?.folder) opt.filter = {mimeTypes:  ['inode/directory']};
         if(opt?.filter) this.$filter = new Gtk.FileFilter(opt.filter);
     }
 
@@ -578,17 +578,18 @@ export class Entry extends Gtk.Stack {
         GObject.registerClass(vprop('string', ''), this);
     }
 
-    constructor(placeholder, open, tooltip, param) {
+    constructor(placeholder, mime, tooltip, param) {
         super({valign: Gtk.Align.CENTER, hhomogeneous: true, ...param});
-        this.$buildWidgets(placeholder, open, tooltip);
+        this.$buildWidgets(placeholder, mime, tooltip);
     }
 
-    $buildWidgets(placeholderText = '', open, tooltipText = '') {
+    $buildWidgets(placeholderText = '', mimeTypes, tooltipText = '') {
         let label = new Gtk.Entry({hexpand: true, sensitive: false, placeholderText}),
             apply = w => { label.set_text(w.text); this.set_visible_child(label.parent); },
-            entry = open ? hook({
+            entry = mimeTypes ? hook({
                 activate: w => apply(w),
-                'icon-press': w => new Gtk.FileDialog({modal: true}).open(this.get_root(), null).then(x => w.set_text(x.get_path())).catch(noop),
+                'icon-press': w => new Gtk.FileDialog({modal: true, defaultFilter: new Gtk.FileFilter({mimeTypes})})
+                                .open(this.get_root(), null).then(x => w.set_text(x.get_path())).catch(noop),
             }, new Gtk.Entry({hexpand: true, enableUndo: true, secondaryIconName: 'document-open-symbolic', placeholderText}))
                 : hook({activate: w => apply(w)}, new Gtk.Entry({hexpand: true, enableUndo: true, placeholderText})),
             edit = hook({clicked: () => { entry.set_text(label.text); entry.grab_focus(); this.set_visible_child(entry.parent); }},

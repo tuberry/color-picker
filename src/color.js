@@ -21,8 +21,8 @@ const RGB = {
 // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
 const HSV = {
     get: ({r, g, b}) => {
-        let [mn, , v] = [r, g, b].sort(),
-            d = v - mn,
+        let [m, , v] = [r, g, b].sort(),
+            d = v - m,
             s = v === 0 ? 0 : d / v,
             k = 0;
         if(d !== 0) { // chromatic

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-30 12:55+0800\n"
+"POT-Creation-Date: 2024-09-08 09:24+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -37,7 +37,7 @@ msgstr "清除"
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:599
+#: src/ui.js:600
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -148,16 +148,16 @@ msgid ""
 msgstr "方向键 / wasd / hjkl 按像素移动并按住 Ctrl 键加速"
 
 #: src/prefs.js:82
-msgid "_Notification style"
-msgstr "通知方式(_N)"
+msgid "No_tification style"
+msgstr "通知方式(_T)"
 
 #: src/prefs.js:82
 msgid "Notify the color after picking"
 msgstr "选取颜色后通知"
 
 #: src/prefs.js:83
-msgid "No_tification sound"
-msgstr "通知声音(_T)"
+msgid "Not_ification sound"
+msgstr "通知声音(_I)"
 
 #: src/prefs.js:83
 msgid "Play the sound after picking"

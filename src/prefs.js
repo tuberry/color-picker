@@ -79,8 +79,8 @@ class PrefsBasic extends UI.PrefPage {
             [this.$blk.MENU, [_('F_ormat menu'), _('Middle click or press Menu key to open')], this.$blk.MKEY],
             [this.$blk.PRST, [_('_Persistent mode'), _('Right click or press Esc key to quit')], this.$blk.QKEY],
             [this.$blk.PVW,  [_('P_review style'), _('Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to accelerate')], this.$blk.PVWS],
-            [this.$blk.NTF,  [_('_Notification style'), _('Notify the color after picking')], this.$blk.NTFS],
-            [this.$blk.SND,  [_('No_tification sound'), _('Play the sound after picking')], this.$blk.SNDS],
+            [this.$blk.NTF,  [_('No_tification style'), _('Notify the color after picking')], this.$blk.NTFS],
+            [this.$blk.SND,  [_('Not_ification sound'), _('Play the sound after picking')], this.$blk.SNDS],
         ].forEach(xs => this.addToGroup(new UI.PrefRow(...xs)));
     }
 }
@@ -103,7 +103,7 @@ class FormatDialog extends UI.DialogBase {
             name = hook({activate: () => this.$onSelect()}, new Gtk.Entry({hexpand: true, placeholderText: 'HEX', sensitive: !opt?.preset}));
         name.bind_property_full('text', title, 'title', GObject.BindingFlags.DEFAULT, (_b, v) => [true, v || _('New Color Format')], null);
         format.bind_property_full('text', title, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, v) => [true, Color.sample(v)], null);
-        this.initSelected = x => { name.set_text(x?.name ?? ''); format.set_text(x?.format ?? ''); };
+        this.initSelected = x => { name.set_text(x?.name ?? ''); format.set_text(x?.format ?? ''); format.grab_focus(); };
         this.getSelected = () => JSON.stringify({name: name.get_text(), format: format.get_text()});
         [genLabel(_('Name'), true), name, genLabel(_('Format'), true), format].forEach((x, i) => edit.attach(x, i % 2, i / 2 >> 0, 1, 1));
         Array.from(Color.forms.keys()).forEach((x, i) => form.attach(genLabel(`<b>%${x}</b> ${genForm(Color.Form[x])}`), i % 3, i / 3 >> 0, 1, 1));

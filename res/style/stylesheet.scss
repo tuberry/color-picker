@@ -1,8 +1,14 @@
+$contrast: 'normal';
+
 @import 'gnome-shell-sass/_colors';
 
 $pfx: 'color-picker';
 
 @function tone($color, $percent: 10%, $reverse: true){
+    @return if($variant==if($reverse, 'light', 'dark'), darken($color, $percent), lighten($color, $percent))
+}
+
+@function st-tone($color, $percent: 10%, $reverse: true){
     @return if($variant==if($reverse, 'light', 'dark'), st-darken($color, $percent), st-lighten($color, $percent))
 }
 
@@ -21,7 +27,7 @@ $pfx: 'color-picker';
 }
 
 .#{$pfx}-systray:state-busy {
-    color: tone(-st-accent-color);
+    color: st-tone(-st-accent-color);
 }
 
 .#{$pfx}-item-label {
@@ -31,6 +37,6 @@ $pfx: 'color-picker';
 
 .#{$pfx}-icon {
     padding: 0 0.15em;
-    &:hover { color: tone(-st-accent-color, 5%); }
+    &:hover { color: st-tone(-st-accent-color, 5%); }
     &:focus { outline: 0.15em solid st-transparentize(-st-accent-color, 0.3); }
 }

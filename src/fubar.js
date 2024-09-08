@@ -123,10 +123,6 @@ export class Source {
             x => x?.cancel(), ...args);
     }
 
-    static newSetting(prop, gset, host, func, last, ...args) {
-        return new Source(() => new Setting(prop, gset, host, func, last), x => x?.detach(host), ...args);
-    }
-
     constructor(summon, dispel = ruin, enable, ...args) {
         this.summon = (...xs) => { this[hub] = summon(...xs); };
         this.dispel = () => { dispel(this[hub]); delete this[hub]; };
