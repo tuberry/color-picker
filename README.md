@@ -38,11 +38,7 @@ gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Exten
 
 ## Contributions
 
-Any contribution is welcome.
-
-### Ideas
-
-For any question or idea, feel free to open an issue or PR in the repo.
+Feel free to open an issue or PR in the repo for any question or idea.
 
 ### Translations
 

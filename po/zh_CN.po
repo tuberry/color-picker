@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker 26\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-09-08 09:24+0800\n"
+"POT-Creation-Date: 2021-08-18 14:01+0800\n"
 "PO-Revision-Date: 2021-08-18 14:01+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,27 +17,27 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:329
+#: src/ui.js:343
 msgid "All"
 msgstr "全部"
 
-#: src/ui.js:329
+#: src/ui.js:343
 msgid "Normal"
 msgstr "常规"
 
-#: src/ui.js:329
+#: src/ui.js:343
 msgid "Symbolic"
 msgstr "符号"
 
-#: src/ui.js:368
+#: src/ui.js:382
 msgid "Clear"
 msgstr "清除"
 
-#: src/ui.js:466
+#: src/ui.js:480
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:600
+#: src/ui.js:615
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -49,184 +49,206 @@ msgstr "(按键)"
 msgid "Press any key."
 msgstr "按任意键。"
 
-#: src/prefs.js:63
+#: src/prefs.js:62
 msgid "MSG"
 msgstr "系统通知"
 
-#: src/prefs.js:63
+#: src/prefs.js:62
 msgid "OSD"
 msgstr "屏内提示"
 
-#: src/prefs.js:64
+#: src/prefs.js:63
 msgid "Systray icon"
 msgstr "托盘图标"
 
-#: src/prefs.js:65
+#: src/prefs.js:64
 msgid "History and collection size"
 msgstr "历史及收藏大小"
 
-#: src/prefs.js:66
+#: src/prefs.js:65
 msgid "Screenshot"
 msgstr "截屏"
 
-#: src/prefs.js:66
+#: src/prefs.js:65
 msgid "Complete"
 msgstr "完成"
 
-#: src/prefs.js:66
+#: src/prefs.js:65
 msgid "Sound effect"
 msgstr "音效"
 
-#: src/prefs.js:67
+#: src/prefs.js:66
 msgid "Lens"
 msgstr "镜头"
 
-#: src/prefs.js:67
+#: src/prefs.js:66
 msgid "Label"
 msgstr "标签"
 
-#: src/prefs.js:67
+#: src/prefs.js:66
 msgid "Scroll or press Shift key to toggle when picking"
 msgstr "选取时可滚动或按 Shift 键切换"
 
-#: src/prefs.js:75
+#: src/prefs.js:67
+msgid "press Alt + number key n to trigger the nth format button"
+msgstr "按 Alt + 数字键 n 触发第 n 个格式按钮"
+
+#: src/prefs.js:74
+msgid ""
+"<b>Menu</b>\n"
+"press left Shift key to toggle history/collection menu\n"
+"press Alt + number key n to trigger the nth toolbar button\n"
+"<b>Menu item</b>\n"
+"left click to copy the color\n"
+"middle click or press Delete/Backspace key to remove the color\n"
+"right click or press Ctrl key to trigger the tail button"
+msgstr ""
+"<b>菜单</b>\n"
+"按左 Shift 键切换历史/收藏菜单\n"
+"按 Alt + 数字键 n 触发第 n 个工具栏按钮\n"
+"<b>菜单项</b>\n"
+"左键复制颜色\n"
+"中键或按删除/退格键移除颜色\n"
+"右键或按 Ctrl 键触发末尾按钮"
+
+#: src/prefs.js:85
 msgid "_Automatically copy"
 msgstr "自动复制(_A)"
 
-#: src/prefs.js:75
+#: src/prefs.js:85
 msgid "Copy the color to clipboard after picking"
 msgstr "选取后复制颜色到剪贴板"
 
-#: src/prefs.js:76
+#: src/prefs.js:86
 msgid "_Default format"
 msgstr "默认格式(_D)"
 
-#: src/prefs.js:76
+#: src/prefs.js:86
 msgid "Also apply to the first Format menu item"
 msgstr "也适用于格式菜单首项"
 
-#: src/prefs.js:77
+#: src/prefs.js:87
 msgid "_Enable systray"
 msgstr "系统托盘(_E)"
 
-#: src/prefs.js:77
+#: src/prefs.js:87
 msgid "Right click to open menu"
 msgstr "右键打开菜单"
 
-#: src/prefs.js:78
+#: src/prefs.js:88
 msgid "E_nable shortcut"
 msgstr "快捷键(_N)"
 
-#: src/prefs.js:78
+#: src/prefs.js:88
 msgid "Left click or press Enter / Space key to pick"
 msgstr "左键或按回车/空格键选取"
 
-#: src/prefs.js:79
+#: src/prefs.js:89
 msgid "F_ormat menu"
 msgstr "格式菜单(_O)"
 
-#: src/prefs.js:79
+#: src/prefs.js:89
 msgid "Middle click or press Menu key to open"
 msgstr "中键或按菜单键打开"
 
-#: src/prefs.js:80
+#: src/prefs.js:90
 msgid "_Persistent mode"
 msgstr "持续模式(_P)"
 
-#: src/prefs.js:80
+#: src/prefs.js:90
 msgid "Right click or press Esc key to quit"
 msgstr "右键或按 Esc 键退出"
 
-#: src/prefs.js:81
+#: src/prefs.js:91
 msgid "P_review style"
 msgstr "预览方式(_R)"
 
-#: src/prefs.js:81
+#: src/prefs.js:91
 msgid ""
 "Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to "
 "accelerate"
 msgstr "方向键 / wasd / hjkl 按像素移动并按住 Ctrl 键加速"
 
-#: src/prefs.js:82
+#: src/prefs.js:92
 msgid "No_tification style"
 msgstr "通知方式(_T)"
 
-#: src/prefs.js:82
+#: src/prefs.js:92
 msgid "Notify the color after picking"
 msgstr "选取颜色后通知"
 
-#: src/prefs.js:83
+#: src/prefs.js:93
 msgid "Not_ification sound"
 msgstr "通知声音(_I)"
 
-#: src/prefs.js:83
+#: src/prefs.js:93
 msgid "Play the sound after picking"
 msgstr "选取颜色后响铃"
 
-#: src/prefs.js:98 src/prefs.js:104
-msgid "New Color Format"
-msgstr "新建颜色格式"
+#: src/prefs.js:108 src/prefs.js:114
+msgid "Edit Color Format"
+msgstr "编辑颜色格式"
 
-#: src/prefs.js:108
+#: src/prefs.js:118
 msgid "Name"
 msgstr "名称"
 
-#: src/prefs.js:108
+#: src/prefs.js:118
 msgid "Format"
 msgstr "格式"
 
-#: src/prefs.js:112
+#: src/prefs.js:122
 msgid "The following parameters can be used:"
 msgstr "下列参数可用:"
 
-#: src/prefs.js:113
+#: src/prefs.js:123
 msgid "The color values can be formatted with (optional tailing precision):"
 msgstr "颜色值可格式化为(后可跟精度):"
 
-#: src/prefs.js:114
+#: src/prefs.js:124
 msgid ""
 "i.e. <b>%Blf3</b> means the normalized blue value accurate to 3 decimal "
 "places."
 msgstr "例如，<b>%Blf3</b> 表示精确到千分位的归一化蓝色值。"
 
-#: src/prefs.js:203
+#: src/prefs.js:213
 msgid "Custom"
 msgstr "自便"
 
-#: src/prefs.js:220
+#: src/prefs.js:230
 msgid "_New Color Format"
 msgstr "新建颜色格式(_N)"
 
-#: src/prefs.js:230
+#: src/prefs.js:236
 #, javascript-format
-msgid "Format %s has been removed"
-msgstr "%s 格式已被移除"
+msgid "Removed <i>%s</i> format"
+msgstr "已移除 <i>%s</i> 格式 "
 
-#: src/prefs.js:256
+#: src/prefs.js:266
 msgid "Preset"
 msgstr "预设"
 
-#: src/prefs.js:286
+#: src/prefs.js:296
 msgid "_Basic"
 msgstr "基本(_B)"
 
-#: src/prefs.js:287
+#: src/prefs.js:297
 msgid "_Format"
 msgstr "格式(_F)"
 
-#: src/extension.js:194
+#: src/extension.js:158
 msgid "Others"
 msgstr "其它"
 
-#: src/extension.js:635
+#: src/extension.js:666
 msgid "Default format"
 msgstr "默认格式"
 
-#: src/extension.js:658
+#: src/extension.js:691
 msgid "Color picked"
 msgstr "已拾取颜色"
 
-#: src/extension.js:666
+#: src/extension.js:697
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"
@@ -322,6 +344,13 @@ msgstr "(原始)数值"
 #: src/color.js:139
 msgid "percent value"
 msgstr "百分数"
+
+#, javascript-format
+#~ msgid "Format %s has been removed"
+#~ msgstr "%s 格式已被移除"
+
+#~ msgid "New Color Format"
+#~ msgstr "新建颜色格式"
 
 #~ msgid "Enable preview"
 #~ msgstr "启用预览"

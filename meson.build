@@ -15,7 +15,7 @@ metadata = {
     'schemas': 'org.gnome.shell.extensions.' + _name,
     'version': (_version != 0) ? _version : run_command('cli/get-version.sh', check: true, env: ['EGO=3396' / _name]).stdout().strip(),
     'description': 'Simple color picker for GNOME Shell'
-      + '\\n\\nFor support, please report any issues via the homepage link below.',
+      + '\\n\\nFor support, please report issues via the Homepage link below rather than the comments section below it'
 }
 
 fs = import('fs')

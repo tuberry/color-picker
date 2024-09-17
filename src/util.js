@@ -24,23 +24,24 @@ export const noop = () => {};
 export const seq = (f, x) => (f(x), x);
 export const xnor = (x, y) => !x === !y;
 export const Y = f => (...xs) => f(Y(f))(...xs); // Y combinator
-export const string = x => x?.constructor === String;
+export const str = x => x?.constructor === String;
 export const decode = x => new TextDecoder().decode(x);
 export const encode = x => new TextEncoder().encode(x);
+export const thunk = (f, ...xs) => seq(g => g(...xs), f);
 export const vmap = (o, f) => omap(o, ([k, v]) => [[k, f(v)]]);
 export const lot = x => x[Math.floor(Math.random() * x.length)];
 export const has = (o, ...xs) => xs.every(x => Object.hasOwn(o, x));
 export const array = (n, f = id) => Array.from({length: n}, (_x, i) => f(i));
 export const omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
-export const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+export const each = (f, a, s) => { for(let i = 0, n = a.length; i < n;) f(a.slice(i, i += s)); };
+export const upcase = (s, f = x => x.toLowerCase()) => s.charAt(0).toUpperCase() + f(s.slice(1));
 
 export const fquery = (x, ...ys) => fopen(x).query_info_async(ys.join(','), Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 export const fwrite = (x, y, c = null) => fopen(x).replace_contents_async(encode(y), null, false, Gio.FileCreateFlags.NONE, c);
 export const fcopy = (x, y, c = null) => fopen(x).copy_async(fopen(y), Gio.FileCopyFlags.NONE, GLib.PRIORITY_DEFAULT, c, null);
-export const mkdir = (x, c = null) => fopen(x).make_directory_async(GLib.PRIORITY_DEFAULT, c);
 export const fdelete = (x, c = null) => fopen(x).delete_async(GLib.PRIORITY_DEFAULT, c);
-export const fopen = x => x instanceof Gio.File ? x : Gio.File.new_for_path(x);
 export const fread = (x, c = null) => fopen(x).load_contents_async(c);
+export const fopen = x => str(x) ? Gio.File.new_for_path(x) : x;
 
 /**
  * @template T
@@ -51,6 +52,14 @@ export const hook = (o, a) => (Object.entries(o).forEach(([k, v]) => a.connect(k
 
 export async function readdir(dir, func, attr = Gio.FILE_ATTRIBUTE_STANDARD_NAME, cancel = null) {
     return Array.fromAsync(await fopen(dir).enumerate_children_async(attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, cancel), func);
+}
+
+export function search(needle, haystack) { // Ref: https://github.com/bevacqua/fuzzysearch
+    next: for(let i = 0, j = 0, n = needle.length, h = haystack.length; i < n; i++) {
+        while(j < h) if(haystack[j++] === needle[i]) continue next;
+        return false;
+    }
+    return true;
 }
 
 export function homolog(cat, dog, keys, cmp = (x, y, _k) => x === y) { // cat, dog: JSON-compatible object

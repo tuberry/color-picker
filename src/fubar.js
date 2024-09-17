@@ -14,7 +14,7 @@ import {loadInterfaceXML} from 'resource:///org/gnome/shell/misc/fileUtils.js';
 import {TransientSignalHolder} from 'resource:///org/gnome/shell/misc/signalTracker.js';
 import {Extension as ExtensionBase, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {has, seq, xnor, fopen, hook, string} from './util.js';
+import * as Util from './util.js';
 
 const ruin = o => o?.destroy();
 const raise = x => { throw Error(x); };// NOTE: https://github.com/tc39/proposal-throw-expressions#todo
@@ -23,15 +23,17 @@ const onus = o => [o, o[hub]].find(x => GObject.type_is_a(x, GObject.Object) && 
 
 export {_};
 export const hub = Symbol('Hidden Unique Binder');
-export const myself = () => Extension.lookupByURL(import.meta.url); // NOTE: https://github.com/tc39/proposal-json-modules
-export const debug = (...xs) => console.debug(`[${myself().uuid}]`, ...xs); // NOTE: see https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/491
+export const offstage = x => !Main.uiGroup.contains(x);
+export const me = () => Extension.lookupByURL(import.meta.url); // NOTE: https://github.com/tc39/proposal-json-modules
+export const markup = (x, m) => x.clutterText.set_markup(`\u200b${m}`); // HACK: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
+export const getTheme = () => St.ThemeContext.get_for_stage(global.stage);
+export const debug = (...xs) => console.debug(`[${me().uuid}]`, ...xs); // NOTE: see https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/491
 export const omit = (o, ...ks) => ks.forEach(k => { ruin(o[k]); delete o[k]; });
-export const extent = x => [...x.get_transformed_position(), ...x.get_transformed_size()];
-export const view = (v, ...ws) => ws.forEach(w => { if(w && v ^ w.visible) v ? w.show() : w.hide(); }); // NOTE: https://github.com/tc39/proposal-optional-chaining-assignment
+export const essay = (f, g) => { try { return f(); } catch(e) { return g(e); } }; // NOTE: https://github.com/arthurfiorette/proposal-safe-assignment-operator
+export const view = (v, ...ws) => ws.forEach(w => w && !Util.xnor(v, w.visible) && (v ? w.show() : w.hide())); // NOTE: https://github.com/tc39/proposal-optional-chaining-assignment
 export const connect = (tracker, ...args) => (t => args.reduce((p, x) => (x.connectObject ? p.push([x]) : p.at(-1).push(x), p), [])
     .forEach(([emitter, ...xs]) => emitter.connectObject(...xs, t)))(onus(tracker));
 export const disconnect = (tracker, ...args) => (t => args.forEach(emitter => emitter?.disconnectObject(t)))(onus(tracker));
-export const stageTheme = () => St.ThemeContext.get_for_stage(global.stage);
 export const open = uri => Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
 export const copy = (text, primary) => St.Clipboard.get_default().set_text(primary ? St.ClipboardType.PRIMARY : St.ClipboardType.CLIPBOARD, text);
 export const paste = primary => new Promise(resolve => St.Clipboard.get_default().get_text(primary ? St.ClipboardType.PRIMARY
@@ -47,7 +49,7 @@ export class DBusProxy extends Gio.DBusProxy {
     constructor(name, object, callback, hooks, signals, xml, cancel = null, bus = Gio.DBus.session, gFlags = Gio.DBusProxyFlags.NONE) {
         let info = Gio.DBusInterfaceInfo.new_for_xml(xml ?? loadInterfaceXML(name));
         super({gConnection: bus, gName: name, gObjectPath: object, gInterfaceInfo: info, gFlags, gInterfaceName: info.name});
-        if(signals) for(let i = 0, n = signals.length; i < n; i += 2) this.connectSignal(signals[i], signals[i + 1]);
+        if(signals) Util.each(xs => this.connectSignal(...xs), signals, 2);
         if(hooks) connect(this, this, ...hooks);
         this.init_async(GLib.PRIORITY_DEFAULT, cancel).then(() => callback(this, null)).catch(e => callback(null, e));
     }
@@ -84,7 +86,7 @@ export class Source {
      * @param {T} doom
      * @return {T}
      */
-    static fuse = (doom, host) => (host.connect('destroy', () => omit(doom, ...Object.keys(doom))), doom);
+    static tie = (doom, host) => (host.connect('destroy', () => omit(doom, ...Object.keys(doom))), doom);
 
     static cancelled(error) {
         return error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED);
@@ -95,7 +97,7 @@ export class Source {
     }
 
     static newDBus(iface, path, host, ...args) {
-        return new Source(() => seq(x => x.export(Gio.DBus.session, path), Gio.DBusExportedObject.wrapJSObject(iface, host)),
+        return new Source(() => Util.seq(x => x.export(Gio.DBus.session, path), Gio.DBusExportedObject.wrapJSObject(iface, host)),
             x => x?.unexport(), ...args);
     }
 
@@ -105,8 +107,8 @@ export class Source {
     }
 
     static newLight(callback, ...args) {
-        return new Source(() => new DBusProxy('org.gnome.SettingsDaemon.Color', '/org/gnome/SettingsDaemon/Color', x => callback(x.NightLightActive),
-            ['g-properties-changed', (x, p) => { if(p.lookup_value('NightLightActive', null)) callback(x.NightLightActive); }]), ruin, ...args);
+        return Source.new(() => new DBusProxy('org.gnome.SettingsDaemon.Color', '/org/gnome/SettingsDaemon/Color', x => callback(x.NightLightActive),
+            ['g-properties-changed', (x, p) => { if(p.lookup_value('NightLightActive', null)) callback(x.NightLightActive); }]), ...args);
     }
 
     static newTimer(callback, remove = true, clear, ...args) {
@@ -119,8 +121,12 @@ export class Source {
     }
 
     static newMonitor(file, changed, ...args) {
-        return new Source((cancel = null) => hook({changed}, fopen(file).monitor(Gio.FileMonitorFlags.WATCH_MOVES, cancel)),
+        return new Source((cancel = null) => Util.hook({changed}, Util.fopen(file).monitor(Gio.FileMonitorFlags.NONE, cancel)),
             x => x?.cancel(), ...args);
+    }
+
+    static new(summon, ...args) {
+        return new Source(summon, undefined, ...args);
     }
 
     constructor(summon, dispel = ruin, enable, ...args) {
@@ -129,7 +135,8 @@ export class Source {
         this.revive = (...xs) => { this.dispel(); this.summon(...xs); };
         this.reload = (...xs) => { if(this.active) this.revive(...xs); };
         this.reborn = (...xs) => { this.revive(...xs); return this.hub; }; // return
-        this.toggle = (b, ...xs) => { if(!xnor(b, this.active)) b ? this.summon(...xs) : this.dispel(); };
+        this.switch = (b, ...xs) => { b ? this.revive(...xs) : this.dispel(); };
+        this.toggle = (b, ...xs) => { if(!Util.xnor(b, this.active)) b ? this.summon(...xs) : this.dispel(); };
         if(enable) this.summon(...args);
         this.destroy = () => this.toggle(false);
     }
@@ -139,37 +146,50 @@ export class Source {
     }
 
     get active() {
-        return has(this, hub);
+        return Util.has(this, hub);
     }
 }
 
 export class Setting {
-    #map = new WeakMap();
+    #ring = new WeakMap();
 
-    constructor(prop, gset, ...args) {
-        this.gset = string(gset) ? new Gio.Settings({schema: gset}) : gset;
-        if(prop) this.attach(prop, ...args);
+    constructor(gset, ...args) {
+        this[hub] = Util.str(gset) ? new Gio.Settings({schema: gset}) : gset;
+        this.attach(...args);
     }
 
-    get(key, host) {
-        return (([field, type]) => this.gset[`get_${type}`](field))(this.#map.get(host)[key]);
+    get hub() {
+        return this[hub];
     }
 
     set(key, value, host) {
-        (([field, type]) => this.gset[`set_${type}`](field, value))(this.#map.get(host)[key]);
+        let [field, type] = this.#ring.get(host).get(key);
+        this[hub][`set_${type}`](field, value);
     }
 
-    attach(prop, host, func, last) { // prop <- { key: [field, type, pre/conv, post] }
-        this.#map.has(host) ? Object.assign(this.#map.get(host), prop) : this.#map.set(host, prop);
-        last &&= Object.keys(prop).at(-1);
-        let call = (f, v, k) => f?.(v, k) ?? v,
-            bind = (k, f, g) => call(g, seq(x => { host[k] = x; }, call(f, this.get(k, host), k)), k),
-            sync = last ? (k, f, g) => call((...xs) => has(host, last) && func(...xs), bind(k, f, g), k) : (k, f, g) => call(func, bind(k, f, g), k);
-        connect(host, this.gset, ...Object.entries(prop).flatMap(([k, [x,, f, g]]) => (sync(k, f, g), [`changed::${x}`, () => sync(k, f, g)])));
+    negate(key, host) {
+        this.set(key, !host[key], host);
+    }
+
+    attach(chain, host, cast, post) {
+        if(!this.#ring.has(host)) this.#ring.set(host, new Map());
+        let ring = this.#ring.get(host);
+        Object.entries(chain).forEach(([key, [field, type, turn, back, init]]) => {
+            if(key in host) throw Error(`key conflict: ${key}`);
+            let call = (f, x) => f(x, key) ?? x,
+                pipe = (f, g) => f ? () => call(f, g()) : g,
+                load = pipe(turn, (g => () => this[hub][g](field))(`get_${type}`)),
+                bind = Util.thunk(() => (host[key] = load()));
+            ring.set(key, [field, type]);
+            if(init) return;
+            let sync = [post, cast, back, bind].reduceRight((p, x) => pipe(x, p));
+            connect(host, this[hub], `changed::${field}`, () => { sync(); });
+        });
+        cast?.();
         return this;
     }
 
     detach(host) {
-        if(this.#map.has(host)) disconnect(host, this.gset);
+        if(this.#ring.has(host)) disconnect(host, this[hub]);
     }
 }

@@ -237,7 +237,7 @@ export class Color {
         return `#${this.$rgb.map(hex).join('')}`;
     }
 
-    toMarkup(format) { // HACK: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
+    toMarkup(format) {
         return ` <span face="monospace" fgcolor="${this.#fmt.Lo > Grey ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${this.toText(format)}</span>`;
     }
 

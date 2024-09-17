@@ -106,9 +106,9 @@
             <default>8</default>
             <summary>menu item size</summary>
         </key>
-        <key type="b" name="menu-style">
+        <key type="b" name="menu-type">
             <default>false</default>
-            <summary>menu style - (false - history, true - collection)</summary>
+            <summary>menu type - (false - history, true - collection)</summary>
         </key>
     </schema>
 </schemalist>
