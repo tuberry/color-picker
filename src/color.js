@@ -1,19 +1,19 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {id, array} from './util.js';
+import * as Util from './util.js';
 
 const Grey = 0.569; // L in OKLab <=> 18% grey #777777
 
-const _ = id; // HACK: workaround for gettext
-const numeric = (x, n = -1, r) => n < 0 ? x : Number(x.toFixed(n)).toString(r);
+const _ = Util.id; // HACK: workaround for gettext
+const numeric = (x, n = -1, r) => n < 0 ? String(x) : Number(x.toFixed(n)).toString(r);
 const percent = (x, n) => `${numeric(x * 100, n)}%`;
 const hex = x => numeric(x, 0, 16).padStart(2, '0');
 const denorm = (v, u) => u ? v * u : v;
 const norm = (v, u) => u ? v / u : v;
 
 const RGB = {
-    get: ({Re, Gr, Bl}) => ({r: Re / 255, g: Gr / 255, b: Bl / 255}), set: id,
+    get: ({Re, Gr, Bl}) => ({r: Re / 255, g: Gr / 255, b: Bl / 255}), set: Util.id,
     alter: (x, {r, g, b}) => { x.Re = r * 255; x.Gr = g * 255; x.Bl = b * 255; },
     unbox: ({r, g, b}) => [r, g, b],
 };
@@ -205,7 +205,7 @@ export class Color {
     toStops(form, rtl) {
         let {meta: {set, get}, unit, stop = 1} = Color.Form[form];
         let color = get(this.#fmt);
-        return array(stop + 1, i => {
+        return Util.array(stop + 1, i => {
             let step = i / stop;
             color[form] = denorm(step, unit);
             return [rtl ? 1 - step : step, ...RGB.unbox(set(color)), 1];
@@ -213,24 +213,22 @@ export class Color {
     }
 
     toText(format) {
-        let pos, txt = this.formats[format ?? this.format] || '#%Rex%Grx%Blx';
-        while((pos = txt.indexOf('%', pos) + 1)) {
-            let peek = pos + 2;
-            let form = txt.slice(pos, peek);
-            if(!Color.forms.has(form)) continue;
+        return Util.format(this.formats[format ?? this.format] || '#%Rex%Grx%Blx', text => {
+            let peek = 2;
+            let form = text.slice(0, peek);
+            if(!Color.forms.has(form)) return;
             let digit, {unit} = Color.Form[form],
                 value = this.#fmt[form],
-                type = txt.charAt(peek);
+                type = text.charAt(peek);
             if(Color.types.has(type)) {
-                let n = txt.charCodeAt(++peek) - 48; // '0' = 48
+                let n = text.charCodeAt(++peek) - 48; // '0' = 48
                 if(n >= 0 && n < 10) digit = n, peek++;
             } else {
                 if(!Number.isInteger(unit)) type = 'p';
                 digit = 0;
             }
-            txt = `${txt.slice(0, pos - 1)}${Color.Type[type].show(value, digit, unit)}${txt.slice(peek)}`;
-        }
-        return txt;
+            return [Color.Type[type].show(value, digit, unit), peek];
+        });
     }
 
     toHEX() {
@@ -238,7 +236,7 @@ export class Color {
     }
 
     toMarkup(format) {
-        return ` <span face="monospace" fgcolor="${this.#fmt.Lo > Grey ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${this.toText(format)}</span>`;
+        return ` <span fgcolor="${this.#fmt.Lo > Grey ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${this.toText(format)}</span>`;
     }
 
     toPreview() {

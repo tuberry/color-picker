@@ -183,7 +183,7 @@ export class Setting {
             ring.set(key, [field, type]);
             if(init) return;
             let sync = [post, cast, back, bind].reduceRight((p, x) => pipe(x, p));
-            connect(host, this[hub], `changed::${field}`, () => { sync(); });
+            connect(host, this[hub], `changed::${field}`, () => void sync());
         });
         cast?.();
         return this;

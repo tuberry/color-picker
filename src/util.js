@@ -54,6 +54,22 @@ export async function readdir(dir, func, attr = Gio.FILE_ATTRIBUTE_STANDARD_NAME
     return Array.fromAsync(await fopen(dir).enumerate_children_async(attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, cancel), func);
 }
 
+export function format(text, turn) { // format with specifier `%VAR` like in C
+    let pos;
+    while((pos = text.indexOf('%', pos) + 1)) {
+        if(text.charAt(pos) === '%') {
+            text = `${text.slice(0, pos - 1)}${text.slice(pos)}`;
+        } else {
+            let clip = turn(text.slice(pos));
+            if(!clip) continue;
+            let [body, skip] = clip;
+            text = `${text.slice(0, pos - 1)}${body}${text.slice(pos + skip)}`;
+            pos += body.length - 1;
+        }
+    }
+    return text;
+}
+
 export function search(needle, haystack) { // Ref: https://github.com/bevacqua/fuzzysearch
     next: for(let i = 0, j = 0, n = needle.length, h = haystack.length; i < n; i++) {
         while(j < h) if(haystack[j++] === needle[i]) continue next;

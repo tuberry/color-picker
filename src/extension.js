@@ -496,10 +496,10 @@ class ColorItem extends Menu.DatumItemBase {
     }
 
     setup(color) {
-        let [icon, raw, fmts] = color;
+        let [star, raw, fmts] = color;
         this.$color = new Color(raw, fmts);
         Fubar.markup(this.label, this.$color.toMarkup());
-        this.$btn.setup(icon ? 'starred-symbolic' : 'non-starred-symbolic');
+        this.$btn.setup(star ? 'starred-symbolic' : 'non-starred-symbolic');
     }
 }
 
