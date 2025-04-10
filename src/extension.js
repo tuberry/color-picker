@@ -3,7 +3,6 @@
 
 import St from 'gi://St';
 import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Cairo from 'gi://cairo';
 import Shell from 'gi://Shell';
@@ -16,33 +15,26 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
-import * as Util from './util.js';
-import * as Menu from './menu.js';
-import * as Fubar from './fubar.js';
+import * as T from './util.js';
+import * as M from './menu.js';
+import * as F from './fubar.js';
+import {Key as K, Preset} from './const.js';
 
-import {Color} from './color.js';
-import {Field, Preset} from './const.js';
+import Color from './color.js';
 
-const {_} = Fubar;
+const {_} = F;
 const Notify = {MSG: 0, OSD: 1};
 const Preview = {LENS: 0, LABEL: 1};
 const Sound = {SCREENSHOT: 0, COMPLETE: 1};
-const Format = Util.omap(Preset, ([k, v]) => [[v, k]]);
-const CP_IFACE = `<node>
-    <interface name="org.gnome.Shell.Extensions.ColorPicker">
-        <method name="Pick">
-            <arg type="a{sv}" direction="out" name="result"/>
-        </method>
-    </interface>
-</node>`; // same result as XDP screenshot portal
+const Format = T.omap(Preset, ([k, v]) => [[v, k]]);
 
-const genColorSwatch = color => Util.encode(`<svg width="64" height="64" fill="${color}" viewBox="0 0 1 1">
+const genColorSwatch = color => T.encode(`<svg width="64" height="64" fill="${color}" viewBox="0 0 1 1">
     <rect width=".75" height=".75" x=".125" y=".125" rx=".15"/>
 </svg>`);
 
 class ColorSlider extends Slider.Slider {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(form, value, step, color, callback) {
@@ -83,9 +75,10 @@ class ColorSlider extends Slider.Slider {
     }
 
     vfunc_key_press_event(event) {
+        let rtl = this.get_text_direction() === Clutter.TextDirection.RTL;
         switch(event.get_key_symbol()) {
-        case Clutter.KEY_Left: this.#update(-this.$meta.step); break;
-        case Clutter.KEY_Right: this.#update(this.$meta.step); break;
+        case Clutter.KEY_Left: this.#update(rtl ? this.$meta.step : -this.$meta.step); break;
+        case Clutter.KEY_Right: this.#update(rtl ? -this.$meta.step : this.$meta.step); break;
         default: return super.vfunc_key_press_event(event);
         }
         return Clutter.EVENT_STOP;
@@ -104,13 +97,13 @@ class ColorSlider extends Slider.Slider {
 
 class SliderItem extends PopupMenu.PopupBaseMenuItem {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(form, value, step, color, callback) {
         super({activate: false});
         let slider = new ColorSlider(form, value, step, color, callback);
-        let label = new St.Label({text: form.substring(0, 1).toUpperCase(), xExpand: false});
+        let label = new St.Label({text: form.slice(0, 1).toUpperCase(), xExpand: false});
         this.connect('key-press-event', (_a, event) => slider.vfunc_key_press_event(event));
         this.setup = v => { slider._value = v; slider.queue_repaint(); };
         [label, slider].forEach(x => this.add_child(x));
@@ -119,11 +112,11 @@ class SliderItem extends PopupMenu.PopupBaseMenuItem {
 
 class ColorMenu extends PopupMenu.PopupMenu {
     constructor(color) {
-        let source = Main.layoutManager.dummyCursor;
-        super(source, 0.1, St.Side.LEFT);
+        let cursor = Main.layoutManager.dummyCursor;
+        super(cursor, 0.1, St.Side.LEFT);
         this.$color = color;
-        this.$formats = Util.array(color.formats.length).slice(Preset.length);
-        this.$manager = new PopupMenu.PopupMenuManager(source);
+        this.$formats = T.array(color.formats.length).slice(Preset.length);
+        this.$manager = new PopupMenu.PopupMenuManager(cursor);
         this.$manager.addMenu(this);
         this.actor.add_style_class_name('color-picker-menu');
         Main.layoutManager.addTopChrome(this.actor);
@@ -134,14 +127,14 @@ class ColorMenu extends PopupMenu.PopupMenu {
     #addItems() {
         let {r, g, b, Hu, Sl, Ll, Lo, Co, Ho} = this.$color.toItems((k, v, u, s) =>
             new SliderItem(k, v, s ?? 1 / Math.max(u ?? 1, 100), this.$color, (...xs) => this.#updateSliders(...xs)));
-        Menu.itemize(this.$menu = {
+        M.itemize(this.$menu = {
             HEX: this.#genTitleItem(),
-            RGB: new PopupMenu.PopupSeparatorMenuItem(), r, g, b,
-            HSL: new PopupMenu.PopupSeparatorMenuItem(), Hu, Sl, Ll,
-            OKLCH: new PopupMenu.PopupSeparatorMenuItem(), Lo, Co, Ho, // NOTE: irregular space differs from RGB/HSL, see also https://oklch.com/
+            RGB: new M.Separator(), r, g, b,
+            HSL: new M.Separator(), Hu, Sl, Ll,
+            OKLCH: new M.Separator(), Lo, Co, Ho, // NOTE: irregular space differs from RGB/HSL, see also https://oklch.com/
             custom: this.#genCustomSection(),
         }, this); // TODO: ? replace HSL and OKLCH with OKHSL, see https://github.com/w3c/csswg-drafts/issues/8659 and https://bottosson.github.io/posts/colorpicker/
-        this.actor.connect('key-press-event', (_a, e) => { Menu.altNum(e.get_key_symbol(), e, this.$menu.HEX); });
+        this.actor.connect('key-press-event', (_a, e) => { M.altNum(e.get_key_symbol(), e, this.$menu.HEX); });
     }
 
     #updateSliders(form, value) {
@@ -153,20 +146,20 @@ class ColorMenu extends PopupMenu.PopupMenu {
     }
 
     #genCustomSection() {
-        let custom = new PopupMenu.PopupMenuSection();
-        let items = this.$formats.map(x => new Menu.Item('', () => this.#emitSelected(x)));
-        if(items.length) custom.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Others')));
-        custom.updateLabels = () => items.forEach((x, i) => x.label.set_text(this.$color.toText(this.$formats[i])));
-        Menu.itemize(items, custom);
-        return custom;
+        let ret = new PopupMenu.PopupMenuSection();
+        let items = this.$formats.map(x => new M.Item('', () => this.#emitSelected(x)));
+        if(items.length) ret.addMenuItem(new M.Separator(_('Others')));
+        ret.updateLabels = () => items.forEach((x, i) => x.label.set_text(this.$color.toText(this.$formats[i])));
+        M.itemize(items, ret);
+        return ret;
     }
 
     #genTitleItem() {
-        let item = new Menu.Item('', () => this.emit('color-selected', this.$color), {can_focus: false});
-        Preset.forEach((x, i) => item.insert_child_at_index(Util.hook({
+        let ret = new M.Item('', () => this.emit('color-selected', this.$color), {can_focus: false});
+        Preset.forEach((x, i) => ret.insert_child_at_index(T.hook({
             clicked: () => { this.close(); this.#emitSelected(Format[x]); },
         }, new St.Button({canFocus: true, label: x, styleClass: 'color-picker-button button'})), i));
-        return item;
+        return ret;
     }
 
     #emitSelected(format) {
@@ -183,13 +176,13 @@ class ColorMenu extends PopupMenu.PopupMenu {
 
 class ColorLens extends St.DrawingArea {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(param) {
         super({styleClass: 'color-picker-lens', ...param});
         this.$meta = {x: 0, y: 0, color: new Color(), pixels: [], area: [0, 0, 0, 0, 0]};
-        this.$zoom = 8 * Fubar.getTheme().scaleFactor; // grid length
+        this.$zoom = 8 * F.theme().scaleFactor; // grid length
         this.$unit = 1 / this.$zoom;
     }
 
@@ -224,8 +217,8 @@ class ColorLens extends St.DrawingArea {
         for(let i = 0; i < w; i++) {
             for(let j = 0; j < h; j++) {
                 if(Math.hypot(i - c_x, j - c_y) > r1) continue;
-                let [red, g, b] = pixels.slice((j * w + i) * 4, -1);
-                cr.setSourceRGBA(red / 255, g / 255, b / 255, 1);
+                let [r_, g, b] = pixels.slice((j * w + i) * 4, -1);
+                cr.setSourceRGBA(r_ / 255, g / 255, b / 255, 1);
                 cr.rectangle(i, j, 1, 1);
                 cr.fill();
             }
@@ -253,7 +246,7 @@ class ColorLens extends St.DrawingArea {
 
 class ColorViewer extends BoxPointer.BoxPointer {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(plain) {
@@ -261,25 +254,25 @@ class ColorViewer extends BoxPointer.BoxPointer {
         Main.layoutManager.addTopChrome(this);
         this.set({visible: false, styleClass: 'color-picker-boxpointer'});
         this.bin.set_child(new St.Label({styleClass: 'color-picker-label'}));
-        this.$src = Fubar.Source.tie({lens: this.#genLens(plain)}, this);
+        this.$src = F.Source.tie({lens: this.#genLens(plain)}, this);
     }
 
     #genLens(plain) {
-        let lens;
+        let ret;
         if(plain) {
-            lens = new Clutter.Actor({opacity: 0, width: 12, height: 12});
-            lens.setup = ({x, y}) => lens.set_position(x, y);
+            ret = new Clutter.Actor({opacity: 0, width: 12, height: 12});
+            ret.setup = ({x, y}) => ret.set_position(x, y);
             this.$pos = 0;
         } else {
-            lens = new ColorLens({width: 1, height: 1});
+            ret = new ColorLens({width: 1, height: 1});
             this.$pos = 1 / 2;
         }
-        Main.layoutManager.addTopChrome(lens);
-        return lens;
+        Main.layoutManager.addTopChrome(ret);
+        return ret;
     }
 
     get extents() {
-        return [...this.get_transformed_position(), ...this.get_transformed_size()];
+        return this.get_transformed_position().concat(this.get_transformed_size());
     }
 
     summon(view) {
@@ -290,18 +283,18 @@ class ColorViewer extends BoxPointer.BoxPointer {
     }
 
     setup(color) {
-        Fubar.markup(this.bin.child, color.toPreview());
+        F.marks(this.bin.child, color.toPreview());
     }
 }
 
 class ColorArea extends St.Widget {
     static {
-        GObject.registerClass({
+        T.enrol(this, null, {
             Signals: {
                 'end-pick': {param_types: [GObject.TYPE_BOOLEAN]},
                 'notify-color': {param_types: [GObject.TYPE_JSOBJECT]},
             },
-        }, this);
+        });
     }
 
     constructor(set, once, ...args) {
@@ -313,15 +306,14 @@ class ColorArea extends St.Widget {
     }
 
     #bindSettings(set, once) {
-        this.$set = set.attach({
-            menuKey: [Field.MKEY, 'string'],
-            quitKey: [Field.QKEY, 'string'],
-            persist: [Field.PRST, 'boolean', x => { this.$once = once || !x; }],
-            menuSet: [Field.MENU, 'boolean', null, x => this.$src.format.toggle(x)],
-        }, this).attach({
-            viewing: [Field.PVW,  'boolean', null, x => this.$src.viewer.toggle(x)],
-            preview: [Field.PVWS, 'uint', x => x === Preview.LABEL, x => this.$src.viewer.reload(x)],
-        }, this, null, () => this.#onViewerSet());
+        this.$set = set.tie([
+            K.MKEY, K.QKEY,
+            [K.PRST, x => { this.$once = once || !x; }],
+            [K.MENU, null, x => this.$src.format.toggle(x)],
+        ], this).tie([
+            [K.PVW,  null, x => this.$src.viewer.toggle(x)],
+            [K.PVWS, x => x === Preview.LABEL, x => this.$src.viewer.reload(x)],
+        ], this, null, () => this.#onViewerSet());
     }
 
     #buildWidgets(format, formats) {
@@ -336,14 +328,14 @@ class ColorArea extends St.Widget {
 
     #buildSources() {
         let setCursor = x => global.display.set_cursor(x),
-            cursor = new Fubar.Source((x = this.cursor) => x && setCursor(x), () => setCursor(Meta.Cursor.DEFAULT), true),
-            format = Fubar.Source.new(() => Util.hook({
+            cursor = new F.Source((x = this.cursor) => x && setCursor(x), () => setCursor(Meta.Cursor.DEFAULT), true),
+            format = F.Source.new(() => T.hook({
                 'open-state-changed': (_w, open) => this.$src.cursor.toggle(!open),
                 'color-selected': () => this.#emitColor(),
                 'color-changed': () => this.viewer?.setup(this.$color),
-            }, new ColorMenu(this.$color)), this.menuSet),
-            viewer = Fubar.Source.new(() => new ColorViewer(this.preview), this.viewing);
-        this.$src = Fubar.Source.tie({cursor, format, viewer}, this);
+            }, new ColorMenu(this.$color)), this[K.MENU]),
+            viewer = F.Source.new(() => new ColorViewer(this[K.PVWS]), this[K.PVW]);
+        this.$src = F.Source.tie({cursor, format, viewer}, this);
     }
 
     async #initContents() {
@@ -365,7 +357,7 @@ class ColorArea extends St.Widget {
     }
 
     get cursor() {
-        return !this.viewing || this.preview ? Meta.Cursor.CROSSHAIR : Meta.Cursor.NONE;
+        return !this[K.PVW] || this[K.PVWS] ? Meta.Cursor.CROSSHAIR : Meta.Cursor.NONE;
     }
 
     $pick(coords) {
@@ -392,7 +384,7 @@ class ColorArea extends St.Widget {
     #getLoupe(x, y, scale, width, height) {
         x = Math.clamp(Math.round(x * scale), 0, width);
         y = Math.clamp(Math.round(y * scale), 0, height);
-        if(this.preview) return [x, y, 1, 1, 0, 0, 0];
+        if(this[K.PVWS]) return [x, y, 1, 1, 0, 0, 0];
         let r = 10,
             a = Math.max(x - r, 0),
             b = Math.max(y - r, 0),
@@ -424,8 +416,8 @@ class ColorArea extends St.Widget {
     vfunc_key_press_event(event) {
         switch(event.get_key_symbol()) {
         case Clutter.KEY_Escape:
-        case Clutter[`KEY_${this.quitKey}`]: this.emit('end-pick', true); break;
-        case Clutter[`KEY_${this.menuKey}`]: this.emit('popup-menu'); break;
+        case Clutter[`KEY_${this[K.QKEY]}`]: this.emit('end-pick', true); break;
+        case Clutter[`KEY_${this[K.MKEY]}`]: this.emit('popup-menu'); break;
         case Clutter.KEY_a:
         case Clutter.KEY_h:
         case Clutter.KEY_Left: this.#moveBy(-1, 0, event); break;
@@ -443,7 +435,7 @@ class ColorArea extends St.Widget {
         case Clutter.KEY_KP_Enter:
         case Clutter.KEY_ISO_Enter: this.#emitColor(); break;
         case Clutter.KEY_Shift_L:
-        case Clutter.KEY_Shift_R: this.$set.set('preview', this.preview ? Preview.LENS : Preview.LABEL, this); break;
+        case Clutter.KEY_Shift_R: this.$set.set(K.PVWS, this[K.PVWS] ? Preview.LENS : Preview.LABEL, this); break;
         default: return super.vfunc_key_press_event(event);
         }
         return Clutter.EVENT_PROPAGATE;
@@ -451,8 +443,8 @@ class ColorArea extends St.Widget {
 
     vfunc_scroll_event(event) {
         switch(event.get_scroll_direction()) {
-        case Clutter.ScrollDirection.UP: if(this.preview) this.$set.set('preview', Preview.LENS, this); break;
-        case Clutter.ScrollDirection.DOWN: if(!this.preview) this.$set.set('preview', Preview.LABEL, this); break;
+        case Clutter.ScrollDirection.UP: if(this[K.PVWS]) this.$set.set(K.PVWS, Preview.LENS); break;
+        case Clutter.ScrollDirection.DOWN: if(!this[K.PVWS]) this.$set.set(K.PVWS, Preview.LABEL); break;
         }
         return Clutter.EVENT_PROPAGATE;
     }
@@ -467,13 +459,13 @@ class ColorArea extends St.Widget {
     }
 }
 
-class ColorItem extends Menu.DatumItemBase {
+class ColorItem extends M.DatumItemBase {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(star, remove, color) {
-        super('color-picker-item-label', 'color-picker-icon', () => Fubar.copy(this.$color.toText()), color);
+        super('color-picker-item-label', 'color-picker-icon', () => F.copy(this.$color.toText()), color);
         this.$onRemove = () => remove(this.$color.toRaw());
         this.$onClick = () => star(this.$color.toRaw());
     }
@@ -498,14 +490,14 @@ class ColorItem extends Menu.DatumItemBase {
     setup(color) {
         let [star, raw, fmts] = color;
         this.$color = new Color(raw, fmts);
-        Fubar.markup(this.label, this.$color.toMarkup());
+        F.marks(this.label, this.$color.toMarkup());
         this.$btn.setup(star ? 'starred-symbolic' : 'non-starred-symbolic');
     }
 }
 
-class ColorButton extends Menu.Systray {
+class ColorTray extends M.Systray {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(set, ...args) {
@@ -515,38 +507,36 @@ class ColorButton extends Menu.Systray {
     }
 
     #bindSettings(set) {
-        this.$set = set.attach({
-            iconName: [Field.TICN, 'string', x => this.$icon.set_icon_name(x || 'color-select-symbolic')],
-            menuSize: [Field.MNSZ, 'uint', x => { this.$tint = x > 0; }, () => this.#onMenuSizeSet(this.$tint)],
-        }, this).attach({
-            menuType: [Field.MNTP, 'boolean'],
-            collect:  [Field.CLCT, 'value', x => x.deepUnpack()],
-            history:  [Field.HIST, 'value', x => x.deepUnpack()],
-        }, this, null, () => this.#onColorsSet());
+        this.$set = set.tie([
+            [K.TICN, x => this.$icon.set_icon_name(x || 'color-select-symbolic')],
+            [K.MNSZ, x => { this.$tint = x > 0; }, () => this.#onMenuSizeSet(this.$tint)],
+        ], this).tie([
+            [K.MNTP, x => !!x, x => this.$menu.tool.star?.toggleState(x)], K.CLCT, K.HIST,
+        ], this, null, () => this.#onColorsSet());
     }
 
     #onMenuSizeSet(tint) {
-        if(Util.xnor(tint, this.$menu.tint)) return;
-        if(!tint) ['history', 'collect'].forEach(x => this[x].length && this.#save(x, []));
-        Menu.record(tint, this, null, 'sep1', 'tool', () => this.#genTintSection(), 'tint', 'sep1');
+        if(T.xnor(tint, this.$menu.tint)) return;
+        if(!tint) [K.CLCT, K.HIST].forEach(x => this.$set.set(x, []));
+        M.record(tint, this, null, 'sep1', 'tool', () => this.#genTintSection(), 'tint', 'sep1');
         this.$menu.tool.setup(this.#genTool());
     }
 
     #genTintSection() {
         let star = (...xs) => this.#star(...xs);
         let remove = (...xs) => this.#remove(...xs);
-        return new Menu.DatasetSection(() => new ColorItem(star, remove), this.#getColors());
+        return new M.DatasetSection(() => new ColorItem(star, remove), this.#getColors());
     }
 
     #buildWidgets(formats, callback, fmts) {
         this.$formats = formats;
         this.$callback = callback;
         this.add_style_class_name('color-picker-systray');
-        Menu.itemize(this.$menu = {
-            fmts, sep0: fmts ? new PopupMenu.PopupSeparatorMenuItem() : null,
+        M.itemize(this.$menu = {
+            fmts, sep0: fmts ? new M.Separator() : null,
             tint: this.$tint ? this.#genTintSection() : null,
-            sep1: this.$tint ? new PopupMenu.PopupSeparatorMenuItem() : null,
-            tool: new Menu.ToolItem(this.#genTool()),
+            sep1: this.$tint ? new M.Separator() : null,
+            tool: new M.ToolItem(this.#genTool()),
         }, this.menu);
         this.menu.actor.add_style_class_name('color-picker-menu');
         this.menu.actor.connect('key-press-event', (...xs) => this.#onKeyPress(...xs));
@@ -554,17 +544,17 @@ class ColorButton extends Menu.Systray {
 
     #onKeyPress(_a, event) {
         let key = event.get_key_symbol();
-        if(Menu.altNum(key, event, this.$menu.tool));
-        else if(key === Clutter.KEY_Shift_L) this.$set.negate('menuType', this);
+        if(M.altNum(key, event, this.$menu.tool));
+        else if(key === Clutter.KEY_Shift_R) this.$set.not(K.MNTP);
     }
 
     #genTool() {
         let param = {styleClass: 'color-picker-icon', xExpand: true};
         return {
-            draw: new Menu.Button(param, () => { this.menu.close(); this.$callback(); }, 'find-location-symbolic'),
-            star: this.$tint ? new Menu.StateButton(param, () => this.$set.negate('menuType', this),
-                [this.menuType, 'semi-starred-symbolic', 'starred-symbolic']) : null,
-            gear: new Menu.Button(param, () => { this.menu.close(); Fubar.me().openPreferences(); }, 'emblem-system-symbolic'),
+            draw: new M.Button(param, () => { this.menu.close(); this.$callback(); }, 'find-location-symbolic'),
+            star: this.$tint ? new M.StateButton(param, () => this.$set.not(K.MNTP),
+                [this[K.MNTP], 'semi-starred-symbolic', 'starred-symbolic']) : null,
+            gear: new M.Button(param, () => { this.menu.close(); F.me().openPreferences(); }, 'applications-system-symbolic'),
         };
     }
 
@@ -573,22 +563,18 @@ class ColorButton extends Menu.Systray {
     }
 
     #getColors() {
-        return this.menuType ? this.collect.map(x => [true, x, this.$formats])
-            : this.history.map(x => [this.collect.includes(x), x, this.$formats]);
-    }
-
-    #save(key, colors) {
-        this.$set.set(key, new GLib.Variant('au', colors), this);
+        return this[K.MNTP] ? this[K.CLCT].map(x => [true, x, this.$formats])
+            : this[K.HIST].map(x => [this[K.CLCT].includes(x), x, this.$formats]);
     }
 
     #star(color) {
-        this.#save('collect', this.collect.includes(color) ? this.collect.filter(x => x !== color)
-            : [color].concat(this.collect).slice(0, this.menuSize));
+        this.$set.set(K.CLCT, this[K.CLCT].includes(color) ? this[K.CLCT].filter(x => x !== color)
+            : [color].concat(this[K.CLCT]).slice(0, this[K.MNSZ]));
     }
 
     #remove(color) {
-        let key = this.menuType ? 'collect' : 'history';
-        this.#save(key, this[key].filter(x => x !== color));
+        if(this[K.MNTP]) this.$set.set(K.CLCT, this[K.CLCT].filter(x => x !== color));
+        else this.$set.set(K.HIST, this[K.HIST].filter(x => x !== color));
     }
 
     vfunc_event(event) {
@@ -602,7 +588,7 @@ class ColorButton extends Menu.Systray {
     }
 
     addHistory(color) {
-        if(this.$tint) this.#save('history', [color, ...this.history].slice(0, this.menuSize));
+        if(this.$tint) this.$set.set(K.HIST, [color].concat(this[K.HIST]).slice(0, this[K.MNSZ]));
     }
 
     setFormats(formats) {
@@ -611,7 +597,7 @@ class ColorButton extends Menu.Systray {
     }
 }
 
-class ColorPicker extends Fubar.Mortal {
+class ColorPicker extends F.Mortal {
     constructor(gset) {
         super();
         this.#bindSettings(gset);
@@ -619,31 +605,26 @@ class ColorPicker extends Fubar.Mortal {
     }
 
     #buildSources() {
-        let tray = Fubar.Source.new(() => this.#genSystray(), this.systray),
-            area = new Fubar.Source((hooks, ...args) => Util.hook(hooks, new ColorArea(...args))),
-            keys = Fubar.Source.newKeys(this.$set.hub, Field.KEYS, () => this.summon(), this.shortcut),
-            dbus = Fubar.Source.newDBus(CP_IFACE, '/org/gnome/Shell/Extensions/ColorPicker', this, true);
-        this.$src = Fubar.Source.tie({tray, area, keys, dbus}, this);
+        let tray = F.Source.new(() => this.#genSystray(), this[K.STRY]),
+            area = new F.Source((hooks, ...args) => T.hook(hooks, new ColorArea(...args))),
+            keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => this.summon(), this[K.KEY]),
+            dbus = F.Source.newDBus('org.gnome.Shell.Extensions.ColorPicker', '/org/gnome/Shell/Extensions/ColorPicker', this, true);
+        this.$src = F.Source.tie({tray, area, keys, dbus}, this);
     }
 
     #bindSettings(gset) {
-        this.$set = new Fubar.Setting(gset, {
-            hexFormat: [Field.HEX, 'string'],
-            rgbFormat: [Field.RGB, 'string'],
-            hslFormat: [Field.HSL, 'string'],
-            oklchFormat: [Field.OKLCH, 'string'],
-            customFormat: [Field.CFMT, 'value', x => this.#onCustomSet(x), () => this.tray?.$menu.fmts?.setup(this.$options)],
-        }, this, () => this.#onFormatsSet(), () => this.tray?.setFormats(this.$formats)).attach({
-            enableSound:  [Field.SND,  'boolean'],
-            notifyStyle:  [Field.NTFS, 'uint'],
-            enableNotify: [Field.NTF,  'boolean'],
-            autoCopy:     [Field.COPY, 'boolean', x => x ? [] : null],
-            shortcut:     [Field.KEY,  'boolean', null, x => this.$src.keys.toggle(x)],
-            systray:      [Field.STRY, 'boolean', null, x => this.$src.tray.toggle(x)],
-            enableFormat: [Field.FMT,  'boolean', null, x => this.#onEnableFormatSet(x)],
-            chosenFormat: [Field.FMTS, 'uint',    null, x => this.tray?.$menu.fmts?.choose(x)],
-            notifySound:  [Field.SNDS, 'uint',    x => x === Sound.COMPLETE ? 'complete' : 'screen-capture'],
-        }, this);
+        this.$set = new F.Setting(gset, [
+            K.HEX, K.RGB, K.HSL, K.OKLCH,
+            [K.CFMT, x => this.#onCustomSet(x), () => this.tray?.$menu.fmts?.setup(this.$options)],
+        ], this, () => this.#onFormatsSet(), () => this.tray?.setFormats(this.$formats)).tie([
+            K.SND, K.NTFS, K.NTF,
+            [K.COPY, x => x ? [] : null],
+            [K.KEY,  null, x => this.$src.keys.toggle(x)],
+            [K.STRY, null, x => this.$src.tray.toggle(x)],
+            [K.FMT,  null, x => this.#onEnableFormatSet(x)],
+            [K.FMTS, null, x => this.tray?.$menu.fmts?.choose(x)],
+            [K.SNDS, x => x === Sound.COMPLETE ? 'complete' : 'screen-capture'],
+        ], this);
     }
 
     get tray() {
@@ -651,48 +632,48 @@ class ColorPicker extends Fubar.Mortal {
     }
 
     #onCustomSet(custom) {
-        return Util.seq(x => { this.$options = Preset.concat(x.map(y => y.name)); }, custom.recursiveUnpack().filter(x => x.enable));
+        return T.seq(x => { this.$options = Preset.concat(x.map(y => y.name)); }, custom.filter(x => x.enable));
     }
 
     #onFormatsSet() {
-        this.$formats = [this.hexFormat, this.rgbFormat, this.hslFormat, this.oklchFormat].concat(this.customFormat.map(x => x.format));
+        this.$formats = [K.HEX, K.RGB, K.HSL, K.OKLCH].map(x => this[x]).concat(this[K.CFMT].map(x => x.format));
     }
 
     #onEnableFormatSet(enable) {
-        Menu.record(enable, this.tray, null, 'sep0', this.tray?.$tint ? 'tint' : 'tool', () => this.#genFormatItem(), 'fmts', 'sep0');
+        M.record(enable, this.tray, null, 'sep0', this.tray?.$tint ? 'tint' : 'tool', () => this.#genFormatItem(), 'fmts', 'sep0');
     }
 
     #genFormatItem() {
-        return new Menu.RadioItem(_('Default format'), this.$options, this.chosenFormat, x => this.$set.set('chosenFormat', x, this));
+        return new M.RadioItem(_('Default format'), this.$options, this[K.FMTS], x => this.$set.set(K.FMTS, x));
     }
 
     #genSystray() {
-        return new ColorButton(this.$set, this.$formats, () => this.summon(), this.enableFormat ? this.#genFormatItem() : null);
+        return new ColorTray(this.$set, this.$formats, () => this.summon(), this[K.FMT] ? this.#genFormatItem() : null);
     }
 
     summon() {
         if(this.$src.area.active) return;
-        this.tray?.add_style_pseudo_class('state-busy'); // FIXME: work later than screenshot on first run
-        this.$src.area.summon({'end-pick': () => this.dispel(), 'notify-color': (...xs) => this.inform(...xs)},
-            this.$set, false, this.enableFormat ? this.chosenFormat : Format.HEX, this.$formats);
+        this.tray?.add_style_pseudo_class('state-busy'); // FIXME: works later than screenshot on first run
+        this.$src.area.summon({'end-pick': () => this.dispel(), 'notify-color': (_a, x) => this.inform(x)},
+            this.$set, false, this[K.FMT] ? this[K.FMTS] : Format.HEX, this.$formats);
     }
 
     dispel() {
         if(!this.$src.area.active) return;
         this.tray?.remove_style_pseudo_class('state-busy');
-        if(this.autoCopy?.length) Fubar.copy(this.autoCopy.splice(0).join('\n'));
+        if(this[K.COPY]?.length) F.copy(this[K.COPY].splice(0).join('\n'));
         this.$src.area.dispel();
     }
 
-    inform(_a, color) {
+    inform(color) {
         let text = color.toText();
-        this.autoCopy?.push(text);
+        this[K.COPY]?.push(text);
         this.tray?.addHistory(color.toRaw());
-        if(this.enableSound) global.display.get_sound_player().play_from_theme(this.notifySound, _('Color picked'), null);
-        if(!this.enableNotify) return;
+        if(this[K.SND]) global.display.get_sound_player().play_from_theme(this[K.SNDS], _('Color picked'), null);
+        if(!this[K.NTF]) return;
         let gicon = Gio.BytesIcon.new(genColorSwatch(color.toHEX()));
-        if(this.notifyStyle === Notify.MSG) {
-            let title = Fubar.me().metadata.name,
+        if(this[K.NTFS] === Notify.MSG) {
+            let title = F.me().metadata.name,
                 source = MessageTray.getSystemSource(),
                 message = new MessageTray.Notification({gicon, source, isTransient: true, title, body: _('%s is picked.').format(text)});
             source.addNotification(message);
@@ -714,18 +695,20 @@ class ColorPicker extends Fubar.Mortal {
 
     async PickAsync(_p, invocation) {
         try {
-            invocation.return_value(Util.pickle([{color: await this.pickAsync()}], true, 'd'));
+            invocation.return_value(T.pickle([{color: await this.pickAsync()}], true, 'd'));
         } catch(e) {
             invocation.return_error_literal(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED, 'Operation was cancelled');
         }
     }
+
+    Run = this.summon;
 }
 
-export default class Extension extends Fubar.Extension {
+export default class extends F.Extension {
     $klass = ColorPicker;
     // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
     pickAsync() {
-        if(!this[Fubar.hub]) throw Error('disabled');
-        return this[Fubar.hub].pickAsync();
+        if(!this[F.hub]) throw Error('disabled');
+        return this[F.hub].pickAsync();
     }
 }

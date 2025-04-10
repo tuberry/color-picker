@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: tuberry
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 sheets = ['stylesheet-dark.css', 'stylesheet-light.css']
 
 sassc = find_program('sassc', required: true)
@@ -7,6 +10,6 @@ foreach sheet: sheets
     output: sheet,
     command: [sassc, '-t', 'expanded', '-a', '@INPUT@', '@OUTPUT@'],
     install: true,
-    install_dir: target_dir
+    install_dir: target_dir,
   )
 endforeach

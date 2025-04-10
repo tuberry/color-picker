@@ -2,7 +2,7 @@
   "name": "@name@",
   "description": "@description@",
   "gettext-domain": "@gettext@",
-  "settings-schema": "@schemas@",
+  "settings-schema": "@rdnn@",
   "uuid": "@uuid@",
   "shell-version": [
     "@shell@"

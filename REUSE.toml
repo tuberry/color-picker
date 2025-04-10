@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: tuberry
+# SPDX-License-Identifier: CC-BY-SA-4.0
+
+version = 1
+
+[[annotations]]
+path = ["**.in", ".gitignore", "jsconfig.json"]
+SPDX-FileCopyrightText = "tuberry"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = ["po/LINGUAS", "po/POTFILES.in"]
+SPDX-FileCopyrightText = "tuberry"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = ["po/**po"]
+SPDX-License-Identifier = "GPL-3.0-or-later"

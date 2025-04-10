@@ -2,72 +2,54 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import St from 'gi://St';
-import Gio from 'gi://Gio';
 import Clutter from 'gi://Clutter';
-import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
-import * as Util from './util.js';
-import * as Fubar from './fubar.js';
+import * as T from './util.js';
+import * as F from './fubar.js';
+
+export const Separator = PopupMenu.PopupSeparatorMenuItem;
 
 export const itemize = (x, y) => Object.values(x).forEach(z => z && y.addMenuItem(z));
-export const findIcon = x => St.IconTheme.new().lookup_icon(x, -1, St.IconLookupFlags.FORCE_SVG);
 
-export function upsert(table, insert, list, update, iter = x => x._getMenuItems()) {
-    let items = iter(table);
+export function upsert(table, insert, list, update, spread = x => x._getMenuItems()) {
+    let items = spread(table);
     let delta = list.length - items.length;
     if(delta > 0) for(let i = 0; i < delta; i++) insert(table);
     else if(delta < 0) do items.at(delta).destroy(); while(++delta < 0);
-    iter(table).forEach((x, i, a) => update(list[i], x, i, a));
-}
+    spread(table).forEach((x, i, a) => update(list[i], x, i, a));
+} // NOTE: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator/forEach
 
 export function record(ok, tray, ...args) {
     if(!tray) return;
     let {menu, $menu} = tray;
-    Util.each(([gen, key, pos]) => {
-        if(Util.xnor(ok, $menu[key])) return;
-        ok ? menu.addMenuItem($menu[key] = gen?.() ?? new PopupMenu.PopupSeparatorMenuItem(),
-            pos ? menu._getMenuItems().findIndex(x => x === $menu[pos]) : undefined) : Fubar.omit($menu, key);
+    T.each(([gen, key, pos]) => {
+        if(T.xnor(ok, $menu[key])) return;
+        ok ? menu.addMenuItem($menu[key] = gen?.() ?? new Separator(),
+            pos ? menu._getMenuItems().findIndex(x => x === $menu[pos]) : undefined) : F.omit($menu, key);
     }, args, 3);
 }
 
-export function altNum(key, event, item) {
-    return Util.seq(x => x && [...item].filter(y => y instanceof St.Button)[key - 49]?.emit('clicked', Clutter.BUTTON_PRIMARY),
-        event.get_state() & Clutter.ModifierType.MOD1_MASK && key > 48 && key < 58); // Alt + 1..9
-}
-
-export class Icon extends St.Icon {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor({icon, ...param}) {
-        super({...param});
-        this.setup(icon);
-    }
-
-    setup(icon = '') {
-        if(icon === this.icon_name) return;
-        this.set_icon_name(icon);
-        if(icon && !findIcon(icon)) this.set_fallback_gicon(Gio.Icon.new_for_string(`${Util.ROOT}/icons/hicolor/scalable/status/${icon}.svg`));
-    }
-}
+export function altNum(key, event, item) { // Ref: https://gitlab.gnome.org/GNOME/mutter/-/blob/main/clutter/clutter/clutter-keysyms.h
+    return T.seq(x => x && [...item].filter(y => y instanceof St.Button).at(key - Clutter.KEY_1)?.emit('clicked', Clutter.BUTTON_PRIMARY),
+        event.get_state() & Clutter.ModifierType.MOD1_MASK && key >= Clutter.KEY_0 && key <= Clutter.KEY_9);
+} // NOTE: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator/find
 
 export class Systray extends PanelMenu.Button {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
-    constructor(menu, icon, pos, box, prop, text) {
-        let {uuid, metadata: {name}} = Fubar.me();
+    constructor(menu, icon = '', pos, box, prop, text) {
+        let {uuid, metadata: {name}} = F.me();
         super(0.5, text ?? name, !menu);
         this.$box = new St.BoxLayout({styleClass: 'panel-status-indicators-box'});
         this.add_child(this.$box);
-        this.$icon = new Icon({icon, styleClass: 'system-status-icon'});
+        this.$icon = new St.Icon({iconName: icon, styleClass: 'system-status-icon'});
         this.$box.add_child(this.$icon);
         Main.panel.addToStatusArea(uuid, this, pos, box);
         if(menu) itemize(this.$menu = menu, this.menu);
@@ -77,53 +59,48 @@ export class Systray extends PanelMenu.Button {
 
 export class Button extends St.Button {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(param, callback, icon = '', tip) {
         super({canFocus: true, ...param});
         this.#buildSources();
         this.$callback = callback;
-        this.set_child(new Icon({styleClass: 'popup-menu-icon'}));
-        this.connect('clicked', (...xs) => this.$onClick(...xs));
+        this.set_child(new St.Icon({styleClass: 'popup-menu-icon'}));
+        this.connect('clicked', (...xs) => this.$callback(...xs));
         if(icon !== null) this.setup(icon);
         this.setTip(tip);
     }
 
     #buildSources() {
-        let tip = new Fubar.Source((...xs) => this.#genTip(...xs));
-        let show = Fubar.Source.newTimer(() => [() => this.#showTip(true), 250], true, () => this.#showTip(false));
-        this.$src = Fubar.Source.tie({tip, show}, this);
+        let tip = new F.Source((...xs) => this.#genTip(...xs));
+        let show = F.Source.newTimer(() => [() => this.#showTip(true), 250], true, () => this.#showTip(false));
+        this.$src = F.Source.tie({tip, show}, this);
     }
 
     #genTip(text) {
         let tip = new BoxPointer.BoxPointer(St.Side.TOP);
         tip.bin.set_child(new St.Label({styleClass: 'dash-label'}));
         tip.set({$text: text, visible: false, styleClass: 'popup-menu-boxpointer'});
-        Fubar.connect(tip, this, 'notify::hover', x => this.$src.show.toggle(x.hover));
+        F.connect(tip, this, 'notify::hover', x => this.$src.show.toggle(x.hover));
         return tip;
     }
 
     #showTip(show) {
-        let {tip} = this;
-        if(!tip) return;
+        if(!this.tip) return;
         if(show) {
-            tip.setPosition(this, 0.1);
-            if(Fubar.offstage(tip)) Main.layoutManager.addTopChrome(tip);
-            tip.open(BoxPointer.PopupAnimation.FULL);
+            this.tip.setPosition(this, 0.1);
+            if(F.offstage(this.tip)) Main.layoutManager.addTopChrome(this.tip);
+            this.tip.open(BoxPointer.PopupAnimation.FULL);
         } else {
-            if(Fubar.offstage(tip)) return;
-            tip.close(BoxPointer.PopupAnimation.FADE);
-            Main.layoutManager.removeChrome(tip);
+            if(F.offstage(this.tip)) return;
+            this.tip.close(BoxPointer.PopupAnimation.FADE);
+            Main.layoutManager.removeChrome(this.tip);
         }
     }
 
-    $onClick() {
-        this.$callback();
-    }
-
     setup(icon) {
-        this.child.setup(icon);
+        this.child.set_icon_name(icon);
     }
 
     get tip() {
@@ -142,12 +119,7 @@ export class Button extends St.Button {
 
 export class StateButton extends Button {
     static {
-        GObject.registerClass(this);
-    }
-
-    $onClick() {
-        this.toggleState();
-        this.$callback();
+        T.enrol(this);
     }
 
     $setTip() {
@@ -161,15 +133,16 @@ export class StateButton extends Button {
     }
 
     toggleState(state = !this.$state) {
+        if(state === this.$state) return;
         this.$state = state;
-        this.child?.setup(this.$icon[this.$state ? 0 : 1]);
+        this.child?.set_icon_name(this.$icon[this.$state ? 0 : 1]);
         this.$setTip();
     }
 }
 
 export class Item extends PopupMenu.PopupMenuItem {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(text = '', callback, param, prop) {
@@ -187,7 +160,7 @@ export class Item extends PopupMenu.PopupMenuItem {
 
 export class ToolItem extends PopupMenu.PopupBaseMenuItem {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(tool, param, prop) {
@@ -197,30 +170,32 @@ export class ToolItem extends PopupMenu.PopupBaseMenuItem {
     }
 
     setup(tool) {
-        if(this.$tool) Fubar.omit(this, ...this.$tool);
-        if(!Array.isArray(tool)) tool = Object.entries(tool);
-        this.$tool = tool.flatMap(([k, v]) => v ? [Util.seq(() => this.add_child(this[k] ??= v), k)] : []);
+        if(this.$tool) F.omit(this, ...this.$tool);
+        this.$tool = T.unit(tool, Object.entries).flatMap(([k, v]) => {
+            if(k in this) throw Error(`key conflict: ${k}`);
+            else return v ? [(this.add_child(this[k] ??= v), k)] : [];
+        });
     }
 }
 
 export class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(text, active, callback, param, prop) {
         super(text, active, param);
-        this.connect('toggled', a => callback(a.state)); // FIXME: revert when https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/3493
+        this.connect('toggled', (_a, state) => callback(state));
         this.set(prop);
     }
 }
 
 export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
-    static getopt = o => Util.omap(o, ([k, v]) => [[v, Fubar._(Util.upcase(k))]]);
-
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
+
+    static getopt = o => T.omap(o, ([k, v]) => [[v, F._(T.upcase(k))]]);
 
     constructor(category, options, chosen, callback, prop) {
         super('');
@@ -245,7 +220,7 @@ export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
 
 export class DatumItemBase extends PopupMenu.PopupMenuItem {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(label, icon, callback, datum) {
@@ -263,10 +238,7 @@ export class DatumItemBase extends PopupMenu.PopupMenuItem {
     }
 
     vfunc_key_press_event(event) {
-        switch(event.get_key_symbol()) {
-        case Clutter.KEY_Control_L:
-        case Clutter.KEY_Control_R: this.#click(); break;
-        }
+        if(event.get_key_symbol() === Clutter.KEY_Control_L) this.#click();
         return super.vfunc_key_press_event(event);
     }
 
@@ -285,7 +257,7 @@ export class DatumItemBase extends PopupMenu.PopupMenuItem {
     }
 
     destroy() { // HACK: workaround for dangling ref & defocus on destroy & focus
-        if(this.active) Object.defineProperty(this, 'active', {set: Util.noop});
+        if(this.active) Object.defineProperty(this, 'active', {set: T.nop});
         if(this.active || this.label.has_key_focus() || this.$btn.has_key_focus()) this._getTopMenu()?.actor.grab_key_focus();
         super.destroy();
     }

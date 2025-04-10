@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as Util from './util.js';
+import {HEX} from './const.js';
+import * as T from './util.js';
 
-const Grey = 0.569; // L in OKLab <=> 18% grey #777777
+const Grey = 0.5693; // L in OKLab <=> 18% grey #777777 // Ref: https://en.wikipedia.org/wiki/Middle_gray
 
-const _ = Util.id; // HACK: workaround for gettext
+const _ = T.id; // HACK: workaround for gettext
 const numeric = (x, n = -1, r) => n < 0 ? String(x) : Number(x.toFixed(n)).toString(r);
 const percent = (x, n) => `${numeric(x * 100, n)}%`;
 const hex = x => numeric(x, 0, 16).padStart(2, '0');
@@ -13,13 +14,12 @@ const denorm = (v, u) => u ? v * u : v;
 const norm = (v, u) => u ? v / u : v;
 
 const RGB = {
-    get: ({Re, Gr, Bl}) => ({r: Re / 255, g: Gr / 255, b: Bl / 255}), set: Util.id,
+    get: ({Re, Gr, Bl}) => ({r: Re / 255, g: Gr / 255, b: Bl / 255}), set: T.id,
     alter: (x, {r, g, b}) => { x.Re = r * 255; x.Gr = g * 255; x.Bl = b * 255; },
     unbox: ({r, g, b}) => [r, g, b],
 };
 
-// Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
-const HSV = {
+const HSV = { // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
     get: ({r, g, b}) => {
         let [m, , v] = [r, g, b].sort(),
             d = v - m,
@@ -60,8 +60,7 @@ const HSL = {
     },
 };
 
-// Ref: https://bottosson.github.io/posts/oklab/
-const OKLAB = {
+const OKLAB = { // Ref: https://bottosson.github.io/posts/oklab/
     get: ({r, g, b}) => {
         [r, g, b] = [r, g, b].map(x => x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92); // linear srgb
         let l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b),
@@ -91,8 +90,7 @@ const OKLCH = {
     set: ({Lo, Co, Ho}) => OKLAB.set({Lo, Ao: Co * Math.cos(Math.PI * Ho / 180), Bo: Co * Math.sin(Math.PI * Ho / 180)}),
 };
 
-// Ref: http://www.easyrgb.com/en/math.php
-const CMYK = {
+const CMYK = { // Ref: http://www.easyrgb.com/en/math.php
     get: ({r, g, b}) => {
         let mx = Math.max(r, g, b);
         return mx === 0 ? {Cy: 0, Ma: 0, Ye: 0, Bk: 1} : {Cy: 1 - r / mx, Ma: 1 - g / mx, Ye: 1 - b / mx, Bk: 1 - mx};
@@ -103,7 +101,7 @@ const CMYK = {
     },
 };
 
-export class Color {
+export default class Color {
     static Form = {
         Re: {unit: 255, info: '_RGB', desc: _('red')},
         Gr: {unit: 255, info: 'R_GB', desc: _('green')},
@@ -155,12 +153,8 @@ export class Color {
     #fmt = new Proxy(new Map(), {
         get: (t, s, r) => this.#rgb[s] ?? t.get(s) ?? Object.entries(Color.Form[s].meta.get(r)).reduce((p, [k, v]) => p.set(k, v), t).get(s),
         set: (t, s, v, r) => {
-            if(s in this.#rgb) {
-                this.#rgb[s] = v;
-            } else {
-                t.set(s, v);
-                RGB.alter(this.#rgb, Color.Form[s].meta.set(r));
-            }
+            if(s in this.#rgb) this.#rgb[s] = v;
+            else t.set(s, v), RGB.alter(this.#rgb, Color.Form[s].meta.set(r));
             t.clear();
             return true;
         },
@@ -205,7 +199,7 @@ export class Color {
     toStops(form, rtl) {
         let {meta: {set, get}, unit, stop = 1} = Color.Form[form];
         let color = get(this.#fmt);
-        return Util.array(stop + 1, i => {
+        return T.array(stop + 1, i => {
             let step = i / stop;
             color[form] = denorm(step, unit);
             return [rtl ? 1 - step : step, ...RGB.unbox(set(color)), 1];
@@ -213,21 +207,14 @@ export class Color {
     }
 
     toText(format) {
-        return Util.format(this.formats[format ?? this.format] || '#%Rex%Grx%Blx', text => {
-            let peek = 2;
-            let form = text.slice(0, peek);
-            if(!Color.forms.has(form)) return;
-            let digit, {unit} = Color.Form[form],
-                value = this.#fmt[form],
-                type = text.charAt(peek);
-            if(Color.types.has(type)) {
-                let n = text.charCodeAt(++peek) - 48; // '0' = 48
-                if(n >= 0 && n < 10) digit = n, peek++;
-            } else {
-                if(!Number.isInteger(unit)) type = 'p';
-                digit = 0;
-            }
-            return [Color.Type[type].show(value, digit, unit), peek];
+        return T.format(this.formats[format ?? this.format] || HEX, text => {
+            let exec = /^(?<form>[A-Z][a-z])((?<type>[A-Za-z])(?<digit>\d+)?)?$/.exec(text);
+            if(!exec) return;
+            let {form, type, digit} = exec.groups;
+            if(!Color.forms.has(form) || (type && !Color.types.has(type))) return;
+            let {unit} = Color.Form[form];
+            type ??= Number.isInteger(unit) ? 'n' : 'p';
+            return Color.Type[type].show(this.#fmt[form], digit ? parseInt(digit) : 0, unit);
         });
     }
 
@@ -236,11 +223,11 @@ export class Color {
     }
 
     toMarkup(format) {
-        return ` <span fgcolor="${this.#fmt.Lo > Grey ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${this.toText(format)}</span>`;
+        return ` <span fgcolor="${this.#fmt.Lo > Grey ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${T.escape(this.toText(format))}</span>`;
     }
 
     toPreview() {
-        return `<span bgcolor="${this.toHEX()}">\u2001 </span> ${this.toText()}`;
+        return `<span bgcolor="${this.toHEX()}">\u{2001} </span> ${T.escape(this.toText())}`;
     }
 
     toRGB() {

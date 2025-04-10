@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: tuberry
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 # color-picker
 
 Simple color picker for GNOME Shell.
@@ -10,7 +14,7 @@ Simple color picker for GNOME Shell.
 
 ### Manual
 
-The latest and supported version should only work on the most current stable version of GNOME Shell.
+The latest and supported version should only work on the [current stable version](https://release.gnome.org/calendar/#branches) of GNOME Shell.
 
 ```bash
 git clone https://github.com/tuberry/color-picker.git && cd color-picker
@@ -19,6 +23,13 @@ meson setup build && meson install -C build
 ```
 
 For older versions, it's recommended to install via:
+
+```bash
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
+          --method org.gnome.Shell.Extensions.InstallRemoteExtension 'color-picker@tuberry'
+```
+
+It's quite the same as installing from:
 
 ### E.G.O
 
@@ -33,7 +44,8 @@ For older versions, it's recommended to install via:
 The DBus interface returns the same result as XDG Desktop [Screenshot] Portal required:
 
 ```bash
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/ColorPicker --method org.gnome.Shell.Extensions.ColorPicker.Pick
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/shell/extensions/color-picker \
+          --method org.gnome.Shell.Extensions.ColorPicker.Pick
 ```
 
 ## Contributions
@@ -42,7 +54,7 @@ Feel free to open an issue or PR in the repo for any question or idea.
 
 ### Translations
 
-To update the po file from sources:
+To initialize or update the po file from sources:
 
 ```bash
 bash ./cli/update-po.sh [your_lang_code] # like zh_CN, default to $LANG

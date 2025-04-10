@@ -1,0 +1,15 @@
+<!DOCTYPE node PUBLIC
+'-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
+'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
+
+<!--
+  same result as XDP screenshot portal, https://github.com/flatpak/xdg-desktop-portal/blob/main/data/org.freedesktop.portal.Screenshot.xml
+-->
+<node>
+  <interface name="@dbus@">
+    <method name="Pick">
+      <arg type="a{sv}" direction="out" name="result"/>
+    </method>
+    <method name="Run"/>
+  </interface>
+</node>
