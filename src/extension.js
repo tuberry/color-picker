@@ -365,7 +365,7 @@ class ColorArea extends St.Widget {
     }
 
     get cursor() {
-        return !this.viewing || this.preview ? Meta.Cursor.CROSSHAIR : Meta.Cursor.BLANK;
+        return !this.viewing || this.preview ? Meta.Cursor.CROSSHAIR : Meta.Cursor.NONE;
     }
 
     $pick(coords) {
