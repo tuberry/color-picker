@@ -42,5 +42,4 @@ $pfx: 'color-picker';
     padding: 0 0.15em;
     &:hover { color: st-tone(-st-accent-color, 8%); }
     &:focus { outline: 0.15em solid st-tone(-st-accent-color, 4%); }
-
 }

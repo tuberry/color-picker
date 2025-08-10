@@ -15,6 +15,7 @@ import * as Extensions from 'resource:///org/gnome/shell/extensions/extension.js
 import * as SignalTracker from 'resource:///org/gnome/shell/misc/signalTracker.js';
 
 import * as T from './util.js';
+const {$, $$, $_, hub} = T;
 
 const ruin = o => o.destroy();
 const raise = x => { throw Error(x); }; // NOTE: https://github.com/tc39/proposal-throw-expressions#todo
@@ -22,7 +23,6 @@ const raise = x => { throw Error(x); }; // NOTE: https://github.com/tc39/proposa
 const onus = o => [o, o[hub]].find(x => GObject.type_is_a(x, GObject.Object) && GObject.signal_lookup('destroy', x)) ?? raise('undestroyable');
 
 export const _ = Extensions.gettext;
-export const hub = Symbol('Hidden Unique Binder');
 export const offstage = x => !Main.uiGroup.contains(x);
 export const me = () => Extension.lookupByURL(import.meta.url); // NOTE: https://github.com/tc39/proposal-json-modules
 export const debug = (...xs) => me().getLogger().debug(...xs); // FIXME: see https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/491
@@ -45,12 +45,12 @@ export class DBusProxy extends Gio.DBusProxy {
 
     [hub] = new SignalTracker.TransientSignalHolder(this);
 
-    constructor(name, object, callback, hooks, signals, xml, cancel = null, bus = Gio.DBus.session, gFlags = Gio.DBusProxyFlags.NONE) {
+    constructor(name, path, callback, hooks, signals, xml, cancel = null, bus = Gio.DBus.session, gFlags = Gio.DBusProxyFlags.NONE) {
         let info = Gio.DBusInterfaceInfo.new_for_xml(xml ?? FileUtils.loadInterfaceXML(name));
-        super({gConnection: bus, gName: name, gObjectPath: object, gInterfaceInfo: info, gFlags, gInterfaceName: info.name});
-        if(signals) T.each(xs => this.connectSignal(...xs), signals, 2);
-        if(hooks) connect(this, this, ...hooks);
-        this.init_async(GLib.PRIORITY_DEFAULT, cancel).then(() => callback(this, null)).catch(e => callback(null, e));
+        super({gConnection: bus, gName: name, gObjectPath: path, gInterfaceInfo: info, gFlags, gInterfaceName: info.name})[$_]
+            .connectObject(hooks, ...hooks?.flat() ?? [], onus(this))[$$]
+            .connectSignal(signals ?? [])
+            .init_async(GLib.PRIORITY_DEFAULT, cancel).then(() => callback(this, null)).catch(e => callback(null, e));
     }
 
     destroy() {
@@ -63,9 +63,7 @@ export class Mortal extends Signals.EventEmitter {
     [hub] = new SignalTracker.TransientSignalHolder(this);
 
     destroy() {
-        this.emit('destroy');
-        this.disconnectAll();
-        omit(this, hub);
+        omit(this[$].emit('destroy')[$].disconnectAll(), hub);
     }
 }
 
@@ -89,13 +87,10 @@ export class Source {
     static tie = (doom, host) => (host.connect('destroy', () => omit(doom, ...Object.keys(doom))), doom);
 
     static cancelled = error => error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED);
-    static newCancel(...args) {
-        return T.seq(x => { x.reborn = (...ys) => { x.revive(...ys); return x.hub; }; },
-            new Source(() => new Gio.Cancellable(), x => x.cancel(), ...args));
-    }
+    static newCancel = (...args) => new Source(() => new Gio.Cancellable(), x => x.cancel(), ...args)[$].reborn(function (...xs) { return this[$].revive(...xs).hub; });
 
     static newDBus(name, path, host, ...args) {
-        let impl = new Source(x => T.seq(y => y.export(x, path), Gio.DBusExportedObject.wrapJSObject(FileUtils.loadInterfaceXML(name), host)), x => x.unexport());
+        let impl = new Source(x => Gio.DBusExportedObject.wrapJSObject(FileUtils.loadInterfaceXML(name), host)[$].export(x, path), x => x.unexport());
         return new Source(() => Gio.DBus.own_name(Gio.BusType.SESSION, name, Gio.BusNameOwnerFlags.NONE, x => impl.summon(x), null, null),
             x => { Gio.bus_unown_name(x); impl.dispel(); }, ...args);
     }
@@ -110,23 +105,27 @@ export class Source {
             : new Source((...xs) => setInterval(...callback(...xs)), clear ? x => clear(clearInterval(x)) : clearInterval, ...args);
     }
 
-    static newDefer(callback, until, interval, clear, ...args) { // polling until...
-        return Source.new(() => T.seq(async (x, y, z = 0) => { while(!(y = await until(z++))) await new Promise(r => x.revive(r)); callback(y); },
-            Source.newTimer(x => [x, interval], true, clear)), ...args);
+    static newDefer(callback, check, interval, clear, ...args) { // polling until...
+        return Source.new(() => T.seq(Source.newTimer(x => [x, interval], true, clear),
+            async (timer, until, count = 0) => { while(!(until = await check(count++))) await new Promise(r => timer.revive(r)); callback(until); }), ...args);
     }
 
     static newHandler(emitter, signal, callback, ...args) {
         return new Source(() => emitter.connect(signal, callback), x => emitter.disconnect(x), ...args);
     }
 
-    static newMonitor(file, changed, ...args) {
-        return new Source((cancel = null) => T.hook({changed}, T.fopen(file).monitor(Gio.FileMonitorFlags.NONE, cancel)), x => x.cancel(), ...args);
+    static newMonitor(file, callback, ...args) {
+        return new Source((cancel = null) => T.fopen(file).monitor(Gio.FileMonitorFlags.NONE, cancel)[$].connect('changed', callback), x => x.cancel(), ...args);
     }
 
-    static newInjector(overrides, ...args) {
-        let mgr = new Extensions.InjectionManager(); /* eslint-disable-next-line no-invalid-this */
-        return new Source(() => T.each(([p, m]) => T.unit(m, Object.entries).forEach(([n, f]) => mgr.overrideMethod(p, n, g => function (...xs) { return f(this, g, xs); })), overrides, 2),
-            () => mgr.clear(), ...args);
+    static newInvoker(source, callback) { // NOTE: ? https://github.com/tc39/proposal-explicit-resource-management
+        return Source.new(source)[$].invoke(function (...xs) { let src = this[$].revive().hub; return callback(...xs).finally(() => src.destroy()); });
+    }
+
+    static newInjector(overrides, enable, update) {
+        let manager = new Extensions.InjectionManager();
+        return new Source(() => (T.each(([proto, methods]) => T.unit(methods, Object.entries).forEach(([name, func]) => manager.overrideMethod(proto, name,
+            former => function (...xs) { return func(this, former, xs); })), overrides, 2), update?.()), () => (manager.clear(), update?.()), enable);
     }
 
     static new(summon, ...args) {
@@ -134,15 +133,14 @@ export class Source {
     }
 
     constructor(summon, dispel = ruin, enable, ...args) {
-        this.summon = (...xs) => { this[hub] = summon(...xs); };
-        this.dispel = () => { if(this.active) dispel(this[hub]), delete this[hub]; };
-        this.revive = (...xs) => { this.dispel(); this.summon(...xs); };
-        this.reload = (...xs) => { if(this.active) this.revive(...xs); };
-        this.switch = (b, ...xs) => { b ? this.revive(...xs) : this.dispel(); };
-        this.invoke = (f, ...xs) => { this.revive(...xs); return f().finally(() => this.dispel()); };
-        this.toggle = (b, ...xs) => { if(!T.xnor(b, this.active)) b ? this.summon(...xs) : this.dispel(); };
-        if(enable) this.summon(...args);
+        this[$].summon(((...xs) => { this[hub] = summon(...xs); })[$_].call(enable, null, ...args))[$]
+            .dispel(() => { if(this.active) dispel(this[hub]), delete this[hub]; });
     }
+
+    revive(...xs) { this[$].dispel().summon(...xs); }
+    reload(...xs) { if(this.active) this.revive(...xs); }
+    switch(b, ...xs) { b ? this.revive(...xs) : this.dispel(); }
+    toggle(b, ...xs) { if(!T.xnor(b, this.active)) b ? this.summon(...xs) : this.dispel(); }
 
     get hub() {
         return this[hub];
@@ -154,14 +152,13 @@ export class Source {
 
     destroy() {
         this.dispel();
-        this.despel = this.summon = T.nop;
+        this.dispel = this.summon = T.nop;
     }
 }
 
 export class Setting {
     constructor(gset, ...args) {
-        this[hub] = T.str(gset) ? new Gio.Settings({schema: gset}) : gset;
-        this.tie(...args);
+        this[$][hub](T.str(gset) ? new Gio.Settings({schema: gset}) : gset)[$].tie(...args);
     }
 
     get hub() {
@@ -180,11 +177,11 @@ export class Setting {
         T.unit(ring, Object.values).forEach(args => {
             let [keys, turn, back, init] = T.unit(args);
             let [key, field = keys] = T.unit(keys);
-            if(key in host) throw Error(`key conflict: ${field}`);
+            if(key in host) throw Error(`field conflict: ${field}`);
             let call = (f, x) => f(x, key) ?? x,
-                pipe = (f, g) => f ? () => call(f, g()) : g,
+                pipe = (f, g) => f ? () => call(f, g()) : g, // NOTE: https://github.com/tc39/proposal-pipeline-operator
                 read = pipe(turn, () => this[hub].get_value(field).recursiveUnpack()),
-                load = T.thunk(() => (host[key] = read()));
+                load = (() => (host[key] = read()))[$].call();
             if(init) return;
             let sync = [post, cast, back, load].reduceRight((p, x) => pipe(x, p));
             connect(host, this[hub], `changed::${field}`, () => void sync());

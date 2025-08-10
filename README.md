@@ -2,11 +2,13 @@
 SPDX-FileCopyrightText: tuberry
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
+
 # color-picker
 
-Simple color picker for GNOME Shell.
-> 春水碧于天，画船听雨眠。 —— *韦庄《菩萨蛮》*\
-[![license]](/LICENSE.md)
+GNOME Shell extension to pick colors on the desktop.
+
+> 春水碧于天，画船听雨眠。 —— _韦庄《菩萨蛮》_\
+> [![license]](/LICENSE.md)
 
 ![color-picker-menu](https://github.com/user-attachments/assets/46718c65-42e5-4445-8cab-be26d8d75e55)
 
@@ -37,15 +39,27 @@ It's quite the same as installing from:
 
 ## Features
 
-![cppref](https://github.com/user-attachments/assets/f3e60e8d-de9b-40e2-8fae-1a5b54f75026)
-
 ### DBus
 
-The DBus interface returns the same result as XDG Desktop [Screenshot] Portal required:
-
 ```bash
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/shell/extensions/color-picker \
-          --method org.gnome.Shell.Extensions.ColorPicker.Pick
+gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/ColorPicker
+```
+
+#### Pick
+
+Pick a color and return as XDG Desktop [Screenshot] Portal required.
+
+#### Run
+
+Invoke like using the shortcut or clicking the systray indicator. e.g.:
+
+```desktop
+[Desktop Entry]
+Type=Application
+NoDisplay=false
+Exec=gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/ColorPicker --method org.gnome.Shell.Extensions.ColorPicker.Run
+Icon=face-monkey
+Name=Color Picker
 ```
 
 ## Contributions
@@ -70,9 +84,9 @@ npm install @girs/gnome-shell --save-dev
 
 ## Acknowledgements
 
-* [PowerToys]: the idea of custom color formats
+- [PowerToys]: the idea of custom color formats
 
-[license]:https://img.shields.io/badge/license-GPLv3+-green.svg
-[EGO]:https://extensions.gnome.org/extension/3396/color-picker/
-[Screenshot]:https://github.com/flatpak/xdg-desktop-portal/blob/main/data/org.freedesktop.portal.Screenshot.xml
-[PowerToys]:https://learn.microsoft.com/en-us/windows/powertoys/color-picker#managing-color-formats
+[license]: https://img.shields.io/badge/license-GPLv3+-green.svg
+[EGO]: https://extensions.gnome.org/extension/3396/color-picker/
+[Screenshot]: https://github.com/flatpak/xdg-desktop-portal/blob/main/data/org.freedesktop.portal.Screenshot.xml
+[PowerToys]: https://learn.microsoft.com/en-us/windows/powertoys/color-picker#managing-color-formats

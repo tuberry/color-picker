@@ -223,11 +223,11 @@ export default class Color {
     }
 
     toMarkup(format) {
-        return ` <span fgcolor="${this.#fmt.Lo > Grey ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${T.escape(this.toText(format))}</span>`;
+        return ` <span fgcolor="${this.#fmt.Lo > Grey ? 'black' : 'white'}" bgcolor="${this.toHEX()}">${T.esc(this.toText(format))}</span>`;
     }
 
     toPreview() {
-        return `<span bgcolor="${this.toHEX()}">\u{2001} </span> ${T.escape(this.toText())}`;
+        return `<span bgcolor="${this.toHEX()}">\u{2001} </span> ${T.esc(this.toText())}`;
     }
 
     toRGB() {

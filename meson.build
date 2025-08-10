@@ -4,7 +4,7 @@
 project(
   'gnome-shell-extension-color-picker',
   license: 'GPL-3.0-or-later',
-  version: '48.0',
+  version: '49.beta',
   meson_version: '>= 1.4.0',
 )
 
@@ -27,8 +27,8 @@ metadata = {
   'path': f'/org/gnome/shell/extensions/@_title@/',
   'dbus': 'org.gnome.Shell.Extensions.' + _name.replace(' ', ''),
   'version': (_version != 0) ? _version : run_command('cli/get-version.sh', check: true, env: ['EGO=3396' / _title]).stdout().strip(),
-  'description': 'Simple color picker for GNOME Shell'
-    + (target == 'zip' ? '\\n\\nFor support, please report issues via the Homepage link below rather than the review section below it' : '')
+  'description': 'Pick colors on the desktop'
+    + (target == 'zip' ? '\\n\\nFor support, please report issues in time via the Homepage link below rather than the review section below it' : '')
 }
 
 if(target == 'system')
