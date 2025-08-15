@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-08-15 19:47+0300\n"
-"PO-Revision-Date: 2025-08-15 19:52+0300\n"
+"PO-Revision-Date: 2025-08-15 20:05+0300\n"
 "Last-Translator: Fraxinus Acer\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -254,7 +254,7 @@ msgstr "М_еню форматов"
 
 #: src/prefs.js:84
 msgid "Middle click or press Menu key to open"
-msgstr "Клик колёсиком или нажатие клавиши для открытия меню"
+msgstr "Для открытия средний клик или нажмите клавишу Меню"
 
 #: src/prefs.js:85
 msgid "_Persistent mode"
