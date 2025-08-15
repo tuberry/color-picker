@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-10 22:46+0300\n"
-"PO-Revision-Date: 2025-08-14 03:09+0300\n"
+"POT-Creation-Date: 2025-08-15 19:47+0300\n"
+"PO-Revision-Date: 2025-08-15 19:52+0300\n"
 "Last-Translator: Fraxinus Acer\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -197,8 +197,8 @@ msgid "_Enable systray"
 msgstr "_Включить в трее"
 
 #: src/prefs.js:75
-msgid "Right click to open menu"
-msgstr "Основной клик для открытия меню"
+msgid "Secondary click to open menu"
+msgstr "Вторичный клик для открытия меню"
 
 #: src/prefs.js:75
 msgid "Menu shortcuts"
@@ -245,8 +245,8 @@ msgid "E_nable shortcut"
 msgstr "Включить _комбинации клавиш"
 
 #: src/prefs.js:83
-msgid "Left click or press Enter / Space key to pick"
-msgstr "Для выбора основной клик или нажать Enter/Пробел"
+msgid "Primary click or press Enter / Space key to pick"
+msgstr "Для выбора основной клик или нажать Enter или Пробел"
 
 #: src/prefs.js:84
 msgid "F_ormat menu"
@@ -261,8 +261,8 @@ msgid "_Persistent mode"
 msgstr "_Режим выбора"
 
 #: src/prefs.js:85
-msgid "Right click or press Esc key to quit"
-msgstr "Вторичный клик или нажать клавишу Esc для выхода"
+msgid "Secondary click or press Esc key to quit"
+msgstr "Вторичный клик или нажмите клавишу Esc для выхода"
 
 #: src/prefs.js:86
 msgid "P_review style"
@@ -282,7 +282,7 @@ msgstr "Комбинации клавиш"
 
 #: src/prefs.js:87
 msgid "toggle when picking"
-msgstr "переключение при выборе "
+msgstr "переключение при выборе"
 
 #: src/prefs.js:87
 msgid "scroll"
