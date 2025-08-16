@@ -72,7 +72,7 @@ class PrefsBasic extends UI.Page {
         return [
             [K.COPY, [_('_Automatically copy'), _('Copy the color to clipboard after picking')]],
             [K.FMT,  [_('_Default format'), _('Also apply to the first Format menu item')], K.FMTS],
-            [K.STRY, [_('_Enable systray'), _('Right click to open menu')], new UI.Help(({h, k}) => [h(_('Menu shortcuts')), [
+            [K.STRY, [_('_Enable systray'), _('Secondary click to open menu')], new UI.Help(({h, k}) => [h(_('Menu shortcuts')), [
                 [_('toggle history/collection'), k('Shift_R')],
                 [_('trigger the toolbar button'), k('<alt>1...9')],
             ], h(_('Menu item shortcuts')), [
@@ -80,9 +80,9 @@ class PrefsBasic extends UI.Page {
                 [_('remove the color'), k('BackSpace Delete'), _('middle click')],
                 [_('trigger the tail button'), k('Control_L'), _('secondary click')],
             ]]), K.TICN, K.MNSZ],
-            [K.KEY,  [_('E_nable shortcut'), _('Left click or press Enter / Space key to pick')], K.KEYS],
+            [K.KEY,  [_('E_nable shortcut'), _('Primary click or press Enter / Space key to pick')], K.KEYS],
             [K.MENU, [_('F_ormat menu'), _('Middle click or press Menu key to open')], K.MKEY],
-            [K.PRST, [_('_Persistent mode'), _('Right click or press Esc key to quit')], K.QKEY],
+            [K.PRST, [_('_Persistent mode'), _('Secondary click or press Esc key to quit')], K.QKEY],
             [K.PVW,  [_('P_review style'), _('Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to accelerate')],
                 new UI.Help(({h, k}) => [h(_('Shortcuts')), [[_('toggle when picking'), k('<shift>'), _('scroll')]]]), K.PVWS],
             [K.NTF,  [_('No_tification style'), _('Notify the color after picking')], K.NTFS],

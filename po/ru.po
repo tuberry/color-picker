@@ -1,0 +1,359 @@
+# Russian translations for gnome-shell-extension-color-picker package.
+# Copyright (C) 2025 THE gnome-shell-extension-color-picker'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-color-picker package.
+# Automatically generated, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extension-color-picker\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-08-15 19:47+0300\n"
+"PO-Revision-Date: 2025-08-15 20:05+0300\n"
+"Last-Translator: Fraxinus Acer\n"
+"Language-Team: none\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"X-Generator: Poedit 3.6\n"
+
+#: src/ui.js:343
+msgid "Mismatched filetype"
+msgstr "Несоответствующий тип файла"
+
+#: src/ui.js:461
+msgid "Click or press ENTER to apply changes"
+msgstr "Для принятие изменений кликните или нажмите ENTER"
+
+#: src/color.js:106
+msgid "red"
+msgstr "красный"
+
+#: src/color.js:107
+msgid "green"
+msgstr "зелёный"
+
+#: src/color.js:108
+msgid "blue"
+msgstr "синий"
+
+#: src/color.js:109
+msgid "alpha"
+msgstr "непрозрачность"
+
+#: src/color.js:113 src/color.js:120
+msgid "hue"
+msgstr "оттенок"
+
+#: src/color.js:114 src/color.js:116
+msgid "saturation"
+msgstr "насыщенность"
+
+#: src/color.js:115 src/color.js:118
+msgid "lightness"
+msgstr "освещённость"
+
+#: src/color.js:117
+msgid "value"
+msgstr "значение"
+
+#: src/color.js:119
+msgid "chroma"
+msgstr "хрома"
+
+#: src/color.js:121
+msgid "chroma A"
+msgstr "хрома А"
+
+#: src/color.js:122
+msgid "chroma B"
+msgstr "хрома B"
+
+#: src/color.js:123
+msgid "cyan"
+msgstr "циан"
+
+#: src/color.js:124
+msgid "magenta"
+msgstr "маджента"
+
+#: src/color.js:125
+msgid "yellow"
+msgstr "жёлтый"
+
+#: src/color.js:126
+msgid "black"
+msgstr "чёрный"
+
+#: src/color.js:130
+msgid "hex lowercase 2 digits"
+msgstr "hex строчные 2 знака"
+
+#: src/color.js:131
+msgid "hex uppercase 2 digits"
+msgstr "hex заглавные 2 знака"
+
+#: src/color.js:132
+msgid "hex lowercase 1 digit"
+msgstr "hex строчные 1 знак"
+
+#: src/color.js:133
+msgid "hex uppercase 1 digit"
+msgstr "hex заглавные 1 знак"
+
+#: src/color.js:134
+msgid "float with leading zero"
+msgstr "десятичное с нулём"
+
+#: src/color.js:135
+msgid "float without leading zero"
+msgstr "десятичное без нуля"
+
+#: src/color.js:136
+msgid "number value (original)"
+msgstr "числовое значение (исходное)"
+
+#: src/color.js:137
+msgid "percent value"
+msgstr "процентное значение"
+
+#: src/extension.js:141
+msgid "Others"
+msgstr "Другие"
+
+#: src/extension.js:590
+msgid "Default format"
+msgstr "Формат по-умолчанию"
+
+#: src/extension.js:615
+msgid "Color picked"
+msgstr "Color picked"
+
+#: src/extension.js:622
+#, javascript-format
+msgid "%s is picked."
+msgstr "%s выбран."
+
+#: src/prefs.js:25
+msgid "(Key)"
+msgstr "(Клавиша)"
+
+#: src/prefs.js:61
+msgid "MSG"
+msgstr "Уведомления"
+
+#: src/prefs.js:61
+msgid "OSD"
+msgstr "Экранные"
+
+#: src/prefs.js:62
+msgid "Lens"
+msgstr "Лупа"
+
+#: src/prefs.js:62
+msgid "Label"
+msgstr "Бирка"
+
+#: src/prefs.js:63
+msgid "Systray icon"
+msgstr "Значок в трее"
+
+#: src/prefs.js:64
+msgid "History and collection size"
+msgstr "История и размер коллекции"
+
+#: src/prefs.js:65
+msgid "Screenshot"
+msgstr "Скриншот"
+
+#: src/prefs.js:65
+msgid "Complete"
+msgstr "Завершено"
+
+#: src/prefs.js:65
+msgid "Sound effect"
+msgstr "Звуковой эффект"
+
+#: src/prefs.js:73
+msgid "_Automatically copy"
+msgstr "Копировать _автоматически"
+
+#: src/prefs.js:73
+msgid "Copy the color to clipboard after picking"
+msgstr "Копировать цвет в буфер обмена после выбора"
+
+#: src/prefs.js:74
+msgid "_Default format"
+msgstr "_Формат по-умолчанию"
+
+#: src/prefs.js:74
+msgid "Also apply to the first Format menu item"
+msgstr "Также применимо к первому пункту меню формат"
+
+#: src/prefs.js:75
+msgid "_Enable systray"
+msgstr "_Включить в трее"
+
+#: src/prefs.js:75
+msgid "Secondary click to open menu"
+msgstr "Вторичный клик для открытия меню"
+
+#: src/prefs.js:75
+msgid "Menu shortcuts"
+msgstr "Комбинация клавиш меню"
+
+#: src/prefs.js:76
+msgid "toggle history/collection"
+msgstr "переключить историю/коллекцию"
+
+#: src/prefs.js:77
+msgid "trigger the toolbar button"
+msgstr "переключить кнопку в инструментах"
+
+#: src/prefs.js:78
+msgid "Menu item shortcuts"
+msgstr "Комбинация клавиш списка меню"
+
+#: src/prefs.js:79
+msgid "copy the color"
+msgstr "копировать цвет"
+
+#: src/prefs.js:79
+msgid "primary click"
+msgstr "основной клик"
+
+#: src/prefs.js:80
+msgid "remove the color"
+msgstr "удалить цвет"
+
+#: src/prefs.js:80
+msgid "middle click"
+msgstr "средний клик"
+
+#: src/prefs.js:81
+msgid "trigger the tail button"
+msgstr "активация клика мышью"
+
+#: src/prefs.js:81
+msgid "secondary click"
+msgstr "вторичный клик"
+
+#: src/prefs.js:83
+msgid "E_nable shortcut"
+msgstr "Включить _комбинации клавиш"
+
+#: src/prefs.js:83
+msgid "Primary click or press Enter / Space key to pick"
+msgstr "Для выбора основной клик или нажать Enter или Пробел"
+
+#: src/prefs.js:84
+msgid "F_ormat menu"
+msgstr "М_еню форматов"
+
+#: src/prefs.js:84
+msgid "Middle click or press Menu key to open"
+msgstr "Для открытия средний клик или нажмите клавишу Меню"
+
+#: src/prefs.js:85
+msgid "_Persistent mode"
+msgstr "_Режим выбора"
+
+#: src/prefs.js:85
+msgid "Secondary click or press Esc key to quit"
+msgstr "Вторичный клик или нажмите клавишу Esc для выхода"
+
+#: src/prefs.js:86
+msgid "P_review style"
+msgstr "Стиль _предпросмотра"
+
+#: src/prefs.js:86
+msgid ""
+"Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to "
+"accelerate"
+msgstr ""
+"Для перемещения по пиксельно используйте стрелочки/wasd/hjkl, Ctrl для "
+"ускорения"
+
+#: src/prefs.js:87
+msgid "Shortcuts"
+msgstr "Комбинации клавиш"
+
+#: src/prefs.js:87
+msgid "toggle when picking"
+msgstr "переключение при выборе"
+
+#: src/prefs.js:87
+msgid "scroll"
+msgstr "прокрутка"
+
+#: src/prefs.js:88
+msgid "No_tification style"
+msgstr "С_тиль уведомлений"
+
+#: src/prefs.js:88
+msgid "Notify the color after picking"
+msgstr "Уведомлять о цвете после выбора"
+
+#: src/prefs.js:89
+msgid "Not_ification sound"
+msgstr "_Звук уведомлений"
+
+#: src/prefs.js:89
+msgid "Play the sound after picking"
+msgstr "Воспроизводить звук после выбора"
+
+#: src/prefs.js:158
+msgid "Custom"
+msgstr "Пользовательский"
+
+#: src/prefs.js:175
+msgid "_New Color Format"
+msgstr "_Новый формат цвета"
+
+#: src/prefs.js:181
+#, javascript-format
+msgid "Removed <i>%s</i> format"
+msgstr "Удалить <i>%s</i> формат"
+
+#: src/prefs.js:210
+msgid "Preset"
+msgstr "Предустановленные"
+
+#: src/prefs.js:215 src/prefs.js:218
+msgid "Edit Color Format"
+msgstr "Редактировать формат цвета"
+
+#: src/prefs.js:225
+msgid "Name"
+msgstr "Название"
+
+#: src/prefs.js:225
+msgid "Format"
+msgstr "Формат"
+
+#: src/prefs.js:226
+msgid "The following parameters can be used:"
+msgstr "Следующие параметры могут быть использованы:"
+
+#: src/prefs.js:228
+msgid "The color values can be formatted with (optional trailing precision):"
+msgstr ""
+"По желанию значения цвета могут быть отформатированы с заданной точности:"
+
+#: src/prefs.js:230
+msgid ""
+"E.g., <tt>{Blf3}</tt> means the normalized blue value accurate to 3 decimal "
+"places."
+msgstr ""
+"Т.е: <tt>{Blf3}</tt> означает нормализованное значение синего цвета с "
+"точностью до 3 знаков после запятой."
+
+#: src/prefs.js:240
+msgid "_Basic"
+msgstr "_Основные"
+
+#: src/prefs.js:241
+msgid "_Format"
+msgstr "_Формат"
