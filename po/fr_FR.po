@@ -1,0 +1,356 @@
+# French translations for gnome-shell-extension-color-picker package.
+# Copyright (C) 2025 THE gnome-shell-extension-color-picker'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-color-picker package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extension-color-picker\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-08-15 19:47+0300\n"
+"PO-Revision-Date: 2025-12-04 22:50+0100\n"
+"Last-Translator: Philippe Charlanes\n"
+"Language-Team: none\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: src/ui.js:343
+msgid "Mismatched filetype"
+msgstr "Type de fichier incompatible"
+
+#: src/ui.js:461
+msgid "Click or press ENTER to apply changes"
+msgstr "Cliquer ou appuyer sur ENTRÉE pour appliquer les changements"
+
+#: src/color.js:106
+msgid "red"
+msgstr "rouge"
+
+#: src/color.js:107
+msgid "green"
+msgstr "vert"
+
+#: src/color.js:108
+msgid "blue"
+msgstr "bleu"
+
+#: src/color.js:109
+msgid "alpha"
+msgstr "alpha"
+
+#: src/color.js:113 src/color.js:120
+msgid "hue"
+msgstr "teinte"
+
+#: src/color.js:114 src/color.js:116
+msgid "saturation"
+msgstr "saturation"
+
+#: src/color.js:115 src/color.js:118
+msgid "lightness"
+msgstr "luminosité"
+
+#: src/color.js:117
+msgid "value"
+msgstr "valeur"
+
+#: src/color.js:119
+msgid "chroma"
+msgstr "chroma"
+
+#: src/color.js:121
+msgid "chroma A"
+msgstr "chroma A"
+
+#: src/color.js:122
+msgid "chroma B"
+msgstr "chroma B"
+
+#: src/color.js:123
+msgid "cyan"
+msgstr "cyan"
+
+#: src/color.js:124
+msgid "magenta"
+msgstr "magenta"
+
+#: src/color.js:125
+msgid "yellow"
+msgstr "jaune"
+
+#: src/color.js:126
+msgid "black"
+msgstr "noir"
+
+#: src/color.js:130
+msgid "hex lowercase 2 digits"
+msgstr "hex minuscule 2 chiffres"
+
+#: src/color.js:131
+msgid "hex uppercase 2 digits"
+msgstr "hex majuscule 2 chiffres"
+
+#: src/color.js:132
+msgid "hex lowercase 1 digit"
+msgstr "hex minuscule 1 chiffre"
+
+#: src/color.js:133
+msgid "hex uppercase 1 digit"
+msgstr "hex majuscule 1 chiffre"
+
+#: src/color.js:134
+msgid "float with leading zero"
+msgstr "décimal avec zéro initial"
+
+#: src/color.js:135
+msgid "float without leading zero"
+msgstr "décimal sans zéro initial"
+
+#: src/color.js:136
+msgid "number value (original)"
+msgstr "valeur numérique (originale)"
+
+#: src/color.js:137
+msgid "percent value"
+msgstr "valeur en pourcentage"
+
+#: src/extension.js:141
+msgid "Others"
+msgstr "Autres"
+
+#: src/extension.js:590
+msgid "Default format"
+msgstr "Format par défaut"
+
+#: src/extension.js:615
+msgid "Color picked"
+msgstr "Couleur sélectionnée"
+
+#: src/extension.js:622
+#, javascript-format
+msgid "%s is picked."
+msgstr "%s est sélectionnée."
+
+#: src/prefs.js:25
+msgid "(Key)"
+msgstr "(Clé)"
+
+#: src/prefs.js:61
+msgid "MSG"
+msgstr "MSG"
+
+#: src/prefs.js:61
+msgid "OSD"
+msgstr "OSD"
+
+#: src/prefs.js:62
+msgid "Lens"
+msgstr "Loupe"
+
+#: src/prefs.js:62
+msgid "Label"
+msgstr "Étiquette"
+
+#: src/prefs.js:63
+msgid "Systray icon"
+msgstr "Icône dans la zone de notification"
+
+#: src/prefs.js:64
+msgid "History and collection size"
+msgstr "Taille de l'historique et de la collection"
+
+#: src/prefs.js:65
+msgid "Screenshot"
+msgstr "Capture d'écran"
+
+#: src/prefs.js:65
+msgid "Complete"
+msgstr "Terminé"
+
+#: src/prefs.js:65
+msgid "Sound effect"
+msgstr "Effet sonore"
+
+#: src/prefs.js:73
+msgid "_Automatically copy"
+msgstr "C_opier automatiquement"
+
+#: src/prefs.js:73
+msgid "Copy the color to clipboard after picking"
+msgstr "Copier la couleur dans le presse-papiers après sélection"
+
+#: src/prefs.js:74
+msgid "_Default format"
+msgstr "Format par _défaut"
+
+#: src/prefs.js:74
+msgid "Also apply to the first Format menu item"
+msgstr "Aussi appliquer au premier élément du menu Format"
+
+#: src/prefs.js:75
+msgid "_Enable systray"
+msgstr "_Activer l'icône dans la zone de notification"
+
+#: src/prefs.js:75
+msgid "Secondary click to open menu"
+msgstr "Clic secondaire pour ouvrir le menu"
+
+#: src/prefs.js:75
+msgid "Menu shortcuts"
+msgstr "Raccourcis du menu"
+
+#: src/prefs.js:76
+msgid "toggle history/collection"
+msgstr "basculer historique/collection"
+
+#: src/prefs.js:77
+msgid "trigger the toolbar button"
+msgstr "activer le bouton de la barre d'outils"
+
+#: src/prefs.js:78
+msgid "Menu item shortcuts"
+msgstr "Raccourcis des éléments de menu"
+
+#: src/prefs.js:79
+msgid "copy the color"
+msgstr "copier la couleur"
+
+#: src/prefs.js:79
+msgid "primary click"
+msgstr "clic primaire"
+
+#: src/prefs.js:80
+msgid "remove the color"
+msgstr "supprimer la couleur"
+
+#: src/prefs.js:80
+msgid "middle click"
+msgstr "clic du milieu"
+
+#: src/prefs.js:81
+msgid "trigger the tail button"
+msgstr "activer le bouton de fin"
+
+#: src/prefs.js:81
+msgid "secondary click"
+msgstr "clic secondaire"
+
+#: src/prefs.js:83
+msgid "E_nable shortcut"
+msgstr "Activer le _raccourci"
+
+#: src/prefs.js:83
+msgid "Primary click or press Enter / Space key to pick"
+msgstr "Clic primaire ou appuyer sur les touches Entrée / Espace pour sélectionner"
+
+#: src/prefs.js:84
+msgid "F_ormat menu"
+msgstr "Menu _Format"
+
+#: src/prefs.js:84
+msgid "Middle click or press Menu key to open"
+msgstr "Clic du milieu ou appuyer sur la touche Menu pour ouvrir"
+
+#: src/prefs.js:85
+msgid "_Persistent mode"
+msgstr "Mode _persistant"
+
+#: src/prefs.js:85
+msgid "Secondary click or press Esc key to quit"
+msgstr "Clic secondaire ou appuyer sur la touche Échap pour quitter"
+
+#: src/prefs.js:86
+msgid "P_review style"
+msgstr "Style d'_aperçu"
+
+#: src/prefs.js:86
+msgid ""
+"Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to "
+"accelerate"
+msgstr ""
+"Appuyer sur les touches fléchées / wasd / hjkl pour bouger d'un pixel et "
+"maintenir Ctrl pour accélérer"
+
+#: src/prefs.js:87
+msgid "Shortcuts"
+msgstr "Raccourcis"
+
+#: src/prefs.js:87
+msgid "toggle when picking"
+msgstr "basculer lors de la sélection"
+
+#: src/prefs.js:87
+msgid "scroll"
+msgstr "défilement"
+
+#: src/prefs.js:88
+msgid "No_tification style"
+msgstr "Style de _notification"
+
+#: src/prefs.js:88
+msgid "Notify the color after picking"
+msgstr "Notifier la couleur après sélection"
+
+#: src/prefs.js:89
+msgid "Not_ification sound"
+msgstr "Son de notif_ication"
+
+#: src/prefs.js:89
+msgid "Play the sound after picking"
+msgstr "Jouer le son après sélection"
+
+#: src/prefs.js:158
+msgid "Custom"
+msgstr "Personnalisé"
+
+#: src/prefs.js:175
+msgid "_New Color Format"
+msgstr "_Nouveau format de couleur"
+
+#: src/prefs.js:181
+#, javascript-format
+msgid "Removed <i>%s</i> format"
+msgstr "Format <i>%s</i> supprimé"
+
+#: src/prefs.js:210
+msgid "Preset"
+msgstr "Prédéfini"
+
+#: src/prefs.js:215 src/prefs.js:218
+msgid "Edit Color Format"
+msgstr "Modifier le format de couleur"
+
+#: src/prefs.js:225
+msgid "Name"
+msgstr "Nom"
+
+#: src/prefs.js:225
+msgid "Format"
+msgstr "Format"
+
+#: src/prefs.js:226
+msgid "The following parameters can be used:"
+msgstr "Les paramètres suivants peuvent être utilisés :"
+
+#: src/prefs.js:228
+msgid "The color values can be formatted with (optional trailing precision):"
+msgstr ""
+"Les valeurs de couleur peuvent être formatées avec (précision optionnelle) :"
+
+#: src/prefs.js:230
+msgid ""
+"E.g., <tt>{Blf3}</tt> means the normalized blue value accurate to 3 decimal "
+"places."
+msgstr ""
+"Par ex., <tt>{Blf3}</tt> signifie la valeur normalisée du bleu avec une "
+"précision de 3 décimales."
+
+#: src/prefs.js:240
+msgid "_Basic"
+msgstr "_Basique"
+
+#: src/prefs.js:241
+msgid "_Format"
+msgstr "_Format"
