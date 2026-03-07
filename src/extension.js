@@ -3,7 +3,7 @@
 
 import St from 'gi://St';
 import Gio from 'gi://Gio';
-import Meta from 'gi://Meta';
+import GLib from 'gi://GLib';
 import Cairo from 'gi://cairo';
 import Shell from 'gi://Shell';
 import Clutter from 'gi://Clutter';
@@ -23,10 +23,8 @@ import {Key as K, Preset} from './const.js';
 import Color from './color.js';
 
 const {_} = F;
-const {$, $_, $$} = T;
-const Notify = {MSG: 0, OSD: 1};
-const Preview = {LENS: 0, LABEL: 1};
-const Sound = {SCREENSHOT: 0, COMPLETE: 1};
+const {$, $_, $s, $$} = T;
+
 const Format = T.omap(Preset, ([k, v]) => [[v, k]]);
 
 class ColorSlider extends Slider.Slider {
@@ -35,7 +33,11 @@ class ColorSlider extends Slider.Slider {
     }
 
     constructor(form, value, step, color, callback) {
-        super(value)[$].set({$meta: {form, step, color}})[$].connect('notify::value', () => callback(form, this.value));
+        super(value)[$].set({$meta: {form, step, color}}).connect('notify::value', () => callback(form, this.value));
+    }
+
+    get rtl() {
+        return this.get_text_direction() === Clutter.TextDirection.RTL;
     }
 
     vfunc_repaint() {
@@ -43,8 +45,7 @@ class ColorSlider extends Slider.Slider {
             {color, form} = this.$meta,
             [width, height] = this.get_surface_size(),
             barLevelRadius = Math.min(width, this._barLevelHeight) / 2,
-            rtl = this.get_text_direction() === Clutter.TextDirection.RTL,
-            gradient = new Cairo.LinearGradient(0, 0, width, 0)[$$].addColorStopRGBA(color.toStops(form, rtl));
+            gradient = new Cairo.LinearGradient(0, 0, width, 0)[$s].addColorStopRGBA(color.toStops(form, this.rtl));
         cr.arc(barLevelRadius, height / 2, barLevelRadius, Math.PI * (1 / 2), Math.PI * (3 / 2));
         cr.arc(width - barLevelRadius, height / 2, barLevelRadius, Math.PI * 3 / 2, Math.PI / 2);
         cr.setSource(gradient);
@@ -53,7 +54,7 @@ class ColorSlider extends Slider.Slider {
         let ceiledHandleRadius = Math.ceil(this._handleRadius),
             handleX = ceiledHandleRadius + (width - 2 * ceiledHandleRadius) * this._value / this._maxValue,
             handleY = height / 2;
-        if(rtl) handleX = width - handleX;
+        if(this.rtl) handleX = width - handleX;
         cr.setSourceRGB(...color.toRGB());
         cr.arc(handleX, handleY, this._handleRadius, 0, 2 * Math.PI);
         cr.fill();
@@ -64,15 +65,14 @@ class ColorSlider extends Slider.Slider {
         cr.$dispose();
     }
 
-    #update(delta) {
-        this.value = Math.clamp(this._value + delta, 0, this._maxValue);
+    $update(delta, invert) {
+        this._applyDelta(delta * (invert ? -1 : 1) * this.$meta.step);
     }
 
     vfunc_key_press_event(event) {
-        let rtl = this.get_text_direction() === Clutter.TextDirection.RTL;
         switch(event.get_key_symbol()) {
-        case Clutter.KEY_Left: this.#update(rtl ? this.$meta.step : -this.$meta.step); break;
-        case Clutter.KEY_Right: this.#update(rtl ? -this.$meta.step : this.$meta.step); break;
+        case Clutter.KEY_Left: this.$update(-1, this.rtl); break;
+        case Clutter.KEY_Right: this.$update(1, this.rtl); break;
         default: return super.vfunc_key_press_event(event);
         }
         return Clutter.EVENT_STOP;
@@ -81,9 +81,10 @@ class ColorSlider extends Slider.Slider {
     scroll(event) {
         if(event.is_pointer_emulated()) return Clutter.EVENT_PROPAGATE;
         switch(event.get_scroll_direction()) {
-        case Clutter.ScrollDirection.UP: this.#update(this.$meta.step); break;
-        case Clutter.ScrollDirection.DOWN: this.#update(-this.$meta.step); break;
-        case Clutter.ScrollDirection.SMOOTH: this.#update(-event.get_scroll_delta().at(1) * this.$meta.step); break;
+        case Clutter.ScrollDirection.UP: this.$update(1); break;
+        case Clutter.ScrollDirection.DOWN: this.$update(-1); break;
+        case Clutter.ScrollDirection.SMOOTH: this.$update(event.get_scroll_delta()[0],
+            T.xnor(this.rtl, event.get_scroll_flags() & Clutter.ScrollFlags.INVERTED)); break;
         }
         return Clutter.EVENT_STOP;
     }
@@ -92,48 +93,47 @@ class ColorSlider extends Slider.Slider {
 class ColorMenu extends PopupMenu.PopupMenu {
     constructor(color) {
         let cursor = Main.layoutManager.dummyCursor;
-        super(cursor, 0.1, St.Side.LEFT)[$]
-            .$color(color)[$]
+        super(cursor, 0.1, St.Side.LEFT)[$].$color(color)[$]
             .$formats(T.array(color.formats.length).slice(Preset.length))[$]
-            .$manager(new PopupMenu.PopupMenuManager(cursor)[$].addMenu(this))[$]
+            .$manager(new PopupMenu.PopupMenuManager(cursor)[$].addMenu(this))
             .$addItems();
     }
 
     $addItems() {
         let {r, g, b, Hu, Sl, Ll, Lo, Co, Ho} = this.$color.toItems((form, value, unit, step) => {
             step ??= 1 / Math.max(unit ?? 1, 100);
-            let slider = new ColorSlider(form, value, step, this.$color, (...xs) => this.#updateSliders(...xs));
+            let slider = new ColorSlider(form, value, step, this.$color, (...xs) => this.$updateSliders(...xs));
             return new PopupMenu.PopupBaseMenuItem({activate: false})[$]
                 .set({setup: v => { slider._value = v; slider.queue_repaint(); }})[$]
-                .connect('key-press-event', (_a, event) => slider.vfunc_key_press_event(event))[$$]
+                .connect('key-press-event', (_a, event) => slider.vfunc_key_press_event(event))[$s]
                 .add_child([new St.Label({text: form.slice(0, 1).toUpperCase(), xExpand: false}), slider]);
         });
-        M.Item.add(this.$menu = {
-            HEX: this.#genTitleItem(),
+        M.Item.put(this, this.$menu = {
+            HEX: this.$genTitleItem(),
             RGB: new M.Separator(), r, g, b,
             HSL: new M.Separator(), Hu, Sl, Ll,
             OKLCH: new M.Separator(), Lo, Co, Ho, // NOTE: irregular space differs from RGB/HSL, see also https://oklch.com/
-            custom: this.#genCustomSection(),
-        }, this); // TODO: ? replace HSL and OKLCH with OKHSL, see https://github.com/w3c/csswg-drafts/issues/8659 and https://bottosson.github.io/posts/colorpicker/
+            custom: this.$genCustomSection(),
+        }); // TODO: ? replace HSL and OKLCH with OKHSL, see https://github.com/w3c/csswg-drafts/issues/8659 and https://bottosson.github.io/posts/colorpicker/
         Main.layoutManager.addTopChrome(this.actor[$].hide()[$].add_style_class_name('color-picker-menu')[$]
             .connect('key-press-event', (_a, e) => void M.altNum(e, this.$menu.HEX)));
     }
 
-    #updateSliders(form, value) {
-        this.$color[$_].update(form, form, value)[$].toItems((k, v) => k === form || this.$menu[k].setup(v));
+    $updateSliders(form, value) {
+        this.$color[$_].update(form, form, value).toItems((k, v) => k === form || this.$menu[k].setup(v));
         Preset.slice(1).forEach(x => this.$menu[x].label.set_text(this.$color.toText(Format[x])));
         this.$updateCustomLabels();
         this.emit('color-changed');
     }
 
-    #genCustomSection() {
+    $genCustomSection() {
         let items = this.$formats.map(x => new M.Item('', () => this.$emitSelected(x)));
         this.$updateCustomLabels = () => items.forEach((x, i) => x.label.set_text(this.$color.toText(this.$formats[i])));
-        return new PopupMenu.PopupMenuSection()[$$].addMenuItem(items.length ? [new M.Separator(_('Others')), ...items] : items);
+        return new PopupMenu.PopupMenuSection()[$s].addMenuItem(items.length ? [new M.Separator(_('Others')), ...items] : items);
     }
 
-    #genTitleItem() {
-        return new M.Item('', () => this.emit('color-selected', this.$color), {can_focus: false})[$$]
+    $genTitleItem() {
+        return new M.Item('', () => this.emit('color-selected', this.$color), {can_focus: false})[$s]
             .add_child(Preset.map(x => new St.Button({canFocus: true, label: x, styleClass: 'color-picker-button button'})[$]
                 .connect('clicked', () => this[$].close().$emitSelected(Format[x]))));
     }
@@ -144,7 +144,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
     }
 
     summon(geometry) {
-        this.#updateSliders();
+        this.$updateSliders();
         Main.layoutManager.setDummyCursorGeometry(...geometry);
         this.open(BoxPointer.PopupAnimation.FULL);
     }
@@ -156,8 +156,8 @@ class ColorLens extends St.DrawingArea {
     }
 
     constructor() {
-        let $zoom = 8 * F.theme().scaleFactor;// grid length
-        super({styleClass: 'color-picker-lens', width: 1, height: 1})[$].set({
+        let $zoom = 8 * F.theme().scaleFactor; // grid length
+        super({styleClass: 'color-picker-lens', width: 1, height: 1}).set({
             $zoom, $unit: 1 / $zoom, $meta: {x: 0, y: 0, color: new Color(), pixels: [], area: [0, 0, 0, 0, 0]},
         });
     }
@@ -167,15 +167,14 @@ class ColorLens extends St.DrawingArea {
         let s = this.$zoom;
         let {x, y, area: [w, h, c_x, c_y]} = lens;
         this[$].set_size((w + 2) * s, (h + 2) * s)[$]
-            .set_position(x - (c_x + 1) * s, y - (c_y + 1) * s)[$]
+            .set_position(x - (c_x + 1) * s, y - (c_y + 1) * s)
             .queue_repaint();
     }
 
     vfunc_repaint() {
-        let cr = this.get_context(),
-            {color, pixels, area: [w, h, c_x, c_y, r]} = this.$meta,
-            s = this.$zoom;
-        cr.scale(s, s);
+        let cr = this.get_context();
+        let {color, pixels, area: [w, h, c_x, c_y, r]} = this.$meta;
+        cr.scale(this.$zoom, this.$zoom);
         cr.translate(1, 1);
         // clipRing
         cr.save();
@@ -193,8 +192,8 @@ class ColorLens extends St.DrawingArea {
         for(let i = 0; i < w; i++) {
             for(let j = 0; j < h; j++) {
                 if(Math.hypot(i - c_x, j - c_y) > r1) continue;
-                let [r_, g, b] = pixels.slice((j * w + i) * 4, -1);
-                cr.setSourceRGBA(r_ / 255, g / 255, b / 255, 1);
+                let [red, g, b] = pixels.slice((j * w + i) * 4, -1);
+                cr.setSourceRGBA(red / 255, g / 255, b / 255, 1);
                 cr.rectangle(i, j, 1, 1);
                 cr.fill();
             }
@@ -228,15 +227,15 @@ class ColorViewer extends BoxPointer.BoxPointer {
     constructor(plain) {
         super(St.Side.TOP)[$].set({
             visible: false, styleClass: 'color-picker-boxpointer',
-            $src: F.Source.tie({lens: this.#genLens(plain)}, this),
+            $src: F.Source.tie(this, {lens: this.$genLens(plain)}),
         }).bin.set_child(new St.Label({styleClass: 'color-picker-label'}));
         Main.layoutManager.addTopChrome(this);
     }
 
-    #genLens(plain) {
+    $genLens(plain) {
         this.$align = plain ? 0 : 1 / 2;
-        return T.seq(plain ? new Clutter.Actor({opacity: 0, width: 12, height: 12})[$].set({setup({x, y}) { this.set_position(x, y); }})
-            : new ColorLens(), x => Main.layoutManager.addTopChrome(x));
+        return (plain ? new Clutter.Actor({opacity: 0, width: 12, height: 12})[$].set({setup({x, y}) { this.set_position(x, y); }})
+            : new ColorLens())[$$](it => Main.layoutManager.addTopChrome(it));
     }
 
     get extents() {
@@ -245,7 +244,7 @@ class ColorViewer extends BoxPointer.BoxPointer {
 
     summon(view) {
         this[$].setup(view.color)[$]
-            .setPosition(this.$src.lens[$].setup(view), this.$align)[$]
+            .setPosition(this.$src.lens[$].setup(view), this.$align)
             .open(BoxPointer.PopupAnimation.NONE);
     }
 
@@ -262,47 +261,46 @@ class ColorArea extends St.Widget {
                 'notify-color': {param_types: [GObject.TYPE_JSOBJECT]},
             },
         });
+        this.Preview = {LENS: 0, LABEL: 1};
     }
 
     constructor(set, once, ...args) {
         super({reactive: true, styleClass: 'screenshot-ui-screen-screenshot'})[$]
-            .$buildWidgets(...args)[$]
-            .$bindSettings(set, once)[$]
-            .$buildSources()[$]
-            .$initContents();
+            .$buildWidgets(...args)[$].$bindSettings(set, once)[$].$buildSources().$initContents();
     }
 
     $bindSettings(set, once) {
-        this.$set = set.tie([
+        this.$set = set.tie(this, [
             K.MKEY, K.QKEY,
             [K.PRST, x => { this.$once = once || !x; }],
             [K.MENU, null, x => this.$src.format.toggle(x)],
-        ], this).tie([
+        ], [
             [K.PVW,  null, x => this.$src.viewer.toggle(x)],
-            [K.PVWS, x => x === Preview.LABEL, x => this.$src.viewer.reload(x)],
-        ], this, null, () => this.#onViewerSet());
+            [K.PVWS, x => x === ColorArea.Preview.LABEL, x => this.$src.viewer.reload(x)],
+        ], null, () => this.$onViewerSet());
     }
 
     $buildWidgets(format, formats) {
         Main.layoutManager.addTopChrome(this);
         Main.pushModal(this, {actionMode: Shell.ActionMode.POPUP});
-        Main.uiGroup.set_child_above_sibling(Main.messageTray, this); // NOTE: show notifications in persistent mode
+        Main.uiGroup.set_child_above_sibling(Main.messageTray, this); // show notifications in persistent mode
         this[$].add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}))[$]
+            .add_action(new Clutter.ClickGesture()[$].connect('recognize', a => this.$onClick(a)))[$]
             .connect('popup-menu', () => this.$src.format.hub?.summon(this.$src.viewer?.hub?.extents ?? this.$coords.concat(12, 12)))[$]
             .$ptr(Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE))[$]
             .$color(Color.newForFormat(format, formats));
     }
 
     $buildSources() {
-        let setCursor = x => global.display.set_cursor(x),
-            cursor = new F.Source((x = this.cursor) => x && setCursor(x), () => setCursor(Meta.Cursor.DEFAULT), true),
-            format = F.Source.new(() => new ColorMenu(this.$color)[$$].connect([
+        let cursor = new F.Source((x = this.cursor) => x && global.stage.get_grab_actor()?.set_cursor_type(x),
+                () => global.stage.get_grab_actor()?.set_cursor_type(Clutter.CursorType.DEFAULT), true),
+            format = F.Source.new(() => new ColorMenu(this.$color)[$s].connect([
                 ['open-state-changed', (_w, open) => this.$src.cursor.toggle(!open)],
-                ['color-selected', () => this.#emitColor()],
                 ['color-changed', () => this.$src.viewer?.hub?.setup(this.$color)],
+                ['color-selected', () => this.$emitColor()],
             ]), this[K.MENU]),
             viewer = F.Source.new(() => new ColorViewer(this[K.PVWS]), this[K.PVW]);
-        this.$src = F.Source.tie({cursor, format, viewer}, this);
+        this.$src = F.Source.tie(this, {cursor, format, viewer});
     }
 
     async $initContents() {
@@ -310,29 +308,30 @@ class ColorArea extends St.Widget {
         let texture = content.get_texture();
         this.set_content(content);
         this.$meta = {scale, texture, width: texture.get_width() - 1, height: texture.get_height() - 1};
-        this.$pick = this.#pick;
+        this.$pick = this.$$pick;
         if(this.$coords) this.$pick(this.$coords);
     }
 
-    #onViewerSet() {
+    $onViewerSet() {
         this.$src.cursor.summon();
+        this.$moveBy(0, 0, {get_state: T.nop}); // HACK: workaround for stale cursor on scrolling since https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/4745
         if(this.$coords) this.$pick(this.$coords);
     }
 
     get cursor() {
-        return !this[K.PVW] || this[K.PVWS] ? Meta.Cursor.CROSSHAIR : Meta.Cursor.NONE;
+        return !this[K.PVW] || this[K.PVWS] ? Clutter.CursorType.CROSSHAIR : Clutter.CursorType.NONE;
     }
 
     $pick(coords) {
         this.$coords = coords;
     }
 
-    #pick(coords) {
+    $$pick(coords) {
         this.$coords = coords;
         let [x, y] = coords.map(Math.round),
             {scale, width, height, texture} = this.$meta,
             stream = Gio.MemoryOutputStream.new_resizable(),
-            [a, b, w, h, c_x, c_y, r] = this.#getLoupe(x, y, scale, width, height);
+            [a, b, w, h, c_x, c_y, r] = this.$getLoupe(x, y, scale, width, height);
         return Shell.Screenshot.composite_to_stream(texture, a, b, w, h, scale, null, 0, 0, 1, stream).then(pixbuf => {
             let pixels = pixbuf.get_pixels();
             this.$color.fromPixels(pixels, (c_y * w + c_x) * 4);
@@ -340,7 +339,7 @@ class ColorArea extends St.Widget {
         }).catch(() => this.emit('end-pick', true)).finally(() => stream.close(null));
     }
 
-    #getLoupe(x, y, scale, width, height) {
+    $getLoupe(x, y, scale, width, height) {
         x = Math.clamp(Math.round(x * scale), 0, width);
         y = Math.clamp(Math.round(y * scale), 0, height);
         if(this[K.PVWS]) return [x, y, 1, 1, 0, 0, 0];
@@ -352,7 +351,7 @@ class ColorArea extends St.Widget {
         return [a, b, w, h, x - a, y - b, r];
     }
 
-    #emitColor() {
+    $emitColor() {
         this[$].emit('notify-color', this.$color)[$_].emit(this.$once, 'end-pick', false);
     }
 
@@ -366,7 +365,7 @@ class ColorArea extends St.Widget {
         return super.vfunc_enter_event(event);
     }
 
-    #moveBy(dx, dy, event) {
+    $moveBy(dx, dy, event) {
         let step = event.get_state() & Clutter.ModifierType.CONTROL_MASK ? 8 : 1;
         this.$ptr.notify_relative_motion(global.get_current_time(), dx * step, dy * step);
     }
@@ -378,22 +377,22 @@ class ColorArea extends St.Widget {
         case Clutter[`KEY_${this[K.MKEY]}`]: this.emit('popup-menu'); break;
         case Clutter.KEY_a:
         case Clutter.KEY_h:
-        case Clutter.KEY_Left: this.#moveBy(-1, 0, event); break;
+        case Clutter.KEY_Left: this.$moveBy(-1, 0, event); break;
         case Clutter.KEY_w:
         case Clutter.KEY_k:
-        case Clutter.KEY_Up: this.#moveBy(0, -1, event); break;
+        case Clutter.KEY_Up: this.$moveBy(0, -1, event); break;
         case Clutter.KEY_d:
         case Clutter.KEY_l:
-        case Clutter.KEY_Right: this.#moveBy(1, 0, event); break;
+        case Clutter.KEY_Right: this.$moveBy(1, 0, event); break;
         case Clutter.KEY_s:
         case Clutter.KEY_j:
-        case Clutter.KEY_Down: this.#moveBy(0, 1, event); break;
+        case Clutter.KEY_Down: this.$moveBy(0, 1, event); break;
         case Clutter.KEY_space:
         case Clutter.KEY_Return:
         case Clutter.KEY_KP_Enter:
-        case Clutter.KEY_ISO_Enter: this.#emitColor(); break;
+        case Clutter.KEY_ISO_Enter: this.$emitColor(); break;
         case Clutter.KEY_Shift_L:
-        case Clutter.KEY_Shift_R: this.$set.set(K.PVWS, this[K.PVWS] ? Preview.LENS : Preview.LABEL, this); break;
+        case Clutter.KEY_Shift_R: this.$set.set(K.PVWS, this[K.PVWS] ? ColorArea.Preview.LENS : ColorArea.Preview.LABEL, this); break;
         default: return super.vfunc_key_press_event(event);
         }
         return Clutter.EVENT_PROPAGATE;
@@ -401,19 +400,18 @@ class ColorArea extends St.Widget {
 
     vfunc_scroll_event(event) {
         switch(event.get_scroll_direction()) {
-        case Clutter.ScrollDirection.UP: if(this[K.PVWS]) this.$set.set(K.PVWS, Preview.LENS); break;
-        case Clutter.ScrollDirection.DOWN: if(!this[K.PVWS]) this.$set.set(K.PVWS, Preview.LABEL); break;
+        case Clutter.ScrollDirection.UP: if(this[K.PVWS]) this.$set.set(K.PVWS, ColorArea.Preview.LENS); break;
+        case Clutter.ScrollDirection.DOWN: if(!this[K.PVWS]) this.$set.set(K.PVWS, ColorArea.Preview.LABEL); break;
         }
         return Clutter.EVENT_PROPAGATE;
     }
 
-    vfunc_button_press_event(event) {
-        switch(event.get_button()) {
-        case Clutter.BUTTON_PRIMARY: this.#emitColor(); break;
+    $onClick(gesture) {
+        switch(gesture.get_button()) {
+        case Clutter.BUTTON_PRIMARY: this.$emitColor(); break;
         case Clutter.BUTTON_MIDDLE: this.emit('popup-menu'); break;
         default: this.emit('end-pick', true); break;
         }
-        return Clutter.EVENT_PROPAGATE;
     }
 }
 
@@ -423,8 +421,8 @@ class ColorItem extends M.DatumItemBase {
     }
 
     constructor(star, remove, color) {
-        super('color-picker-item-label', 'color-picker-icon', () => F.copy(this.$color.toText()), color)[$]
-            .set({$onRemove: () => remove(this.$color.toRaw()), $onClick: () => star(this.$color.toRaw())});
+        super('color-picker-item-label', 'color-picker-icon', () => F.copy(this.$meta.text), color)
+            .set({$onRemove: () => remove(this.$meta.raw), $onClick: () => star(this.$meta.raw)});
     }
 
     activate(event) {
@@ -446,9 +444,10 @@ class ColorItem extends M.DatumItemBase {
 
     setup(color) {
         let [star, raw, fmts] = color;
-        this.$color = new Color(raw, fmts);
-        F.marks(this.label, this.$color.toMarkup());
-        this.$btn.setup(star ? 'starred-symbolic' : 'non-starred-symbolic');
+        color = new Color(raw, fmts);
+        F.marks(this.label, color.toMarkup());
+        this.$meta = {raw, text: color.toText()};
+        this.$btn.setIcon(star ? 'starred-symbolic' : 'non-starred-symbolic');
     }
 }
 
@@ -458,79 +457,67 @@ class ColorTray extends M.Systray {
     }
 
     constructor(set, ...args) {
-        super({})[$].$bindSettings(set)[$].$buildWidgets(...args);
+        super({})[$].$bindSettings(set).$buildWidgets(...args);
     }
 
     $bindSettings(set) {
-        this.$set = set.tie([
+        this.$set = set.tie(this, [
             [K.TICN, x => this.$icon.set_icon_name(x || 'color-select-symbolic')],
-            [K.MNSZ, x => { this.$tint = x > 0; }, () => this.#onMenuSizeSet(this.$tint)],
-        ], this).tie([
+            [K.MNSZ, x => { this.$tint = x > 0; }, () => this.$onMenuSizeSet(this.$tint)],
+        ], [
             [K.MNTP, x => !!x, x => this.$menu.tool.star?.toggleState(x)], K.CLCT, K.HIST,
-        ], this, null, () => this.$onColorsSet());
+        ], null, () => this.$onColorsSet());
     }
 
-    #onMenuSizeSet(tint) {
+    $onMenuSizeSet(tint) {
         if(T.xnor(tint, this.$menu.tint)) return;
         if(!tint) [K.CLCT, K.HIST].forEach(x => this.$set.set(x, []));
-        M.record(tint, this, null, 'sep1', 'tool', () => this.#genTintSection(), 'tint', 'sep1');
-        this.$menu.tool.setup(this.#genTool());
+        this.$record(tint, 'sep1', null, 'tint', () => this.$genTintSection());
+        this.$menu.tool.setup(this.$genTool());
     }
 
-    #genTintSection() {
+    $genTintSection() {
         return new M.DatasetSection(() => new ColorItem(
             color => this.$set.set(K.CLCT, this[K.CLCT].includes(color)
-                ? this[K.CLCT].filter(x => x !== color) : [color][$].push(...this[K.CLCT]).slice(0, this[K.MNSZ])),
+                ? this[K.CLCT].filter(x => x !== color) : [color, ...this[K.CLCT]].slice(0, this[K.MNSZ])),
             color => this[K.MNTP] ? this.$set.set(K.CLCT, this[K.CLCT].filter(x => x !== color))
-                : this.$set.set(K.HIST, this[K.HIST].filter(x => x !== color))), this.#getColors());
+                : this.$set.set(K.HIST, this[K.HIST].filter(x => x !== color))), this.$getColors());
     }
 
     $buildWidgets(formats, callback, fmts) {
-        this[$].set({$formats: formats, $callback: callback})[$]
-            .add_style_class_name('color-picker-systray');
-        this.menu.actor[$].add_style_class_name('color-picker-menu')[$]
-            .connect('key-press-event', (...xs) => this.#onKeyPress(...xs));
-        M.Item.add(this.$menu = {
+        this[$].set({$formats: formats, $callback: callback})[$].add_style_class_name('color-picker-systray')
+            .menu.actor[$].add_style_class_name('color-picker-menu').connect('key-press-event', (...xs) => this.$onKeyPress(...xs));
+        T.inject(this.menu, 'toggle', (f, o) => (...xs) => this._clickGesture.state === Clutter.GestureState.COMPLETED &&
+            this._clickGesture.get_button() === Clutter.BUTTON_PRIMARY ? this.$callback() : f.apply(o, xs));
+        M.Item.put(this.menu, this.$menu = {
             fmts, sep0: fmts ? new M.Separator() : null,
-            tint: this.$tint ? this.#genTintSection() : null,
+            tint: this.$tint ? this.$genTintSection() : null,
             sep1: this.$tint ? new M.Separator() : null,
-            tool: new M.ToolItem(this.#genTool()),
-        }, this.menu);
+            tool: new M.ToolItem(this.$genTool()),
+        });
     }
 
-    #onKeyPress(_a, event) {
+    $onKeyPress(_a, event) {
         let key = event.get_key_symbol();
         if(M.altNum(event, this.$menu.tool, key));
         else if(key === Clutter.KEY_Shift_R) this.$set.not(K.MNTP);
     }
 
-    #genTool() {
-        let param = {styleClass: 'color-picker-icon', xExpand: true};
-        return {
-            call: new M.Button(() => { this.menu.close(); this.$callback(); }, 'find-location-symbolic')[$].set(param),
-            star: this.$tint ? new M.StateButton(() => this.$set.not(K.MNTP),
-                [this[K.MNTP], 'semi-starred-symbolic', 'starred-symbolic'])[$].set(param) : null,
-            gear: new M.Button(() => { this.menu.close(); F.me().openPreferences(); }, 'applications-system-symbolic')[$].set(param),
-        };
+    $genTool() {
+        return [{
+            call: [() => { this.menu.close(); this.$callback(); }, 'find-location-symbolic'],
+            star: this.$tint ? [() => this.$set.not(K.MNTP), [this[K.MNTP], 'semi-starred-symbolic', 'starred-symbolic']] : null,
+            gear: [() => { this.menu.close(); F.me().openPreferences(); }, 'applications-system-symbolic'],
+        }, 'color-picker-icon'];
     }
 
     $onColorsSet() {
-        this.$menu.tint?.setup(this.#getColors());
+        this.$menu.tint?.setup(this.$getColors());
     }
 
-    #getColors() {
+    $getColors() {
         return this[K.MNTP] ? this[K.CLCT].map(x => [true, x, this.$formats])
             : this[K.HIST].map(x => [this[K.CLCT].includes(x), x, this.$formats]);
-    }
-
-    vfunc_event(event) {
-        let type = event.type();
-        if((type === Clutter.EventType.BUTTON_PRESS || type === Clutter.EventType.PAD_BUTTON_PRESS) &&
-           event.get_button() === Clutter.BUTTON_PRIMARY) {
-            this.$callback();
-            return Clutter.EVENT_STOP;
-        }
-        return super.vfunc_event(event);
     }
 
     addHistory(color) {
@@ -543,51 +530,51 @@ class ColorTray extends M.Systray {
 }
 
 class ColorPicker extends F.Mortal {
-    constructor(gset) {
-        super()[$].$bindSettings(gset)[$].$buildSources();
-    }
+    static Notify = {MSG: 0, OSD: 1};
+    static Sound = {SCREENSHOT: 0, COMPLETE: 1};
 
     $bindSettings(gset) {
-        this.$set = new F.Setting(gset, [
+        this.$set = new F.Setting(gset, this, [
             K.HEX, K.RGB, K.HSL, K.OKLCH,
-            [K.CFMT, x => this.#onCustomSet(x), () => this.$src.tray.hub?.$menu.fmts?.setup(this.$options)],
-        ], this, () => this.#onFormatsSet(), () => this.$src.tray.hub?.setFormats(this.$formats)).tie([
+            [K.CFMT, x => this.$onCustomSet(x), () => this.$src.tray.hub?.$menu.fmts?.setup(this.$options)],
+        ], () => this.$onFormatsSet(), () => this.$src.tray.hub?.setFormats(this.$formats), [
             K.SND, K.NTFS, K.NTF,
             [K.COPY, x => x ? [] : null],
+            [K.DBUS, null, x => this.$src.dbus.toggle(x)],
             [K.KEY,  null, x => this.$src.keys.toggle(x)],
             [K.STRY, null, x => this.$src.tray.toggle(x)],
-            [K.FMT,  null, x => this.#onEnableFormatSet(x)],
+            [K.FMT,  null, x => this.$onEnableFormatSet(x)],
             [K.FMTS, null, x => this.$src.tray.hub?.$menu.fmts?.choose(x)],
-            [K.SNDS, x => x === Sound.COMPLETE ? 'complete' : 'screen-capture'],
-        ], this);
+            [K.SNDS, x => x === ColorPicker.Sound.COMPLETE ? 'complete' : 'screen-capture'],
+        ]);
     }
 
     $buildSources() {
-        let tray = F.Source.new(() => this.#genSystray(), this[K.STRY]),
+        let tray = F.Source.new(() => this.$genSystray(), this[K.STRY]),
             keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => this.summon(), this[K.KEY]),
-            area = new F.Source((hooks, ...args) => new ColorArea(...args)[$$].connect(hooks)),
-            dbus = F.Source.newDBus('org.gnome.Shell.Extensions.ColorPicker', '/org/gnome/Shell/Extensions/ColorPicker', this, true);
-        this.$src = F.Source.tie({tray, area, keys, dbus}, this);
+            area = F.Source.new((hooks, ...args) => new ColorArea(...args)[$s].connect(hooks)),
+            dbus = F.Source.newDBus(this, 'org.gnome.Shell.Extensions.ColorPicker', '/org/gnome/Shell/Extensions/ColorPicker', this[K.DBUS]);
+        this.$src = F.Source.tie(this, {tray, area, keys, dbus});
     }
 
-    #onCustomSet(custom) {
-        return T.seq(custom.filter(x => x.enable), x => { this.$options = Preset.concat(x.map(y => y.name)); });
+    $onCustomSet(custom) {
+        return custom.filter(x => x.enable)[$$](it => { this.$options = Preset.concat(it.map(x => x.name)); });
     }
 
-    #onFormatsSet() {
+    $onFormatsSet() {
         this.$formats = [K.HEX, K.RGB, K.HSL, K.OKLCH].map(x => this[x])[$].push(...this[K.CFMT].map(x => x.format));
     }
 
-    #onEnableFormatSet(enable) {
-        M.record(enable, this.$src.tray.hub, null, 'sep0', this.$src.tray.hub?.$tint ? 'tint' : 'tool', () => this.#genFormatItem(), 'fmts', 'sep0');
+    $onEnableFormatSet(enable) {
+        this.$src.tray.hub?.$record(enable, 'sep0', null, 'fmts', () => this.$genFormatItem());
     }
 
-    #genFormatItem() {
+    $genFormatItem() {
         return new M.RadioItem(_('Default format'), this.$options, this[K.FMTS], x => this.$set.set(K.FMTS, x));
     }
 
-    #genSystray() {
-        return new ColorTray(this.$set, this.$formats, () => this.summon(), this[K.FMT] ? this.#genFormatItem() : null);
+    $genSystray() {
+        return new ColorTray(this.$set, this.$formats, () => this.summon(), this[K.FMT] ? this.$genFormatItem() : null);
     }
 
     summon() {
@@ -612,7 +599,7 @@ class ColorPicker extends F.Mortal {
         if(!this[K.NTF]) return;
         let gicon = Gio.BytesIcon.new(T.encode(`<svg width="64" height="64" fill="${color.toHEX()}" viewBox="0 0 1 1">
     <rect width=".75" height=".75" x=".125" y=".125" rx=".15"/></svg>`));
-        if(this[K.NTFS] === Notify.MSG) {
+        if(this[K.NTFS] === ColorPicker.Notify.MSG) {
             let title = F.me().metadata.name,
                 source = MessageTray.getSystemSource(),
                 message = new MessageTray.Notification({gicon, source, isTransient: true, title, body: _('%s is picked.').format(text)});
@@ -624,7 +611,7 @@ class ColorPicker extends F.Mortal {
 
     pickAsync() {
         return new Promise((resolve, reject) => {
-            if(this.$src.area.active) reject(Error('busy'));
+            if(this.$src.area.active) throw Error('busy');
             this.$src.tray.hub?.add_style_pseudo_class('state-busy');
             this.$src.area.summon([['notify-color', (_a, color) => resolve(color.toRGB())],
                 ['end-pick', (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); }]], this.$set, true);
@@ -632,7 +619,7 @@ class ColorPicker extends F.Mortal {
     }
 
     PickAsync(_p, invocation) {
-        return Promise.try(() => this.pickAsync()).then(color => invocation.return_value(T.pickle([{color}], true, 'd')))
+        return this.pickAsync().then(color => invocation.return_value(new GLib.Variant('(a{sv})', [{color: new GLib.Variant('(ddd)', color)}])))
             .catch(() => invocation.return_error_literal(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED, 'Operation was cancelled'));
     }
 

@@ -13,8 +13,8 @@ import * as T from './util.js';
 import Color from './color.js';
 import {Key as K, Preset, HEX} from './const.js';
 
-const {$, $$} = T;
-const {_, _G} = UI;
+const {$, $s, $$, hub} = T;
+const {_, _G, getv, setv} = UI;
 
 class Key extends UI.DialogButtonBase {
     static {
@@ -23,7 +23,7 @@ class Key extends UI.DialogButtonBase {
 
     constructor(param) {
         super(null, new Adw.ShortcutLabel({disabledText: _('(Key)')}), true, param)
-            .bind_property('value', this.$btn.child, 'accelerator', GObject.BindingFlags.SYNC_CREATE);
+            .bind_property(getv, this.$btn.child, 'accelerator', GObject.BindingFlags.DEFAULT);
     }
 
     $genDialog() {
@@ -31,7 +31,7 @@ class Key extends UI.DialogButtonBase {
             $onKeyPress(_w, keyval, keycode, state) {
                 let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
                 if(!mask && keyval === Gdk.KEY_Escape) return this.close();
-                this.$onChosen(keyval === Gdk.KEY_BackSpace ? '' : Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
+                this.$emitChosen(keyval === Gdk.KEY_BackSpace ? '' : Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
             },
         });
     }
@@ -42,36 +42,31 @@ class PrefsBasic extends UI.Page {
         T.enrol(this);
     }
 
-    $buildWidgets(gset) {
-        let fmt = () => Preset.concat(gset.get_value(K.CFMT).recursiveUnpack().flatMap(x => x.enable ? [x.name] : []));
-        this.$tie([
-            [K.QKEY, new Key()],
+    $buildWidgets() {
+        return [
             [K.MKEY, new Key()],
+            [K.QKEY, new Key()],
             [K.KEYS, new UI.Keys()],
             [K.COPY, new UI.Check()],
-            [K.NTF,  new UI.Check()],
-            [K.FMT,  new UI.Check()],
-            [K.PVW,  new UI.Check()],
+            [K.DBUS, new UI.Check()],
             [K.KEY,  new UI.Check()],
+            [K.MENU, new UI.Check()],
+            [K.NTF,  new UI.Check()],
+            [K.PRST, new UI.Check()],
+            [K.PVW,  new UI.Check()],
             [K.SND,  new UI.Check()],
             [K.STRY, new UI.Check()],
-            [K.PRST, new UI.Check()],
-            [K.MENU, new UI.Check()],
-            [K.FMTS, new UI.Drop(fmt())],
             [K.NTFS, new UI.Drop([_('MSG'), _('OSD')])],
             [K.PVWS, new UI.Drop([_('Lens'), _('Label')])],
             [K.TICN, new UI.Icon(null, {tooltipText: _('Systray icon')})],
             [K.MNSZ, new UI.Spin(0, 16, 1, '', _('History and collection size'))],
             [K.SNDS, new UI.Drop([_('Screenshot'), _('Complete')], _('Sound effect'))],
-        ]);
-        gset.connect(`changed::${K.CFMT}`, () => void T.seq(this[T.hub][K.FMTS].selected,
-            x => this[T.hub][K.FMTS][$].set_model(Gtk.StringList.new(fmt()))[$].selected(x)));
+        ];
     }
 
     $buildUI() {
         return [
             [K.COPY, [_('_Automatically copy'), _('Copy the color to clipboard after picking')]],
-            [K.FMT,  [_('_Default format'), _('Also apply to the first Format menu item')], K.FMTS],
             [K.STRY, [_('_Enable systray'), _('Secondary click to open menu')], new UI.Help(({h, k}) => [h(_('Menu shortcuts')), [
                 [_('toggle history/collection'), k('Shift_R')],
                 [_('trigger the toolbar button'), k('<alt>1...9')],
@@ -87,6 +82,9 @@ class PrefsBasic extends UI.Page {
                 new UI.Help(({h, k}) => [h(_('Shortcuts')), [[_('toggle when picking'), k('<shift>'), _('scroll')]]]), K.PVWS],
             [K.NTF,  [_('No_tification style'), _('Notify the color after picking')], K.NTFS],
             [K.SND,  [_('Not_ification sound'), _('Play the sound after picking')], K.SNDS],
+            [K.DBUS, [_('Enable _DBus'), _('Invoke programmatically')], new Gtk.LinkButton({
+                label: 'Github', uri: 'https://github.com/tuberry/color-picker?tab=readme-ov-file#dbus',
+            })],
         ];
     }
 }
@@ -121,15 +119,15 @@ class FormatRow extends Adw.ActionRow {
                 .connect('clicked', () => this.emit('changed', this.get_index())),
             remove = new Gtk.Button({iconName: 'edit-delete-symbolic', hasFrame: false, valign: Gtk.Align.CENTER})[$]
                 .connect('clicked', () => this.emit('removed', this.get_index()));
-        this[$$].add_prefix([toggle, handle])[$$].add_suffix([change, remove])[$].set_activatable_widget(change);
-        item.bind_property_full('format', this, 'subtitle', GObject.BindingFlags.SYNC_CREATE, (_b, v) => [true, Color.sample(v)], null);
-        item.bind_property('name', this, 'title', GObject.BindingFlags.SYNC_CREATE);
-        this.#buildDND(item);
+        this[$s].add_prefix([toggle, handle])[$s].add_suffix([change, remove])[$].set_activatable_widget(change);
+        item.bind_property_full('format', this, 'subtitle', T.SYNC, (_b, v) => [true, Color.sample(v)], null);
+        item.bind_property('name', this, 'title', T.SYNC);
+        this.$buildDND(item);
     }
 
-    #buildDND(item) {
-        this[$$].add_controller([
-            new Gtk.DragSource({actions: Gdk.DragAction.MOVE})[$$].connect([
+    $buildDND(item) {
+        this[$s].add_controller([
+            new Gtk.DragSource({actions: Gdk.DragAction.MOVE})[$s].connect([
                 ['prepare', (_s, ...xs) => Gdk.ContentProvider.new_for_value(this[$].$spot(xs))],
                 ['drag-begin', (_s, drag) => {
                     let row = new FormatRow(item);
@@ -140,7 +138,7 @@ class FormatRow extends Adw.ActionRow {
             ]), Gtk.DropTarget.new(FormatRow, Gdk.DragAction.MOVE)[$].connect('drop', (_t, src) => {
                 let drag = src.get_index();
                 let drop = this.get_index();
-                return T.seq(drag !== drop, x => x && this.emit('dropped', drag, drop));
+                return (drag !== drop)[$$](x => x && this.emit('dropped', drag, drop));
             }),
         ]);
     }
@@ -153,21 +151,21 @@ class FormatList extends Adw.PreferencesGroup {
 
     constructor(page, param) {
         super({title: _('Custom'), ...param});
-        this.#buildWidgets(page);
+        this.$buildWidgets(page);
     }
 
-    #buildWidgets(page) {
+    $buildWidgets(page) {
         let fmt = new Gio.ListStore(),
-            save = f => { f(fmt); this[UI.setv]([...fmt].map(({enable, name, format}) => ({enable, name, format}))); },
+            save = f => { f(fmt); this[setv]([...fmt].map(({enable, name, format}) => ({enable, name, format}))); },
             list = new Gtk.FlattenListModel({model: new Gio.ListStore()[$].splice(0, 0, [fmt, new Gio.ListStore()[$].append(new GObject.Object())])}),
             trash = x => this.get_root().add_toast(new Adw.Toast({title: _('Removed <i>%s</i> format').format(x.name ?? ''), buttonLabel: _G('_Undo')})[$]
             .connect('button-clicked', () => save(y => y.append(new FormatItem(x)))));
-        UI.once(() => fmt.splice(0, 0, this.value.map(x => new FormatItem(x))), this);
+        UI.once(() => fmt.splice(0, 0, this[getv].map(x => new FormatItem(x))), this);
         this.add(new Gtk.ListBox({selectionMode: Gtk.SelectionMode.NONE, cssClasses: ['boxed-list']})[$]
-            .bind_model(list, obj => obj instanceof FormatItem ? new FormatRow(obj)[$$].connect([
+            .bind_model(list, obj => obj instanceof FormatItem ? new FormatRow(obj)[$s].connect([
                 ['toggled', (_w, p) => save(x => x.get_item(p).toggle())],
-                ['dropped', (_w, p, q) => save(x => x.insert(q, T.seq(x.get_item(p), () => x.remove(p))))],
-                ['removed', (_w, p) => save(x => trash(T.seq(x.get_item(p), () => x.remove(p))))],
+                ['dropped', (_w, p, q) => save(x => x.insert(q, x.get_item(p)[$$](() => x.remove(p))))],
+                ['removed', (_w, p) => save(x => trash(x.get_item(p)[$$](() => x.remove(p))))],
                 ['changed', (_w, p) => page.dlg.choose(this.get_root(), fmt.get_item(p)).then(([x]) => save(y => y.get_item(p).set(x))).catch(T.nop)],
             ]) : new Adw.ButtonRow({title: _('_New Color Format'), startIconName: 'list-add-symbolic', useUnderline: true})[$].connect(
                 'activated', () => page.dlg.choose(this.get_root(), null).then(([x]) => save(y => y.append(new FormatItem({enable: true, ...x})))).catch(T.nop)
@@ -183,8 +181,8 @@ class PresetRow extends Adw.ActionRow {
     constructor(page, name) {
         super({useUnderline: true, title: name.replace(/(.)/, '$&_')})[$]
             .set_activatable_widget(new Gtk.Button({iconName: 'document-edit-symbolic', hasFrame: false, valign: Gtk.Align.CENTER})[$].connect('clicked',
-                () => page.dlg.choose(this.get_root(), {name, preset: true, format: this.value}).then(([{format: x}]) => this[UI.setv](x)).catch(T.nop)))[$]
-            .bind_property_full('value', this, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, v) => [true, T.esc(Color.sample(v))], null)[$]
+                () => page.dlg.choose(this.get_root(), {name, preset: true, format: this[getv]}).then(([{format: x}]) => this[UI.setv](x)).catch(T.nop)))[$]
+            .bind_property_full(getv, this, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, v) => [true, T.esc(Color.sample(v))], null)[$]
             .add_suffix(this.activatableWidget);
     }
 }
@@ -194,21 +192,30 @@ class PrefsFormat extends UI.Page {
         T.enrol(this);
     }
 
-    $buildWidgets() {
-        return Preset.map(x => [K[x], new PresetRow(this, x)])[$].push([K.CFMT, new FormatList(this)]);
+    $buildWidgets(gset) {
+        let fmt = () => Preset.concat(gset.get_value(K.CFMT).recursiveUnpack().flatMap(x => x.enable ? [x.name] : []));
+        this.$tie([
+            [K.FMT,  new UI.Check()],
+            [K.FMTS, new UI.Drop(fmt())],
+            ...Preset.map(x => [K[x], new PresetRow(this, x)]),
+            [K.CFMT, new FormatList(this)],
+        ]);
+        gset.connect(`changed::${K.CFMT}`, () => void this[hub][K.FMTS].selected[$$](x =>
+            this[hub][K.FMTS][$].set_model(Gtk.StringList.new(fmt()))[$].selected(x)));
     }
 
     $buildUI() {
-        this.$add([[[_('Preset')]], Preset.map(x => K[x])], K.CFMT);
+        this.$add([null, [[K.FMT,  [_('_Default'), _('Also apply to the first Format menu item')], K.FMTS]]],
+            [[[_('Preset')]], Preset.map(x => K[x])], K.CFMT);
     }
 
     get dlg() {
         return (this.$dialog ??= new UI.Dialog(dlg => {
             let title = Adw.WindowTitle.new(_('Edit Color Format'), ''),
                 note = ({desc, info}) => info ? `${_(desc)} (${info.replace(/_(.)/, '<span overline="single" weight="bold">$1</span>')})` : _(desc),
-                name = new Gtk.Entry({hexpand: true, placeholderText: 'HEX'})[$].connect('activate', () => dlg.$onChosen())[$]
+                name = new Gtk.Entry({hexpand: true, placeholderText: 'HEX'})[$].connect('activate', () => dlg.$emitChosen())[$]
                     .bind_property_full('text', title, 'title', GObject.BindingFlags.DEFAULT, (_b, v) => [true, v || _('Edit Color Format')], null),
-                format = new Gtk.Entry({hexpand: true, placeholderText: HEX, cssClasses: ['monospace']})[$].connect('activate', () => dlg.$onChosen())[$]
+                format = new Gtk.Entry({hexpand: true, placeholderText: HEX, cssClasses: ['monospace']})[$].connect('activate', () => dlg.$emitChosen())[$]
                     .bind_property_full('text', title, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, v) => [true, Color.sample(v)], null);
             dlg.initChosen = x => { name.set({text: x?.name ?? '', sensitive: !x?.preset}); format[$].set_text(x?.format ?? '').grab_focus(); };
             dlg.getChosen = () => ({name: name.get_text(), format: format.get_text()});

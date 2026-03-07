@@ -17,119 +17,119 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:366
+#: src/ui.js:365
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:488
+#: src/ui.js:482
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
-#: src/color.js:106
+#: src/color.js:112
 msgid "red"
 msgstr "红"
 
-#: src/color.js:107
+#: src/color.js:113
 msgid "green"
 msgstr "绿"
 
-#: src/color.js:108
+#: src/color.js:114
 msgid "blue"
 msgstr "蓝"
 
-#: src/color.js:109
+#: src/color.js:115
 msgid "alpha"
 msgstr "不透明度"
 
-#: src/color.js:113 src/color.js:120
+#: src/color.js:119 src/color.js:126
 msgid "hue"
 msgstr "色相"
 
-#: src/color.js:114 src/color.js:116
+#: src/color.js:120 src/color.js:122
 msgid "saturation"
 msgstr "饱和度"
 
-#: src/color.js:115 src/color.js:118
+#: src/color.js:121 src/color.js:124
 msgid "lightness"
 msgstr "亮度"
 
-#: src/color.js:117
+#: src/color.js:123
 msgid "value"
 msgstr "明度"
 
-#: src/color.js:119
+#: src/color.js:125
 msgid "chroma"
 msgstr "色度"
 
-#: src/color.js:121
+#: src/color.js:127
 msgid "chroma A"
 msgstr "色度A"
 
-#: src/color.js:122
+#: src/color.js:128
 msgid "chroma B"
 msgstr "色度B"
 
-#: src/color.js:123
+#: src/color.js:129
 msgid "cyan"
 msgstr "青"
 
-#: src/color.js:124
+#: src/color.js:130
 msgid "magenta"
 msgstr "洋红"
 
-#: src/color.js:125
+#: src/color.js:131
 msgid "yellow"
 msgstr "黄"
 
-#: src/color.js:126
+#: src/color.js:132
 msgid "black"
 msgstr "黑"
 
-#: src/color.js:130
+#: src/color.js:136
 msgid "hex lowercase 2 digits"
 msgstr "两位小写十六进制"
 
-#: src/color.js:131
+#: src/color.js:137
 msgid "hex uppercase 2 digits"
 msgstr "两位大写十六进制"
 
-#: src/color.js:132
+#: src/color.js:138
 msgid "hex lowercase 1 digit"
 msgstr "一位小写十六进制"
 
-#: src/color.js:133
+#: src/color.js:139
 msgid "hex uppercase 1 digit"
 msgstr "一位大写十六进制"
 
-#: src/color.js:134
+#: src/color.js:140
 msgid "float with leading zero"
 msgstr "带个位零的小数"
 
-#: src/color.js:135
+#: src/color.js:141
 msgid "float without leading zero"
 msgstr "不带个位零的小数"
 
-#: src/color.js:136
+#: src/color.js:142
 msgid "number value (original)"
 msgstr "(原始)数值"
 
-#: src/color.js:137
+#: src/color.js:143
 msgid "percent value"
 msgstr "百分数"
 
-#: src/extension.js:133
+#: src/extension.js:132
 msgid "Others"
 msgstr "其它"
 
-#: src/extension.js:588
+#: src/extension.js:574
 msgid "Default format"
 msgstr "默认格式"
 
-#: src/extension.js:613
+#: src/extension.js:599
 msgid "Color picked"
 msgstr "已拾取颜色"
 
-#: src/extension.js:620
+#: src/extension.js:606
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"
@@ -138,216 +138,224 @@ msgstr "已拾取%s。"
 msgid "(Key)"
 msgstr "(按键)"
 
-#: src/prefs.js:61
+#: src/prefs.js:59
 msgid "MSG"
 msgstr "系统通知"
 
-#: src/prefs.js:61
+#: src/prefs.js:59
 msgid "OSD"
 msgstr "屏内提示"
 
-#: src/prefs.js:62
+#: src/prefs.js:60
 msgid "Lens"
 msgstr "镜头"
 
-#: src/prefs.js:62
+#: src/prefs.js:60
 msgid "Label"
 msgstr "标签"
 
-#: src/prefs.js:63
+#: src/prefs.js:61
 msgid "Systray icon"
 msgstr "托盘图标"
 
-#: src/prefs.js:64
+#: src/prefs.js:62
 msgid "History and collection size"
 msgstr "历史及收藏大小"
 
-#: src/prefs.js:65
+#: src/prefs.js:63
 msgid "Screenshot"
 msgstr "截屏"
 
-#: src/prefs.js:65
+#: src/prefs.js:63
 msgid "Complete"
 msgstr "完成"
 
-#: src/prefs.js:65
+#: src/prefs.js:63
 msgid "Sound effect"
 msgstr "音效"
 
-#: src/prefs.js:73
+#: src/prefs.js:69
 msgid "_Automatically copy"
 msgstr "自动复制(_A)"
 
-#: src/prefs.js:73
+#: src/prefs.js:69
 msgid "Copy the color to clipboard after picking"
 msgstr "选取后复制颜色到剪贴板"
 
-#: src/prefs.js:74
-msgid "_Default format"
-msgstr "默认格式(_D)"
-
-#: src/prefs.js:74
-msgid "Also apply to the first Format menu item"
-msgstr "也适用于格式菜单首项"
-
-#: src/prefs.js:75
+#: src/prefs.js:70
 msgid "_Enable systray"
 msgstr "系统托盘(_E)"
 
-#: src/prefs.js:75
+#: src/prefs.js:70
 msgid "Secondary click to open menu"
 msgstr "次键打开菜单"
 
-#: src/prefs.js:75
+#: src/prefs.js:70
 msgid "Menu shortcuts"
 msgstr "菜单快捷键"
 
-#: src/prefs.js:76
+#: src/prefs.js:71
 msgid "toggle history/collection"
 msgstr "切换历史/收藏"
 
-#: src/prefs.js:77
+#: src/prefs.js:72
 msgid "trigger the toolbar button"
 msgstr "触发菜单栏按钮"
 
-#: src/prefs.js:78
+#: src/prefs.js:73
 msgid "Menu item shortcuts"
 msgstr "菜单项快捷键"
 
-#: src/prefs.js:79
+#: src/prefs.js:74
 msgid "copy the color"
 msgstr "复制颜色"
 
-#: src/prefs.js:79
+#: src/prefs.js:74
 msgid "primary click"
 msgstr "主键"
 
-#: src/prefs.js:80
+#: src/prefs.js:75
 msgid "remove the color"
 msgstr "移除颜色"
 
-#: src/prefs.js:80
+#: src/prefs.js:75
 msgid "middle click"
 msgstr "中键"
 
-#: src/prefs.js:81
+#: src/prefs.js:76
 msgid "trigger the tail button"
 msgstr "触发末尾按钮"
 
-#: src/prefs.js:81
+#: src/prefs.js:76
 msgid "secondary click"
 msgstr "次键"
 
-#: src/prefs.js:83
+#: src/prefs.js:78
 msgid "E_nable shortcut"
 msgstr "快捷键(_N)"
 
-#: src/prefs.js:83
+#: src/prefs.js:78
 msgid "Primary click or press Enter / Space key to pick"
 msgstr "主键或按回车/空格键选取"
 
-#: src/prefs.js:84
+#: src/prefs.js:79
 msgid "F_ormat menu"
 msgstr "格式菜单(_O)"
 
-#: src/prefs.js:84
+#: src/prefs.js:79
 msgid "Middle click or press Menu key to open"
 msgstr "中键或按菜单键打开"
 
-#: src/prefs.js:85
+#: src/prefs.js:80
 msgid "_Persistent mode"
 msgstr "持续模式(_P)"
 
-#: src/prefs.js:85
+#: src/prefs.js:80
 msgid "Secondary click or press Esc key to quit"
 msgstr "次键或按 Esc 键退出"
 
-#: src/prefs.js:86
+#: src/prefs.js:81
 msgid "P_review style"
 msgstr "预览方式(_R)"
 
-#: src/prefs.js:86
+#: src/prefs.js:81
 msgid ""
 "Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to "
 "accelerate"
 msgstr "方向键 / wasd / hjkl 按像素移动并按住 Ctrl 键加速"
 
-#: src/prefs.js:87
+#: src/prefs.js:82
 msgid "Shortcuts"
 msgstr "快捷键"
 
-#: src/prefs.js:87
+#: src/prefs.js:82
 msgid "toggle when picking"
 msgstr "取色时切换"
 
-#: src/prefs.js:87
+#: src/prefs.js:82
 msgid "scroll"
 msgstr "滚动"
 
-#: src/prefs.js:88
+#: src/prefs.js:83
 msgid "No_tification style"
 msgstr "通知方式(_T)"
 
-#: src/prefs.js:88
+#: src/prefs.js:83
 msgid "Notify the color after picking"
 msgstr "选取颜色后通知"
 
-#: src/prefs.js:89
+#: src/prefs.js:84
 msgid "Not_ification sound"
 msgstr "通知声音(_I)"
 
-#: src/prefs.js:89
+#: src/prefs.js:84
 msgid "Play the sound after picking"
 msgstr "选取颜色后响铃"
 
-#: src/prefs.js:155
+#: src/prefs.js:85
+msgid "Enable _DBus"
+msgstr "启用 _DBus"
+
+#: src/prefs.js:85
+msgid "Invoke programmatically"
+msgstr "编程式调用"
+
+#: src/prefs.js:153
 msgid "Custom"
 msgstr "自便"
 
-#: src/prefs.js:163
+#: src/prefs.js:161
 #, javascript-format
 msgid "Removed <i>%s</i> format"
 msgstr "已移除 <i>%s</i> 格式 "
 
-#: src/prefs.js:172
+#: src/prefs.js:170
 msgid "_New Color Format"
 msgstr "新建颜色格式(_N)"
 
-#: src/prefs.js:202
+#: src/prefs.js:208
+msgid "_Default"
+msgstr "默认(_D)"
+
+#: src/prefs.js:208
+msgid "Also apply to the first Format menu item"
+msgstr "也适用于格式菜单首项"
+
+#: src/prefs.js:209
 msgid "Preset"
 msgstr "预设"
 
-#: src/prefs.js:207 src/prefs.js:210
+#: src/prefs.js:214 src/prefs.js:217
 msgid "Edit Color Format"
 msgstr "编辑颜色格式"
 
-#: src/prefs.js:217
+#: src/prefs.js:224
 msgid "Name"
 msgstr "名称"
 
-#: src/prefs.js:217
+#: src/prefs.js:224
 msgid "Format"
 msgstr "格式"
 
-#: src/prefs.js:218
+#: src/prefs.js:225
 msgid "The following parameters can be used:"
 msgstr "下列参数可用:"
 
-#: src/prefs.js:220
+#: src/prefs.js:227
 msgid "The color values can be formatted with (optional trailing precision):"
 msgstr "颜色值可格式化为(后可跟精度):"
 
-#: src/prefs.js:222
+#: src/prefs.js:229
 msgid ""
 "E.g., <tt>{Blf3}</tt> means the normalized blue value accurate to 3 decimal "
 "places."
 msgstr "例如，<tt>{Blf3}</tt> 表示精确到千分位的归一化蓝色值。"
 
-#: src/prefs.js:232
+#: src/prefs.js:239
 msgid "_Basic"
 msgstr "基本(_B)"
 
-#: src/prefs.js:233
+#: src/prefs.js:240
 msgid "_Format"
 msgstr "格式(_F)"
 

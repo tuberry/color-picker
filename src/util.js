@@ -3,8 +3,8 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Soup from 'gi://Soup';
 import GObject from 'gi://GObject';
-import Soup from 'gi://Soup/?version=3.0';
 
 Gio._promisify(Gio.File.prototype, 'copy_async');
 Gio._promisify(Gio.File.prototype, 'delete_async');
@@ -15,21 +15,24 @@ Gio._promisify(Gio.File.prototype, 'enumerate_children_async');
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
 export const hub = Symbol('Handy Utility Binder');
+export const SYNC = GObject.BindingFlags.SYNC_CREATE;
+export const BIND = GObject.BindingFlags.BIDIRECTIONAL | SYNC;
 export const ROOT = GLib.path_get_dirname(import.meta.url.slice(7));
 export const PIPE = Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE;
-export const BIND = GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE;
 
 export const $ = Symbol('Chain Call');
-export const $$ = Symbol('Chain Calls');
-export const $_ = Symbol('Chain If Call'); // NOTE: https://github.com/RedHatter/proposal-cascade-operator & https://en.wikipedia.org/wiki/Method_cascading
-Reflect.defineProperty(Object.prototype, $, {get() { return new Proxy(this, {get: (t, k) => (...xs) => (t[k] instanceof Function ? t[k](...xs) : ([t[k]] = xs), t)}); }});
-Reflect.defineProperty(Object.prototype, $$, {get() { return new Proxy(this, {get: (t, k) => xs => (xs.forEach(x => Array.isArray(x) ? t[k](...x) : t[k](x)), t)}); }});
-Reflect.defineProperty(Object.prototype, $_, {get() { return new Proxy(this, {get: (t, k) => (b, ...xs) => b ? t[$][k](...xs) : t}); }});
+export const $s = Symbol('Chain Calls');
+export const $_ = Symbol('Chain If Call');
+export const $$ = Symbol('Chain Seq Call');
+Object.defineProperties(Object.prototype, { // NOTE: https://github.com/RedHatter/proposal-cascade-operator & https://en.wikipedia.org/wiki/Method_cascading
+    [$]:  {get() { return new Proxy(this, {get: (t, k) => (...xs) => (t[k] instanceof Function ? t[k](...xs) : ([t[k]] = xs), t)}); }},
+    [$s]: {get() { return new Proxy(this, {get: (t, k) => xs => (xs?.forEach(x => Array.isArray(x) ? t[k](...x) : t[k](x)), t)}); }},
+    [$_]: {get() { return new Proxy(this, {get: (t, k) => (b, ...xs) => b ? t[$][k](...xs) : t}); }},
+    [$$]: {value(f) { f(this); return this; }}, // like `also` in Kotlin
+});
 
 export const id = x => x;
 export const nop = () => {};
-/** @template T * @param {T} x * @return {T} */ // NOTE: https://github.com/tc39/proposal-type-annotations & https://github.com/jsdoc/jsdoc/issues/1986
-export const seq = (x, f) => (f(x), x);
 export const xnor = (x, y) => !x === !y;
 export const Y = f => (...xs) => f(Y(f))(...xs); // Y combinator
 export const str = x => x?.constructor === String;
@@ -42,7 +45,7 @@ export const unit = (x, f = y => [y]) => Array.isArray(x) ? x : f(x);
 export const array = (n, f = id) => Array.from({length: n}, (_x, i) => f(i));
 export const omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
 export const essay = (f, g = nop) => { try { return f(); } catch(e) { return g(e); } }; // NOTE: https://github.com/arthurfiorette/proposal-try-operator
-export const each = (f, a, s) => { for(let i = 0, n = a.length; i < n;) f(a.slice(i, i += s)); };
+export const inject = (o, ...xs) => chunk(xs).forEach(([k, f]) => { o[k] = f(o[k], o); });
 export const upcase = (s, f = x => x.toLowerCase()) => s.charAt(0).toUpperCase() + f(s.slice(1));
 export const type = x => Object.prototype.toString.call(x).replace(/\[object (\w+)\]/, (_m, p) => p.toLowerCase());
 export const format = (x, f) => x.replace(/\{\{(\w+)\}\}|\{(\w+)\}/g, (m, a, b) => b ? f(b) ?? m : f(a) === undefined ? m : `{${a}}`);
@@ -58,6 +61,11 @@ export const exist = x => GLib.file_test(x, GLib.FileTest.EXISTS);
 
 export async function readdir(dir, func, attr = Gio.FILE_ATTRIBUTE_STANDARD_NAME, cancel = null) {
     return Array.fromAsync(await fopen(dir).enumerate_children_async(attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, cancel), func);
+}
+
+export function* chunk(list, step = 2, from = 0) {
+    let next = step instanceof Function ? i => { while(++i < list.length && !step(list[i], i)); return i; } : i => i + step;
+    while(from < list.length) yield list.slice(from, from = next(from));
 }
 
 export function search(needle, haystack) { // non unicode safe: https://github.com/bevacqua/fuzzysearch/issues/18
@@ -101,32 +109,17 @@ export function homolog(cat, dog, keys, cmp = (x, y, _k) => x === y) { // cat, d
     })(cat, dog);
 }
 
-export function pickle(value, tuple = true, number = 'u') { // value: JSON-compatible
-    let list = tuple ? x => GLib.Variant.new_tuple(x) : x => new GLib.Variant('av', x);
-    return Y(f => v => {
-        switch(type(v)) {
-        case 'array': return list(v.map(f));
-        case 'object': return new GLib.Variant('a{sv}', vmap(v, f));
-        case 'string': return GLib.Variant.new_string(v);
-        case 'number': return new GLib.Variant(number, v);
-        case 'boolean': return GLib.Variant.new_boolean(v);
-        case 'null': return new GLib.Variant('mv', v);
-        default: return GLib.Variant.new_string(String(v));
-        }
-    })(value);
-}
-
 export async function request(method, url, param, cancel = null, header = null, session = new Soup.Session()) {
     let msg = param ? Soup.Message.new_from_encoded_form(method, url, Soup.form_encode_hash(param)) : Soup.Message.new(method, url);
-    if(header) msg.request_headers[$$].append(Object.entries(header));
+    if(header) msg.request_headers[$s].append(Object.entries(header));
     let ans = await session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, cancel);
     if(msg.statusCode !== Soup.Status.OK) throw Error(msg.get_reason_phrase());
     return decode(ans.get_data());
 }
 
 export async function execute(cmd, env, cancel = null, tty = new Gio.SubprocessLauncher({flags: PIPE})) {
-    if(env) Object.entries(env).forEach(([k, v]) => tty.setenv(k, v, true));
-    let proc = tty.spawnv(['bash', '-c', cmd]),
+    if(env) for(let k in env) tty.setenv(k, env[k], true);
+    let proc = tty.spawnv([tty.getenv('SHELL'), '-c', cmd]),
         [stdout, stderr] = await proc.communicate_utf8_async(null, cancel),
         status = proc.get_exit_status();
     if(status) throw Error(stderr?.trimEnd() ?? '', {cause: {status, cmd}});

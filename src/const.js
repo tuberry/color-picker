@@ -10,6 +10,7 @@ export const Key = {
     COPY:  'auto-copy',
     MNSZ:  'menu-size',
     MNTP:  'menu-type',
+    DBUS:  'enable-dbus',
     MENU:  'format-menu',
     NTFS:  'notify-style',
     SND:   'enable-sound',

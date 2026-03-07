@@ -4,6 +4,7 @@
 import {HEX} from './const.js';
 import * as T from './util.js';
 
+const {$, hub} = T;
 const Grey = 0.5693; // L in OKLab <=> 18% grey #777777 // Ref: https://en.wikipedia.org/wiki/Middle_gray
 
 const _ = T.id; // HACK: workaround for gettext
@@ -15,8 +16,13 @@ const norm = (v, u) => u ? v / u : v;
 
 const RGB = {
     get: ({Re, Gr, Bl}) => ({r: Re / 255, g: Gr / 255, b: Bl / 255}), set: T.id,
-    alter: (x, {r, g, b}) => { x.Re = r * 255; x.Gr = g * 255; x.Bl = b * 255; },
-    unbox: ({r, g, b}) => [r, g, b],
+    tuple: ({r, g, b}) => [r, g, b],
+    // cache
+    get [hub]() { return [this.Re, this.Gr, this.Bl]; },
+    set [hub](v) { [this.Re, this.Gr, this.Bl] = v; },
+    equal(v) { return this.Re === v[0] && this.Gr === v[1] && this.Bl === v[2]; },
+    assign(m, k, v) { m.clear(); this[k] = v; return true; },
+    sync(m, {r, g, b}) { return this.assign(m, hub, [r * 255, g * 255, b * 255]); },
 };
 
 const HSV = { // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
@@ -135,7 +141,7 @@ export default class Color {
         F: {desc: _('float without leading zero'), show: (x, n, u) => numeric(norm(x, u), n).replace(/^0./, '.')},
         n: {desc: _('number value (original)'), show: (x, n) => numeric(x, n)},
         p: {desc: _('percent value'), show: (x, n, u) => percent(norm(x, u), n)},
-    }, {get: (t, s) => t[s] ?? {show: (x, n) => numeric(x, n)}});
+    }, {get: (t, k) => t[k] ?? {show: (x, n) => numeric(x, n)}});
 
     static types = new Set(Object.keys(this.Type));
     static items = Object.keys(this.Form).filter(t => this.Form[t].stop);
@@ -149,39 +155,22 @@ export default class Color {
         return data && new Color(0x26f3ba, [data]).toText();
     }
 
-    #rgb = {Re: 0, Gr: 0, Bl: 0, Al: 255};
-    #fmt = new Proxy(new Map(), {
-        get: (t, s, r) => this.#rgb[s] ?? t.get(s) ?? Object.entries(Color.Form[s].meta.get(r)).reduce((p, [k, v]) => p.set(k, v), t).get(s),
-        set: (t, s, v, r) => {
-            if(s in this.#rgb) this.#rgb[s] = v;
-            else t.set(s, v), RGB.alter(this.#rgb, Color.Form[s].meta.set(r));
-            t.clear();
-            return true;
-        },
-    }); // format cache
-
-    set $rgb([r, g, b]) {
-        if(r === this.#rgb.Re && g === this.#rgb.Gr && b === this.#rgb.Bl) return;
-        this.#rgb.Re = r;
-        this.#rgb.Gr = g;
-        this.#fmt.Bl = b;
-    }
-
-    get $rgb() {
-        return [this.#rgb.Re, this.#rgb.Gr, this.#rgb.Bl];
-    }
+    #fmt = new Proxy([Object.create(RGB, {Al: {value: 255}}), new Map()], {
+        get: ([t, m], k, r) => t[k] ?? m.get(k) ?? Object.entries(Color.Form[k].meta.get(r)).reduce((p, [n, v]) => p.set(n, v), m).get(k),
+        set: ([t, m], k, v, r) => k in t ? t.equal(v) || t.assign(m, k, v) : r[k] === v || t.sync(m.set(k, v), Color.Form[k].meta.set(r)),
+    });
 
     constructor(raw = 0, formats = []) { // raw <- 0x0FRRGGBB
-        [this.format, ...this.$rgb] = [24, 16, 8, 0].map(x => raw >>> x & 0xff);
+        [this.format, ...this.#fmt[hub]] = [24, 16, 8, 0].map(x => raw >>> x & 0xff);
         this.formats = formats;
     }
 
     fromPixels(pixels, start = 0) {
-        this.$rgb = pixels.slice(start, start + 3);
+        this.#fmt[hub] = pixels.slice(start, start + 3);
     }
 
     toRaw() { // 0x0FRRGGBB
-        return [this.format, ...this.$rgb].reduce((p, x) => p << 8 | x);
+        return [this.format, ...this.#fmt[hub]].reduce((p, x) => p << 8 | x);
     }
 
     update(form, value) {
@@ -191,8 +180,7 @@ export default class Color {
     toItems(func) {
         return Color.items.reduce((p, x) => {
             let {unit, span} = Color.Form[x];
-            p[x] = func(x, norm(this.#fmt[x], unit), unit, span);
-            return p;
+            return p[$][x](func(x, norm(this.#fmt[x], unit), unit, span));
         }, {});
     }
 
@@ -202,7 +190,7 @@ export default class Color {
         return T.array(stop + 1, i => {
             let step = i / stop;
             color[form] = denorm(step, unit);
-            return [rtl ? 1 - step : step, ...RGB.unbox(set(color)), 1];
+            return [rtl ? 1 - step : step, ...RGB.tuple(set(color)), 1];
         });
     }
 
@@ -219,7 +207,7 @@ export default class Color {
     }
 
     toHEX() {
-        return `#${this.$rgb.map(hex).join('')}`;
+        return `#${this.#fmt[hub].map(hex).join('')}`;
     }
 
     toMarkup(format) {
@@ -231,11 +219,11 @@ export default class Color {
     }
 
     toRGB() {
-        return RGB.unbox(this.#fmt);
+        return RGB.tuple(this.#fmt);
     }
 
     toComplement() {
         let {Hu, Sl, Lo} = this.#fmt;
-        return RGB.unbox(HSL.set(Sl < 0.1 ? {Hu: 0, Sl: 0, Ll: Lo < Grey ? 1 : 0} : {Hu: (Hu + 180) % 360, Sl: 1, Ll: 0.5}));
+        return RGB.tuple(HSL.set(Sl < 0.1 ? {Hu: 0, Sl: 0, Ll: Lo < Grey ? 1 : 0} : {Hu: (Hu + 180) % 360, Sl: 1, Ll: 0.5}));
     }
 }

@@ -17,6 +17,10 @@
         <default>true</default>
         <summary>enable sound</summary>
     </key>
+    <key type="b" name="enable-dbus">
+        <default>true</default>
+        <summary>enable DBus</summary>
+    </key>
     <key type="b" name="persistent-mode">
         <default>false</default>
         <summary>persistent mode</summary>

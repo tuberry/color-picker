@@ -30,16 +30,17 @@ $pfx: 'color-picker';
 }
 
 .#{$pfx}-systray:state-busy {
-    color: st-tone(-st-accent-color, 8%);
+    color: st-tone(-st-accent-color, 2%);
 }
 
 .#{$pfx}-item-label {
     font-family: monospace;
-    &:focus { outline: 0.15em solid st-tone(-st-accent-color, 4%); }
+    &:focus { outline: 0.15em solid st-transparentize(-st-accent-color, 0.25); }
+
 }
 
 .#{$pfx}-icon {
     padding: 0 0.15em;
     &:hover { color: st-tone(-st-accent-color, 8%); }
-    &:focus { outline: 0.15em solid st-tone(-st-accent-color, 4%); }
+    &:focus { outline: 0.15em solid st-transparentize(-st-accent-color, 0.25); }
 }
