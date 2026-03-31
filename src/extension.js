@@ -78,8 +78,8 @@ class ColorSlider extends Slider.Slider {
         return Clutter.EVENT_STOP;
     }
 
-    scroll(event) {
-        if(event.is_pointer_emulated()) return Clutter.EVENT_PROPAGATE;
+    vfunc_scroll_event(event) {
+        if(event.get_flags() & Clutter.EventFlags.FLAG_POINTER_EMULATED) return Clutter.EVENT_PROPAGATE;
         switch(event.get_scroll_direction()) {
         case Clutter.ScrollDirection.UP: this.$update(1); break;
         case Clutter.ScrollDirection.DOWN: this.$update(-1); break;
@@ -116,7 +116,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
             custom: this.$genCustomSection(),
         }); // TODO: ? replace HSL and OKLCH with OKHSL, see https://github.com/w3c/csswg-drafts/issues/8659 and https://bottosson.github.io/posts/colorpicker/
         Main.layoutManager.addTopChrome(this.actor[$].hide()[$].add_style_class_name('color-picker-menu')[$]
-            .connect('key-press-event', (_a, e) => void M.altNum(e, this.$menu.HEX)));
+            .connect('key-press-event', (_a, e) => M.altNum(e, this.$menu.HEX)));
     }
 
     $updateSliders(form, value) {
@@ -487,7 +487,7 @@ class ColorTray extends M.Systray {
     $buildWidgets(formats, callback, fmts) {
         this[$].set({$formats: formats, $callback: callback})[$].add_style_class_name('color-picker-systray')
             .menu.actor[$].add_style_class_name('color-picker-menu').connect('key-press-event', (...xs) => this.$onKeyPress(...xs));
-        T.inject(this.menu, 'toggle', (f, o) => (...xs) => this._clickGesture.state === Clutter.GestureState.COMPLETED &&
+        T.inject(this.menu, 'toggle', (o, f) => (...xs) => this._clickGesture.state === Clutter.GestureState.COMPLETED &&
             this._clickGesture.get_button() === Clutter.BUTTON_PRIMARY ? this.$callback() : f.apply(o, xs));
         M.Item.put(this.menu, this.$menu = {
             fmts, sep0: fmts ? new M.Separator() : null,

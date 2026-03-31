@@ -45,7 +45,7 @@ export const unit = (x, f = y => [y]) => Array.isArray(x) ? x : f(x);
 export const array = (n, f = id) => Array.from({length: n}, (_x, i) => f(i));
 export const omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
 export const essay = (f, g = nop) => { try { return f(); } catch(e) { return g(e); } }; // NOTE: https://github.com/arthurfiorette/proposal-try-operator
-export const inject = (o, ...xs) => chunk(xs).forEach(([k, f]) => { o[k] = f(o[k], o); });
+export const inject = (o, ...xs) => chunk(xs).forEach(([k, f]) => { o[k] = f(o, o[k]); });
 export const upcase = (s, f = x => x.toLowerCase()) => s.charAt(0).toUpperCase() + f(s.slice(1));
 export const type = x => Object.prototype.toString.call(x).replace(/\[object (\w+)\]/, (_m, p) => p.toLowerCase());
 export const format = (x, f) => x.replace(/\{\{(\w+)\}\}|\{(\w+)\}/g, (m, a, b) => b ? f(b) ?? m : f(a) === undefined ? m : `{${a}}`);
@@ -63,9 +63,9 @@ export async function readdir(dir, func, attr = Gio.FILE_ATTRIBUTE_STANDARD_NAME
     return Array.fromAsync(await fopen(dir).enumerate_children_async(attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, cancel), func);
 }
 
-export function* chunk(list, step = 2, from = 0) {
-    let next = step instanceof Function ? i => { while(++i < list.length && !step(list[i], i)); return i; } : i => i + step;
-    while(from < list.length) yield list.slice(from, from = next(from));
+export function* chunk(list, step = 2, from = 0, to = list.length) {
+    let next = step instanceof Function ? i => { while(++i < to && !step(list[i], i)); return i; } : i => i + step;
+    while(from < to) yield list.slice(from, from = next(from));
 }
 
 export function search(needle, haystack) { // non unicode safe: https://github.com/bevacqua/fuzzysearch/issues/18

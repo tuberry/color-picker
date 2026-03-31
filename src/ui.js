@@ -264,7 +264,7 @@ export class DialogButtonBase extends Box {
         super()[$].set({$opt: opt})[$]
             .prepend(this.$btn = new Gtk.Button({child, ...param})[$].connect('clicked', () => this.$onClick().then(x => this.$onSetv(x)).catch(T.nop)))[$_]
             .append(reset, reset && new Gtk.Button({iconName: 'edit-undo-symbolic', tooltipText: _G('Reset')})[$$](it => this.bind_property_full(getv, it,
-                'sensitive', T.SYNC, (_b, v) => [true, v !== this[dflt]], null))[$].connect('clicked', () => this[setv]()))[$]
+                'visible', T.SYNC, (_b, v) => [true, v !== this[dflt]], null))[$].connect('clicked', () => this[setv]()))[$]
             .connect('mnemonic-activate', () => this.$btn.activate())
             .$buildDND(ptype(this, 'gvalue'));
     }
@@ -482,7 +482,7 @@ export class Entry extends Gtk.Stack {
             done = new Gtk.Button({cssClasses: ['suggested-action'], iconName: 'object-select-symbolic', tooltipText: _('Click or press ENTER to apply changes')})[$]
                 .connect('clicked', () => apply(entry));
         this[$].add_controller(new Gtk.EventControllerFocus()[$].connect('leave', () => { if(this.get_visible_child() === done.parent) apply(label); }))[$]
-            .connect('mnemonic-activate', () => this.get_visible_child() === edit.parent ? edit.activate() : done.activate())[$s] // FIXME: ? backfire for clicks passthrough hiding widgets since GTK 4.21.5
+            .connect('mnemonic-activate', () => this.get_visible_child() === edit.parent ? edit.activate() : done.activate())[$s]
             .add_child([[label, edit], [entry, done]].map(x => new Box(x)[$].set({hexpand: true})))
             .bind_property(getv, label, 'text', T.BIND);
     }

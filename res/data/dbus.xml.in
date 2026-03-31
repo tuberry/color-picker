@@ -6,10 +6,10 @@
   same result as XDP screenshot portal, https://github.com/flatpak/xdg-desktop-portal/blob/main/data/org.freedesktop.portal.Screenshot.xml
 -->
 <node>
-  <interface name="@dbus@">
-    <method name="Pick">
-      <arg type="a{sv}" direction="out" name="result"/>
-    </method>
-    <method name="Run"/>
-  </interface>
+    <interface name="@dbus@">
+        <method name="Pick">
+            <arg type="a{sv}" direction="out" name="result"/>
+        </method>
+        <method name="Run"/>
+    </interface>
 </node>

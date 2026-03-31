@@ -9,7 +9,6 @@ const Grey = 0.5693; // L in OKLab <=> 18% grey #777777 // Ref: https://en.wikip
 
 const _ = T.id; // HACK: workaround for gettext
 const numeric = (x, n = -1, r) => n < 0 ? String(x) : Number(x.toFixed(n)).toString(r);
-const percent = (x, n) => `${numeric(x * 100, n)}%`;
 const hex = x => numeric(x, 0, 16).padStart(2, '0');
 const denorm = (v, u) => u ? v * u : v;
 const norm = (v, u) => u ? v / u : v;
@@ -140,7 +139,7 @@ export default class Color {
         f: {desc: _('float with leading zero'), show: (x, n, u) => numeric(norm(x, u), n)},
         F: {desc: _('float without leading zero'), show: (x, n, u) => numeric(norm(x, u), n).replace(/^0./, '.')},
         n: {desc: _('number value (original)'), show: (x, n) => numeric(x, n)},
-        p: {desc: _('percent value'), show: (x, n, u) => percent(norm(x, u), n)},
+        p: {desc: _('percent value'), show: (x, n, u) => `${numeric(norm(x, u) * 100, n)}%`},
     }, {get: (t, k) => t[k] ?? {show: (x, n) => numeric(x, n)}});
 
     static types = new Set(Object.keys(this.Type));

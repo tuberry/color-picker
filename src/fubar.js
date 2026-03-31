@@ -3,10 +3,10 @@
 
 import St from 'gi://St';
 import Gio from 'gi://Gio';
-import IBus from 'gi://IBus';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -30,7 +30,6 @@ export const yank = (o, k) => { let v = o[k]; delete o[k]; return v; };
 export const erase = (o, ks) => T.unit(ks ?? Object.keys(o)).forEach(k => ruin(yank(o, k)));
 export const view = (v, ...ws) => ws.forEach(w => w && !T.xnor(v, w.visible) && (v ? w.show() : w.hide())); // NOTE: https://github.com/tc39/proposal-optional-chaining-assignment
 export const open = uri => Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
-export const bracket = text => Main.inputMethod._purpose === IBus.InputPurpose.TERMINAL && text.includes('\n') ? `\x1b[200~${text}\x1b[201~` : text; // Ref: https://en.wikipedia.org/wiki/Bracketed-paste
 export const copy = (text, primary) => St.Clipboard.get_default().set_text(primary ? St.ClipboardType.PRIMARY : St.ClipboardType.CLIPBOARD, text);
 export const paste = primary => new Promise((resolve, reject) => St.Clipboard.get_default().get_text(primary ? St.ClipboardType.PRIMARY
     : St.ClipboardType.CLIPBOARD, (_c, x) => x ? resolve(x) : reject(Error('empty'))));
@@ -62,7 +61,7 @@ export class Extension extends Extensions.Extension {
 export class Source {
     /** @template T * @param {T} doom * @return {T} */ // NOTE: https://github.com/tc39/proposal-type-annotations & https://github.com/jsdoc/jsdoc/issues/1986
     static tie(host, doom, ...args) {
-        if(!(host instanceof Mortal || GObject.signal_lookup('destroy', host))) throw Error('undestroyable');
+        if(!((host instanceof Signals.EventEmitter && host.destroy) || GObject.signal_lookup('destroy', host))) throw Error('undestroyable');
         host.connect('destroy', () => { erase(args); doom instanceof Source ? ruin(doom) : erase(doom); });
         return doom;
     }
@@ -114,6 +113,19 @@ export class Source {
     static newInjector(overrides, enable, update) {
         return new Source(() => new Extensions.InjectionManager()[$$](it => (T.chunk(overrides).forEach(([o, fs]) => T.unit(fs, Object.entries)
             .forEach(([k, f]) => it.overrideMethod(o, k, m => function (...xs) { return f(this, m, xs); }))), update?.())), x => (x.clear(), update?.()), enable);
+    }
+
+    static newKeyboard(enable = true) {
+        return new Source(() => Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE),
+            x => x.run_dispose(), enable)[$].stroke(function (keys) { // run_dispose to release keys immediately
+            keys.forEach(k => this[hub].notify_keyval(Clutter.get_current_event_time() * 1000, k, Clutter.KeyState.PRESSED));
+            keys.reverse().forEach(k => this[hub].notify_keyval(Clutter.get_current_event_time() * 1000, k, Clutter.KeyState.RELEASED));
+        })[$].commit(function (text, focused = this.focused()) {
+            let terminal = Main.inputMethod.contentPurpose === Clutter.InputContentPurpose.TERMINAL;
+            // max bytes: Wayland msg / UTF-8 char = 4000 / 3 = 1333.3 ~ 1234, see also https://github.com/whatwg/encoding/issues/333
+            if(text.length < 1234 && focused) Main.inputMethod.commit(terminal ? `\x1b[200~${text}\x1b[201~` : text); // Ref: https://en.wikipedia.org/wiki/Bracketed-paste
+            else copy(text), this.stroke([Clutter.KEY_Shift_L, ...terminal ? [Clutter.KEY_Control_L, Clutter.KEY_v] : [Clutter.KEY_Insert]]);
+        })[$].focused(() => !!Main.inputMethod.currentFocus);
     }
 
     static new(summon, ...args) {
