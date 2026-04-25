@@ -27,6 +27,7 @@ export const Key = {
     PVW:   'enable-preview',
     STRY:  'enable-systray',
     KEY:   'enable-shortcut',
+    CKEY:  'collect-key',
     OKLCH: 'oklch-formatter',
     PRST:  'persistent-mode',
     CLCT:  'color-collection',

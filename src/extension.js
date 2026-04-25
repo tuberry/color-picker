@@ -4,6 +4,7 @@
 import St from 'gi://St';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 import Cairo from 'gi://cairo';
 import Shell from 'gi://Shell';
 import Clutter from 'gi://Clutter';
@@ -259,6 +260,7 @@ class ColorArea extends St.Widget {
             Signals: {
                 'end-pick': {param_types: [GObject.TYPE_BOOLEAN]},
                 'notify-color': {param_types: [GObject.TYPE_JSOBJECT]},
+                'collect-color': {param_types: [GObject.TYPE_JSOBJECT]},
             },
         });
         this.Preview = {LENS: 0, LABEL: 1};
@@ -271,7 +273,7 @@ class ColorArea extends St.Widget {
 
     $bindSettings(set, once) {
         this.$set = set.tie(this, [
-            K.MKEY, K.QKEY,
+            K.MKEY, K.QKEY, K.CKEY,
             [K.PRST, x => { this.$once = once || !x; }],
             [K.MENU, null, x => this.$src.format.toggle(x)],
         ], [
@@ -370,11 +372,21 @@ class ColorArea extends St.Widget {
         this.$ptr.notify_relative_motion(global.get_current_time(), dx * step, dy * step);
     }
 
+    $matchAccel(event, accel) {
+        if(!accel) return false;
+        let [ok, keyval, mods] = Meta.parse_accelerator(accel);
+        if(!ok) return false;
+        let evMods = event.get_state() & Clutter.ModifierType.MODIFIER_MASK &
+            ~(Clutter.ModifierType.LOCK_MASK | Clutter.ModifierType.MOD2_MASK);
+        return event.get_key_symbol() === keyval && evMods === mods;
+    }
+
     vfunc_key_press_event(event) {
+        if(this.$matchAccel(event, this[K.QKEY])) { this.emit('end-pick', true); return Clutter.EVENT_PROPAGATE; }
+        if(this.$matchAccel(event, this[K.MKEY])) { this.emit('popup-menu'); return Clutter.EVENT_PROPAGATE; }
+        if(this.$matchAccel(event, this[K.CKEY])) { this.emit('collect-color', this.$color); return Clutter.EVENT_PROPAGATE; }
         switch(event.get_key_symbol()) {
-        case Clutter.KEY_Escape:
-        case Clutter[`KEY_${this[K.QKEY]}`]: this.emit('end-pick', true); break;
-        case Clutter[`KEY_${this[K.MKEY]}`]: this.emit('popup-menu'); break;
+        case Clutter.KEY_Escape: this.emit('end-pick', true); break;
         case Clutter.KEY_a:
         case Clutter.KEY_h:
         case Clutter.KEY_Left: this.$moveBy(-1, 0, event); break;
@@ -580,7 +592,8 @@ class ColorPicker extends F.Mortal {
     summon() {
         if(this.$src.area.active) return;
         this.$src.tray.hub?.add_style_pseudo_class('state-busy'); // FIXME: not working on the first run
-        this.$src.area.summon([['end-pick', () => this.dispel()], ['notify-color', (_a, x) => this.inform(x)]],
+        this.$src.area.summon([['end-pick', () => this.dispel()], ['notify-color', (_a, x) => this.inform(x)],
+            ['collect-color', (_a, x) => this.collect(x)]],
             this.$set, false, this[K.FMT] ? this[K.FMTS] : Format.HEX, this.$formats);
     }
 
@@ -607,6 +620,14 @@ class ColorPicker extends F.Mortal {
         } else {
             Main.osdWindowManager.showAll(gicon, text);
         }
+    }
+
+    collect(color) {
+        let raw = color.toRaw(),
+            clct = this.$set.hub.get_value(K.CLCT).deepUnpack(),
+            mnsz = this.$set.hub.get_uint(K.MNSZ) || 8;
+        this.$set.set(K.CLCT, clct.includes(raw)
+            ? clct.filter(x => x !== raw) : [raw, ...clct].slice(0, mnsz));
     }
 
     pickAsync() {

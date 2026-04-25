@@ -53,6 +53,10 @@
         <default>"q"</default>
         <summary>key to quit picking</summary>
     </key>
+    <key type="s" name="collect-key">
+        <default>"c"</default>
+        <summary>key to collect current color to collection without ending pick</summary>
+    </key>
     <key type="au" name="color-history">
         <default>[]</default>
         <summary>picked color history</summary>

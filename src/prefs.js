@@ -46,6 +46,7 @@ class PrefsBasic extends UI.Page {
         return [
             [K.MKEY, new Key()],
             [K.QKEY, new Key()],
+            [K.CKEY, new Key()],
             [K.KEYS, new UI.Keys()],
             [K.COPY, new UI.Check()],
             [K.DBUS, new UI.Check()],
@@ -78,6 +79,7 @@ class PrefsBasic extends UI.Page {
             [K.KEY,  [_('E_nable shortcut'), _('Primary click or press Enter / Space key to pick')], K.KEYS],
             [K.MENU, [_('F_ormat menu'), _('Middle click or press Menu key to open')], K.MKEY],
             [K.PRST, [_('_Persistent mode'), _('Secondary click or press Esc key to quit')], K.QKEY],
+            [null,   [_('_Collect color shortcut'), _('Press to toggle current color in collection while picking')], K.CKEY],
             [K.PVW,  [_('P_review style'), _('Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to accelerate')],
                 new UI.Help(({h, k}) => [h(_('Shortcuts')), [[_('toggle when picking'), k('<shift>'), _('scroll')]]]), K.PVWS],
             [K.NTF,  [_('No_tification style'), _('Notify the color after picking')], K.NTFS],
