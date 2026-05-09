@@ -15,8 +15,8 @@ import * as F from './fubar.js';
 
 const {$, $_, $s, $$} = T;
 
-export function upsert(table, insert, list, update, spread = x => x._getMenuItems()) {
-    let items = spread(table);
+export function upsert(table, insert, list, update, spread = x => x._getMenuItems?.() ?? Iterator.from(x)) {
+    let items = T.unit(spread(table), x => x.toArray());
     let delta = list.length - items.length;
     if(delta > 0) while(delta-- > 0) insert(table);
     else while(delta < 0) items.at(delta++).destroy();

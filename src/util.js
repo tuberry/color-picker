@@ -48,6 +48,7 @@ export const essay = (f, g = nop) => { try { return f(); } catch(e) { return g(e
 export const inject = (o, ...xs) => chunk(xs).forEach(([k, f]) => { o[k] = f(o, o[k]); });
 export const upcase = (s, f = x => x.toLowerCase()) => s.charAt(0).toUpperCase() + f(s.slice(1));
 export const type = x => Object.prototype.toString.call(x).replace(/\[object (\w+)\]/, (_m, p) => p.toLowerCase());
+export const glyphs = (x, f) => Iterator.from(new Intl.Segmenter(undefined, {granularity: 'grapheme'}).segment(x)).reduce(f, 0);
 export const format = (x, f) => x.replace(/\{\{(\w+)\}\}|\{(\w+)\}/g, (m, a, b) => b ? f(b) ?? m : f(a) === undefined ? m : `{${a}}`);
 
 export const fquery = (x, ...ys) => fopen(x).query_info_async(ys.join(','), Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
@@ -81,7 +82,7 @@ export function search(needle, haystack) { // non unicode safe: https://github.c
 export function enrol(klass, pspec, param) {
     if(pspec) {
         let spec = (k, t, ...vs) => [[k, GObject.ParamSpec[t](k, null, null, GObject.ParamFlags.READWRITE, ...vs)]];
-        GObject.registerClass({
+        return GObject.registerClass({
             Properties: omap(pspec, ([key, value]) => (kind => {
                 switch(kind) {
                 case 'array': return spec(key, ...value);
@@ -92,7 +93,7 @@ export function enrol(klass, pspec, param) {
             })(type(value))), ...param,
         }, klass);
     } else {
-        param ? GObject.registerClass(param, klass) : GObject.registerClass(klass);
+        return param ? GObject.registerClass(param, klass) : GObject.registerClass(klass);
     }
 }
 
@@ -107,6 +108,20 @@ export function homolog(cat, dog, keys, cmp = (x, y, _k) => x === y) { // cat, d
         default: return cmp(a, b, k);
         }
     })(cat, dog);
+}
+
+export function pickle(value, signature = null) { // json-glib compatible https://gnome.pages.gitlab.gnome.org/json-glib/json-gvariant.html
+    return signature ? new GLib.Variant(signature, value) : Y(f => v => {
+        switch(type(v)) {
+        case 'array': return new GLib.Variant('av', v.map(f));
+        case 'object': return new GLib.Variant('a{sv}', vmap(v, f));
+        case 'string': return GLib.Variant.new_string(v);
+        case 'number': return new GLib.Variant(Number.isInteger(v) ? 'x' : 'd', v);
+        case 'boolean': return GLib.Variant.new_boolean(v);
+        case 'null': return new GLib.Variant('mv', v);
+        default: return GLib.Variant.new_string(String(v));
+        }
+    })(value);
 }
 
 export async function request(method, url, param, cancel = null, header = null, session = new Soup.Session()) {

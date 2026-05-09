@@ -3,7 +3,6 @@
 
 import St from 'gi://St';
 import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import Cairo from 'gi://cairo';
 import Shell from 'gi://Shell';
 import Clutter from 'gi://Clutter';
@@ -286,9 +285,10 @@ class ColorArea extends St.Widget {
         Main.uiGroup.set_child_above_sibling(Main.messageTray, this); // show notifications in persistent mode
         this[$].add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}))[$]
             .add_action(new Clutter.ClickGesture()[$].connect('recognize', a => this.$onClick(a)))[$]
-            .connect('popup-menu', () => this.$src.format.hub?.summon(this.$src.viewer?.hub?.extents ?? this.$coords.concat(12, 12)))[$]
-            .$ptr(Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE))[$]
-            .$color(Color.newForFormat(format, formats));
+            .connect('popup-menu', () => this.$src.format.hub?.summon(this.$src.viewer?.hub?.extents ?? this.$coords.concat(12, 12))).set({
+                $ptr: Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE),
+                $color: Color.newForFormat(format, formats),
+            });
     }
 
     $buildSources() {
@@ -619,7 +619,7 @@ class ColorPicker extends F.Mortal {
     }
 
     PickAsync(_p, invocation) {
-        return this.pickAsync().then(color => invocation.return_value(new GLib.Variant('(a{sv})', [{color: new GLib.Variant('(ddd)', color)}])))
+        return this.pickAsync().then(color => invocation.return_value(T.pickle([{color: T.pickle(color, '(ddd)')}], '(a{sv})')))
             .catch(() => invocation.return_error_literal(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED, 'Operation was cancelled'));
     }
 

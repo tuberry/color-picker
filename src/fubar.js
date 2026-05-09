@@ -3,7 +3,6 @@
 
 import St from 'gi://St';
 import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import Clutter from 'gi://Clutter';
@@ -37,6 +36,10 @@ export const paste = primary => new Promise((resolve, reject) => St.Clipboard.ge
 export class Mortal extends Signals.EventEmitter {
     constructor(set) {
         super()[$].$bindSettings?.(set).$buildSources?.();
+    }
+
+    set(...args) {
+        return Object.assign(this, ...args);
     }
 
     destroy() {
@@ -166,7 +169,7 @@ export class Setting {
     }
 
     set(field, value) {
-        this[hub].set_value(field, new GLib.Variant(this[hub].get_value(field).get_type_string(), value));
+        this[hub].set_value(field, T.pickle(value, this[hub].get_value(field).get_type_string()));
     }
 
     not(field) {

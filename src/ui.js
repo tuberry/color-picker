@@ -6,7 +6,6 @@ import Gdk from 'gi://Gdk';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
-import Json from 'gi://Json';
 import Pango from 'gi://Pango';
 import GioUnix from 'gi://GioUnix';
 import GObject from 'gi://GObject';
@@ -69,7 +68,7 @@ export class Page extends Adw.PreferencesPage {
             gset.bind(key, gobj, prop, Gio.SettingsBindFlags.DEFAULT);
         } else { // HACK: workaround for https://gitlab.gnome.org/GNOME/gjs/-/issues/397
             gobj[prop] = gset.get_value(key).recursiveUnpack();
-            gobj.connect(`notify::${prop}`, () => gset.set_value(key, Json.gvariant_deserialize(Json.from_string(JSON.stringify(gobj[prop])), null)));
+            gobj.connect(`notify::${prop}`, () => gset.set_value(key, T.pickle(gobj[prop])));
         }
         this[hub][key] = gobj;
     }

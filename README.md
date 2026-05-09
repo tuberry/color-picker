@@ -64,14 +64,14 @@ Name=Color Picker
 
 ## Contributions
 
-Feel free to open an issue or PR in the repo for any question or idea.
+Feel free to open an issue in the repo for any questions or ideas, **particularly before making significant changes or introducing new features**.
 
 ### Translations
 
 To initialize or update the po file from sources:
 
 ```bash
-bash ./cli/update-po.sh [your_lang_code] # like zh_CN, default to $LANG
+bash ./cli/update-po.sh (your_lang_code) # like zh_CN, default to $LANG
 ```
 
 ### Developments
