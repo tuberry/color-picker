@@ -1,18 +1,16 @@
 # SPDX-FileCopyrightText: tuberry
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-gscm = configure_file(
-  input: 'schemas.gschema.xml.in',
-  output: '@0@.gschema.xml'.format(metadata['rdnn']),
-  configuration: metadata,
-  install_dir: schema_dir,
-)
-
-if(target == 'system')
+if target == 'system'
   gnome.post_install(glib_compile_schemas: true)
-elif(target == 'local')
+elif target == 'local'
   custom_target(
-    depend_files: [gscm],
+    depend_files: [configure_file(
+      input: 'schemas.gschema.xml.in',
+      output: '@0@.gschema.xml'.format(me['rdnn']),
+      configuration: me,
+      install_dir: schema_dir,
+    )],
     output: 'gschemas.compiled',
     build_by_default: true,
     build_always_stale: true,

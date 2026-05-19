@@ -2,5 +2,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 option('target', type: 'combo', choices: ['zip', 'local', 'system'], value: 'local', description: 'build target')
-option('version', type: 'integer', min: 0, max: 999, value: 0, description: 'default to get-version.sh')
-option('desktop', type: 'boolean', value: false, description: 'save zip to user Desktop or not')
+option('version', type: 'boolean', value: true, description: 'sync with the E.G.O version or not (for local target)')
+option('desktop', type: 'boolean', value: false, description: 'save to user Desktop or not (for zip target)')
