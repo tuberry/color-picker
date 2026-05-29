@@ -13,7 +13,7 @@ import * as T from './util.js';
 import Color from './color.js';
 import {Key as K, Preset, HEX} from './const.js';
 
-const {$, $s, $$, hub} = T;
+const {$, $$, $_, hub} = T;
 const {_, _G, getv, setv} = UI;
 
 class Key extends UI.DialogButtonBase {
@@ -119,15 +119,15 @@ class FormatRow extends Adw.ActionRow {
                 .connect('clicked', () => this.emit('changed', this.get_index())),
             remove = new Gtk.Button({iconName: 'edit-delete-symbolic', hasFrame: false, valign: Gtk.Align.CENTER})[$]
                 .connect('clicked', () => this.emit('removed', this.get_index()));
-        this[$s].add_prefix([toggle, handle])[$s].add_suffix([change, remove])[$].set_activatable_widget(change);
+        this[$$].add_prefix([toggle, handle])[$$].add_suffix([change, remove])[$].set_activatable_widget(change);
         item.bind_property_full('format', this, 'subtitle', T.SYNC, (_b, v) => [true, Color.sample(v)], null);
         item.bind_property('name', this, 'title', T.SYNC);
         this.$buildDND(item);
     }
 
     $buildDND(item) {
-        this[$s].add_controller([
-            new Gtk.DragSource({actions: Gdk.DragAction.MOVE})[$s].connect([
+        this[$$].add_controller([
+            new Gtk.DragSource({actions: Gdk.DragAction.MOVE})[$$].connect([
                 ['prepare', (_s, ...xs) => Gdk.ContentProvider.new_for_value(this[$].$spot(xs))],
                 ['drag-begin', (_s, drag) => {
                     let row = new FormatRow(item);
@@ -138,7 +138,7 @@ class FormatRow extends Adw.ActionRow {
             ]), Gtk.DropTarget.new(FormatRow, Gdk.DragAction.MOVE)[$].connect('drop', (_t, src) => {
                 let drag = src.get_index();
                 let drop = this.get_index();
-                return (drag !== drop)[$$](x => x && this.emit('dropped', drag, drop));
+                return (drag !== drop)[$_](x => x && this.emit('dropped', drag, drop));
             }),
         ]);
     }
@@ -162,10 +162,10 @@ class FormatList extends Adw.PreferencesGroup {
             .connect('button-clicked', () => save(y => y.append(new FormatItem(x)))));
         UI.once(() => fmt.splice(0, 0, this[getv].map(x => new FormatItem(x))), this);
         this.add(new Gtk.ListBox({selectionMode: Gtk.SelectionMode.NONE, cssClasses: ['boxed-list']})[$]
-            .bind_model(list, obj => obj instanceof FormatItem ? new FormatRow(obj)[$s].connect([
+            .bind_model(list, obj => obj instanceof FormatItem ? new FormatRow(obj)[$$].connect([
                 ['toggled', (_w, p) => save(x => x.get_item(p).toggle())],
-                ['dropped', (_w, p, q) => save(x => x.insert(q, x.get_item(p)[$$](() => x.remove(p))))],
-                ['removed', (_w, p) => save(x => trash(x.get_item(p)[$$](() => x.remove(p))))],
+                ['dropped', (_w, p, q) => save(x => x.insert(q, x.get_item(p)[$_](() => x.remove(p))))],
+                ['removed', (_w, p) => save(x => trash(x.get_item(p)[$_](() => x.remove(p))))],
                 ['changed', (_w, p) => page.dlg.choose(this.get_root(), fmt.get_item(p)).then(([x]) => save(y => y.get_item(p).set(x))).catch(T.nop)],
             ]) : new Adw.ButtonRow({title: _('_New Color Format'), startIconName: 'list-add-symbolic', useUnderline: true})[$].connect(
                 'activated', () => page.dlg.choose(this.get_root(), null).then(([x]) => save(y => y.append(new FormatItem({enable: true, ...x})))).catch(T.nop)
@@ -190,6 +190,7 @@ class PresetRow extends Adw.ActionRow {
 class PrefsFormat extends UI.Page {
     static {
         T.enrol(this);
+        UI.laze(this.prototype, 'dlg', x => x.$genDialog());
     }
 
     $buildWidgets(gset) {
@@ -200,7 +201,7 @@ class PrefsFormat extends UI.Page {
             ...Preset.map(x => [K[x], new PresetRow(this, x)]),
             [K.CFMT, new FormatList(this)],
         ]);
-        gset.connect(`changed::${K.CFMT}`, () => void this[hub][K.FMTS].selected[$$](x =>
+        gset.connect(`changed::${K.CFMT}`, () => void this[hub][K.FMTS].selected[$_](x =>
             this[hub][K.FMTS][$].set_model(Gtk.StringList.new(fmt()))[$].selected(x)));
     }
 
@@ -209,8 +210,8 @@ class PrefsFormat extends UI.Page {
             [[[_('Preset')]], Preset.map(x => K[x])], K.CFMT);
     }
 
-    get dlg() {
-        return (this.$dialog ??= new UI.Dialog(dlg => {
+    $genDialog() {
+        return new UI.Dialog(dlg => {
             let title = Adw.WindowTitle.new(_('Edit Color Format'), ''),
                 note = ({desc, info}) => info ? `${_(desc)} (${info.replace(/_(.)/, '<span overline="single" weight="bold">$1</span>')})` : _(desc),
                 name = new Gtk.Entry({hexpand: true, placeholderText: 'HEX'})[$].connect('activate', () => dlg.$emitChosen())[$]
@@ -229,7 +230,7 @@ class PrefsFormat extends UI.Page {
                     _('E.g., <tt>{Blf3}</tt> means the normalized blue value accurate to 3 decimal places.'),
                 ])[$].set({marginTop: 12, marginBottom: 12, marginStart: 12, marginEnd: 12}), title,
             };
-        })[$].set({widthRequest: 550, heightRequest: 470}));
+        })[$].set({widthRequest: 550, heightRequest: 470});
     }
 }
 

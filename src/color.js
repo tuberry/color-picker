@@ -5,7 +5,7 @@ import {HEX} from './const.js';
 import * as T from './util.js';
 
 const {$, hub} = T;
-const Grey = 0.5693; // L in OKLab <=> 18% grey #777777 // Ref: https://en.wikipedia.org/wiki/Middle_gray
+const Grey = 0.5693; // L in OKLab <=> 18% grey #777 // Ref: https://en.wikipedia.org/wiki/Middle_gray
 
 const _ = T.id; // HACK: workaround for gettext
 const numeric = (x, n = -1, r) => n < 0 ? String(x) : Number(x.toFixed(n)).toString(r);
@@ -67,7 +67,7 @@ const HSL = {
 
 const OKLAB = { // Ref: https://bottosson.github.io/posts/oklab/
     get: ({r, g, b}) => {
-        [r, g, b] = [r, g, b].map(x => x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92); // linear srgb
+        [r, g, b] = [r, g, b].map(x => x > 0.04045 ? ((x + 0.055) / 1.055) ** 2.4 : x / 12.92); // linear srgb
         let l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b),
             m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b),
             s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
@@ -85,7 +85,7 @@ const OKLAB = { // Ref: https://bottosson.github.io/posts/oklab/
                 +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
                 -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
                 -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
-            ].map(x => Math.clamp(x >= 0.0031308 ? Math.pow(x, 1 / 2.4) * 1.055 - 0.055 : x * 12.92, 0, 1)); // |OKLab| > |RGB|
+            ].map(x => Math.clamp(x >= 0.0031308 ? x ** (1 / 2.4) * 1.055 - 0.055 : x * 12.92, 0, 1)); // |OKLab| > |RGB|
         return {r, g, b};
     },
 };

@@ -21,14 +21,12 @@ export const ROOT = GLib.path_get_dirname(import.meta.url.slice(7));
 export const PIPE = Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE;
 
 export const $ = Symbol('Chain Call');
-export const $s = Symbol('Chain Calls');
-export const $_ = Symbol('Chain If Call');
-export const $$ = Symbol('Chain Seq Call');
+export const $$ = Symbol('Chain Calls');
+export const $_ = Symbol('Chain Seq Call');
 Object.defineProperties(Object.prototype, { // NOTE: https://github.com/RedHatter/proposal-cascade-operator & https://en.wikipedia.org/wiki/Method_cascading
     [$]:  {get() { return new Proxy(this, {get: (t, k) => (...xs) => (t[k] instanceof Function ? t[k](...xs) : ([t[k]] = xs), t)}); }},
-    [$s]: {get() { return new Proxy(this, {get: (t, k) => xs => (xs?.forEach(x => Array.isArray(x) ? t[k](...x) : t[k](x)), t)}); }},
-    [$_]: {get() { return new Proxy(this, {get: (t, k) => (b, ...xs) => b ? t[$][k](...xs) : t}); }},
-    [$$]: {value(f) { f(this); return this; }}, // like `also` in Kotlin
+    [$$]: {get() { return new Proxy(this, {get: (t, k) => xs => (xs && (p => xs.forEach(x => Array.isArray(x) ? p[k](...x) : p[k](x)))(t[$]), t)}); }},
+    [$_]: {value(f) { f(this); return this; }}, // like `also` in Kotlin
 });
 
 export const id = x => x;
@@ -70,10 +68,10 @@ export function* chunk(list, step = 2, from = 0, to = list.length) {
 }
 
 export function search(needle, haystack) { // non unicode safe: https://github.com/bevacqua/fuzzysearch/issues/18
-    let i, j, k, c, n = needle.length, m = haystack.length;
-    out: for(i = 0, j = -1; i < n; i++) {
-        c = needle[i];
-        while(++j < m) if(haystack[j] === c) { k ??= j; continue out; }
+    let i = 0, j = -1, k, n = needle.length;
+    out: for(let m = haystack.length; i < n; i++) {
+        let char = needle[i];
+        while(++j < m) if(haystack[j] === char) { k ??= j; continue out; }
         return;
     }
     return (i = j - n - k + 1) && (j = haystack.indexOf(needle, k)) > 0 ? [j, 0] : [k, i]; // [index, error]
@@ -126,14 +124,14 @@ export function pickle(value, signature = null) { // json-glib compatible https:
 
 export async function request(method, url, param, cancel = null, header = null, session = new Soup.Session()) {
     let msg = param ? Soup.Message.new_from_encoded_form(method, url, Soup.form_encode_hash(param)) : Soup.Message.new(method, url);
-    if(header) msg.request_headers[$s].append(Object.entries(header));
+    if(header) msg.request_headers[$$].append(Object.entries(header));
     let ans = await session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, cancel);
     if(msg.statusCode !== Soup.Status.OK) throw Error(msg.get_reason_phrase());
     return decode(ans.get_data());
 }
 
 export async function execute(cmd, env, cancel = null, tty = new Gio.SubprocessLauncher({flags: PIPE})) {
-    if(env) for(let k in env) tty.setenv(k, env[k], true);
+    for(let k in env) tty.setenv(k, env[k], true);
     let proc = tty.spawnv([tty.getenv('SHELL'), '-c', cmd]),
         [stdout, stderr] = await proc.communicate_utf8_async(null, cancel),
         status = proc.get_exit_status();

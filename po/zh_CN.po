@@ -17,11 +17,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:364
+#: src/ui.js:379
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:481
+#: src/ui.js:559
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -313,49 +313,49 @@ msgstr "已移除 <i>%s</i> 格式 "
 msgid "_New Color Format"
 msgstr "新建颜色格式(_N)"
 
-#: src/prefs.js:208
+#: src/prefs.js:209
 msgid "_Default"
 msgstr "默认(_D)"
 
-#: src/prefs.js:208
+#: src/prefs.js:209
 msgid "Also apply to the first Format menu item"
 msgstr "也适用于格式菜单首项"
 
-#: src/prefs.js:209
+#: src/prefs.js:210
 msgid "Preset"
 msgstr "预设"
 
-#: src/prefs.js:214 src/prefs.js:217
+#: src/prefs.js:215 src/prefs.js:218
 msgid "Edit Color Format"
 msgstr "编辑颜色格式"
 
-#: src/prefs.js:224
+#: src/prefs.js:225
 msgid "Name"
 msgstr "名称"
 
-#: src/prefs.js:224
+#: src/prefs.js:225
 msgid "Format"
 msgstr "格式"
 
-#: src/prefs.js:225
+#: src/prefs.js:226
 msgid "The following parameters can be used:"
 msgstr "下列参数可用:"
 
-#: src/prefs.js:227
+#: src/prefs.js:228
 msgid "The color values can be formatted with (optional trailing precision):"
 msgstr "颜色值可格式化为(后可跟精度):"
 
-#: src/prefs.js:229
+#: src/prefs.js:230
 msgid ""
 "E.g., <tt>{Blf3}</tt> means the normalized blue value accurate to 3 decimal "
 "places."
 msgstr "例如，<tt>{Blf3}</tt> 表示精确到千分位的归一化蓝色值。"
 
-#: src/prefs.js:239
+#: src/prefs.js:240
 msgid "_Basic"
 msgstr "基本(_B)"
 
-#: src/prefs.js:240
+#: src/prefs.js:241
 msgid "_Format"
 msgstr "格式(_F)"
 

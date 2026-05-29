@@ -13,7 +13,7 @@ def main():
 
     try:
         arg = ap.parse_args()
-        with request.urlopen(f'https://extensions.gnome.org/extension-info/?{parse.urlencode(vars(arg))}') as ans:
+        with request.urlopen(f'https://extensions.gnome.org/extension-info/?{parse.urlencode(vars(arg))}', timeout=10) as ans:
             svm = json.loads(ans.read().decode('utf-8'))['shell_version_map']
         try:
             print(svm[arg.shell_version]['version'])

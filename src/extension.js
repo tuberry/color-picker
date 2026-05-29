@@ -22,7 +22,7 @@ import {Key as K, Preset} from './const.js';
 import Color from './color.js';
 
 const {_} = F;
-const {$, $_, $s, $$} = T;
+const {$, $$, $_} = T;
 
 const Format = T.omap(Preset, ([k, v]) => [[v, k]]);
 
@@ -44,7 +44,7 @@ class ColorSlider extends Slider.Slider {
             {color, form} = this.$meta,
             [width, height] = this.get_surface_size(),
             barLevelRadius = Math.min(width, this._barLevelHeight) / 2,
-            gradient = new Cairo.LinearGradient(0, 0, width, 0)[$s].addColorStopRGBA(color.toStops(form, this.rtl));
+            gradient = new Cairo.LinearGradient(0, 0, width, 0)[$$].addColorStopRGBA(color.toStops(form, this.rtl));
         cr.arc(barLevelRadius, height / 2, barLevelRadius, Math.PI * (1 / 2), Math.PI * (3 / 2));
         cr.arc(width - barLevelRadius, height / 2, barLevelRadius, Math.PI * 3 / 2, Math.PI / 2);
         cr.setSource(gradient);
@@ -104,7 +104,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
             let slider = new ColorSlider(form, value, step, this.$color, (...xs) => this.$updateSliders(...xs));
             return new PopupMenu.PopupBaseMenuItem({activate: false})[$]
                 .set({setup: v => { slider._value = v; slider.queue_repaint(); }})[$]
-                .connect('key-press-event', (_a, event) => slider.vfunc_key_press_event(event))[$s]
+                .connect('key-press-event', (_a, event) => slider.vfunc_key_press_event(event))[$$]
                 .add_child([new St.Label({text: form.slice(0, 1).toUpperCase(), xExpand: false}), slider]);
         });
         M.Item.put(this, this.$menu = {
@@ -119,7 +119,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
     }
 
     $updateSliders(form, value) {
-        this.$color[$_].update(form, form, value).toItems((k, v) => k === form || this.$menu[k].setup(v));
+        this.$color[$$].update(form && [[form, value]]).toItems((k, v) => k === form || this.$menu[k].setup(v));
         Preset.slice(1).forEach(x => this.$menu[x].label.set_text(this.$color.toText(Format[x])));
         this.$updateCustomLabels();
         this.emit('color-changed');
@@ -128,11 +128,11 @@ class ColorMenu extends PopupMenu.PopupMenu {
     $genCustomSection() {
         let items = this.$formats.map(x => new M.Item('', () => this.$emitSelected(x)));
         this.$updateCustomLabels = () => items.forEach((x, i) => x.label.set_text(this.$color.toText(this.$formats[i])));
-        return new PopupMenu.PopupMenuSection()[$s].addMenuItem(items.length ? [new M.Separator(_('Others')), ...items] : items);
+        return new PopupMenu.PopupMenuSection()[$$].addMenuItem(items.length ? [new M.Separator(_('Others')), ...items] : items);
     }
 
     $genTitleItem() {
-        return new M.Item('', () => this.emit('color-selected', this.$color), {can_focus: false})[$s]
+        return new M.Item('', () => this.emit('color-selected', this.$color), {can_focus: false})[$$]
             .add_child(Preset.map(x => new St.Button({canFocus: true, label: x, styleClass: 'color-picker-button button'})[$]
                 .connect('clicked', () => this[$].close().$emitSelected(Format[x]))));
     }
@@ -234,7 +234,7 @@ class ColorViewer extends BoxPointer.BoxPointer {
     $genLens(plain) {
         this.$align = plain ? 0 : 1 / 2;
         return (plain ? new Clutter.Actor({opacity: 0, width: 12, height: 12})[$].set({setup({x, y}) { this.set_position(x, y); }})
-            : new ColorLens())[$$](it => Main.layoutManager.addTopChrome(it));
+            : new ColorLens())[$_](it => Main.layoutManager.addTopChrome(it));
     }
 
     get extents() {
@@ -294,7 +294,7 @@ class ColorArea extends St.Widget {
     $buildSources() {
         let cursor = new F.Source((x = this.cursor) => x && global.stage.get_grab_actor()?.set_cursor_type(x),
                 () => global.stage.get_grab_actor()?.set_cursor_type(Clutter.CursorType.DEFAULT), true),
-            format = F.Source.new(() => new ColorMenu(this.$color)[$s].connect([
+            format = F.Source.new(() => new ColorMenu(this.$color)[$$].connect([
                 ['open-state-changed', (_w, open) => this.$src.cursor.toggle(!open)],
                 ['color-changed', () => this.$src.viewer?.hub?.setup(this.$color)],
                 ['color-selected', () => this.$emitColor()],
@@ -308,7 +308,7 @@ class ColorArea extends St.Widget {
         let texture = content.get_texture();
         this.set_content(content);
         this.$meta = {scale, texture, width: texture.get_width() - 1, height: texture.get_height() - 1};
-        this.$pick = this.$$pick;
+        this.$pick = this._pick;
         if(this.$coords) this.$pick(this.$coords);
     }
 
@@ -326,7 +326,7 @@ class ColorArea extends St.Widget {
         this.$coords = coords;
     }
 
-    $$pick(coords) {
+    _pick(coords) {
         this.$coords = coords;
         let [x, y] = coords.map(Math.round),
             {scale, width, height, texture} = this.$meta,
@@ -352,7 +352,7 @@ class ColorArea extends St.Widget {
     }
 
     $emitColor() {
-        this[$].emit('notify-color', this.$color)[$_].emit(this.$once, 'end-pick', false);
+        this[$].emit('notify-color', this.$color)[$$].emit(this.$once && [['end-pick', false]]);
     }
 
     vfunc_motion_event(event) {
@@ -545,20 +545,20 @@ class ColorPicker extends F.Mortal {
             [K.STRY, null, x => this.$src.tray.toggle(x)],
             [K.FMT,  null, x => this.$onEnableFormatSet(x)],
             [K.FMTS, null, x => this.$src.tray.hub?.$menu.fmts?.choose(x)],
-            [K.SNDS, x => x === ColorPicker.Sound.COMPLETE ? 'complete' : 'screen-capture'],
+            [K.SNDS, x => `${global.datadir}/sounds/${x === ColorPicker.Sound.COMPLETE ? 'complete' : 'screen-capture'}.oga`],
         ]);
     }
 
     $buildSources() {
         let tray = F.Source.new(() => this.$genSystray(), this[K.STRY]),
             keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => this.summon(), this[K.KEY]),
-            area = F.Source.new((hooks, ...args) => new ColorArea(...args)[$s].connect(hooks)),
+            area = F.Source.new((hooks, ...args) => new ColorArea(...args)[$$].connect(hooks)),
             dbus = F.Source.newDBus(this, 'org.gnome.Shell.Extensions.ColorPicker', '/org/gnome/Shell/Extensions/ColorPicker', this[K.DBUS]);
         this.$src = F.Source.tie(this, {tray, area, keys, dbus});
     }
 
     $onCustomSet(custom) {
-        return custom.filter(x => x.enable)[$$](it => { this.$options = Preset.concat(it.map(x => x.name)); });
+        return custom.filter(x => x.enable)[$_](it => { this.$options = Preset.concat(it.map(x => x.name)); });
     }
 
     $onFormatsSet() {
@@ -595,7 +595,7 @@ class ColorPicker extends F.Mortal {
         let text = color.toText();
         this[K.COPY]?.push(text);
         this.$src.tray.hub?.addHistory(color.toRaw());
-        if(this[K.SND]) global.display.get_sound_player().play_from_theme(this[K.SNDS], _('Color picked'), null);
+        if(this[K.SND]) global.display.get_sound_player().play_from_file(T.fopen(this[K.SNDS]), _('Color picked'), null);
         if(!this[K.NTF]) return;
         let gicon = Gio.BytesIcon.new(T.encode(`<svg width="64" height="64" fill="${color.toHEX()}" viewBox="0 0 1 1">
     <rect width=".75" height=".75" x=".125" y=".125" rx=".15"/></svg>`));

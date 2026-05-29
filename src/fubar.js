@@ -15,7 +15,7 @@ import * as Extensions from 'resource:///org/gnome/shell/extensions/extension.js
 
 import * as T from './util.js';
 
-const {$, $s, $_, $$, hub} = T;
+const {$, $$, $_, hub} = T;
 
 const ruin = o => o.destroy();
 
@@ -74,13 +74,13 @@ export class Source {
 
     static newDBus(host, name, path, ...args) {
         return new Source(() => new Source(x => Gio.DBusExportedObject.wrapJSObject(FileUtils.loadInterfaceXML(name), host)[$].export(x, path),
-            x => x.unexport())[$$](it => it[$].$id(Gio.DBus.own_name(Gio.BusType.SESSION, name, Gio.BusNameOwnerFlags.NONE, x => it.summon(x), null, null))),
+            x => x.unexport())[$_](it => it[$].$id(Gio.DBus.own_name(Gio.BusType.SESSION, name, Gio.BusNameOwnerFlags.NONE, x => it.summon(x), null, null))),
         x => { ruin(x); Gio.bus_unown_name(yank(x, '$id')); }, ...args);
     }
 
     static newDBusProxy(name, path, init, hooks, signals, iface, bus, enable) {
         let Klass = Gio.DBusProxy.makeProxyWrapper(FileUtils.loadInterfaceXML(iface ?? name));
-        return new Source(x => new Klass(bus ?? Gio.DBus.session, x ?? name, path, init)[$s].connect(T.chunk(hooks ?? []))[$s].connectSignal(T.chunk(signals ?? [])),
+        return new Source(x => new Klass(bus ?? Gio.DBus.session, x ?? name, path, init)[$$].connect(T.chunk(hooks ?? []))[$$].connectSignal(T.chunk(signals ?? [])),
             x => { Signals.EventEmitter.prototype.disconnectAll.call(x); hooks?.forEach(f => T.str(f) || GObject.signal_handlers_disconnect_by_func(x, f)); }, enable ?? name);
     }
 
@@ -94,7 +94,7 @@ export class Source {
     }
 
     static newDefer(callback, check, interval, clear, ...args) { // polling until...
-        return Source.new(() => Source.newTimer(x => [x, interval], true, clear)[$$](async (timer, until, count = 0) => {
+        return Source.new(() => Source.newTimer(x => [x, interval], true, clear)[$_](async (timer, until, count = 0) => {
             while(!(until = await check(count++))) await new Promise(resolve => timer.revive(resolve)); callback(until);
         }), ...args);
     }
@@ -114,7 +114,7 @@ export class Source {
     }
 
     static newInjector(overrides, enable, update) {
-        return new Source(() => new Extensions.InjectionManager()[$$](it => (T.chunk(overrides).forEach(([o, fs]) => T.unit(fs, Object.entries)
+        return new Source(() => new Extensions.InjectionManager()[$_](it => (T.chunk(overrides).forEach(([o, fs]) => T.unit(fs, Object.entries)
             .forEach(([k, f]) => it.overrideMethod(o, k, m => function (...xs) { return f(this, m, xs); }))), update?.())), x => (x.clear(), update?.()), enable);
     }
 
@@ -136,7 +136,7 @@ export class Source {
     }
 
     constructor(summon, dispel, enable, ...args) {
-        this[$].summon(((...xs) => { this[hub] = summon(...xs); })[$_].apply(enable, null, args))[$]
+        this[$].summon(((...xs) => { this[hub] = summon(...xs); })[$$].apply(enable && [[null, args]]))[$]
             .dispel(() => { if(this.active) dispel(yank(this, hub)); });
     }
 
@@ -161,7 +161,7 @@ export class Source {
 
 export class Setting {
     constructor(gset, host, ...args) {
-        this[$][hub](T.str(gset) ? new Gio.Settings({schema: gset}) : gset)[$_].tie(host, host, ...args);
+        this[$][hub](T.str(gset) ? new Gio.Settings({schema: gset}) : gset)[$$].tie(host && [[host, ...args]]);
     }
 
     get hub() {
@@ -190,7 +190,7 @@ export class Setting {
                     if(init) return [];
                     let sync = [post, cast, back, load].reduceRight((p, x) => pipe(x, p));
                     return [`changed::${field}`, () => void sync()];
-                })[$$](() => cast?.()))));
+                })[$_](() => cast?.()))));
         return this;
     }
 }

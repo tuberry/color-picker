@@ -13,7 +13,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as T from './util.js';
 import * as F from './fubar.js';
 
-const {$, $_, $s, $$} = T;
+const {$, $$, $_} = T;
 
 export function upsert(table, insert, list, update, spread = x => x._getMenuItems?.() ?? Iterator.from(x)) {
     let items = T.unit(spread(table), x => x.toArray());
@@ -24,7 +24,7 @@ export function upsert(table, insert, list, update, spread = x => x._getMenuItem
 }
 
 export function altNum(event, item, key = event.get_key_symbol()) { // Ref: https://gitlab.gnome.org/GNOME/mutter/-/blob/main/clutter/clutter/clutter-keysyms.h
-    return (event.get_state() & Clutter.ModifierType.MOD1_MASK && key >= Clutter.KEY_0 && key <= Clutter.KEY_9)[$$](it =>
+    return (event.get_state() & Clutter.ModifierType.MOD1_MASK && key >= Clutter.KEY_0 && key <= Clutter.KEY_9)[$_](it =>
         it && [...item].filter(x => x instanceof St.Button).at(key - Clutter.KEY_1)?.emit('clicked', Clutter.BUTTON_PRIMARY));
 }
 
@@ -37,8 +37,8 @@ export class Icon extends St.Icon {
     }
 
     constructor(icon) { // HACK: ? revert for stale TextureCache since GNOME 50, see also https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/1997
-        super({iconName: T.str(icon) ? String(icon) : null})[$_].bind_property_full(icon?.$gicon, 'icon-name', this, 'fallback-gicon', T.SYNC,
-            (_b, x) => [true, x && Gio.Icon.new_for_string(`resource:///org/gnome/shell/icons/scalable/status/${x}.svg`)], null);
+        super({iconName: T.str(icon) ? String(icon) : null})[$$].bind_property_full(icon?.$gicon && [['icon-name', this, 'fallback-gicon', T.SYNC,
+            (_b, x) => [true, x && Gio.Icon.new_for_string(`resource:///org/gnome/shell/icons/scalable/status/${x}.svg`)], null]]);
     }
 }
 
@@ -80,8 +80,8 @@ export class Button extends St.Button {
     }
 
     constructor(func, icon = '', tip, label) {
-        super({canFocus: true})[$].$buildSources()[$_]
-            .setup(func, func, icon, tip, label)
+        super({canFocus: true})[$].$buildSources()[$$]
+            .setup(func && [[func, icon, tip, label]])
             .connect('clicked', (...xs) => this.$meta.func(...xs));
     }
 
@@ -107,7 +107,7 @@ export class Button extends St.Button {
     }
 
     setIcon(icon, label) {
-        this[$$](it => Object.assign(it.$meta, {icon, label}, Array.isArray(icon) ? {state: icon.shift()} : null)).$update();
+        this[$_](it => Object.assign(it.$meta, {icon, label}, Array.isArray(icon) ? {state: icon.shift()} : null)).$update();
     }
 
     setTip(tip) {
@@ -131,11 +131,11 @@ export class Button extends St.Button {
 export class Item extends PopupMenu.PopupMenuItem {
     static {
         T.enrol(this);
-        this.put = (menu, items) => menu[$s].addMenuItem(T.unit(items, Object.values).filter(T.id));
+        this.put = (menu, items) => menu[$$].addMenuItem(T.unit(items, Object.values).filter(T.id));
     }
 
     constructor(text = '', func, param) {
-        super(text, param)[$_].$callback(func, func).connect('activate', (...xs) => this.$callback(...xs));
+        super(text, param)[$$].$callback(func && [[func]]).connect('activate', (...xs) => this.$callback(...xs));
     }
 
     setup(label, callback) {
@@ -202,10 +202,9 @@ export class DatumItemBase extends PopupMenu.PopupMenuItem {
 
     constructor(label, icon, func, datum) {
         super('')[$].can_focus(false)[$]
-            .add_child(this.$btn = new Button(() => this.$onClick())[$].set({styleClass: icon}))[$_]
-            .$onActivate(func, func)[$_]
-            .setup(datum, datum);
-        this.label[$].add_style_class_name(label)
+            .add_child(this.$btn = new Button(() => this.$onClick())[$].set({styleClass: icon}))[$$]
+            .$onActivate(func && [[func]])[$$].setup(datum && [[datum]])
+            .label[$].add_style_class_name(label)
             .set({xExpand: true, canFocus: true});
     }
 
@@ -236,7 +235,7 @@ export class DatumItemBase extends PopupMenu.PopupMenuItem {
 
 export class DatasetSection extends PopupMenu.PopupMenuSection {
     constructor(gen, dataset) {
-        super()[$].$genItem(gen)[$_].setup(dataset, dataset);
+        super()[$].$genItem(gen)[$$].setup(dataset && [[dataset]]);
     }
 
     setup(dataset) {
