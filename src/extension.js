@@ -545,7 +545,7 @@ class ColorPicker extends F.Mortal {
             [K.STRY, null, x => this.$src.tray.toggle(x)],
             [K.FMT,  null, x => this.$onEnableFormatSet(x)],
             [K.FMTS, null, x => this.$src.tray.hub?.$menu.fmts?.choose(x)],
-            [K.SNDS, x => `${global.datadir}/sounds/${x === ColorPicker.Sound.COMPLETE ? 'complete' : 'screen-capture'}.oga`],
+            [K.SNDS, x => x === ColorPicker.Sound.COMPLETE ? 'complete' : 'screen-capture'],
         ]);
     }
 
@@ -595,7 +595,7 @@ class ColorPicker extends F.Mortal {
         let text = color.toText();
         this[K.COPY]?.push(text);
         this.$src.tray.hub?.addHistory(color.toRaw());
-        if(this[K.SND]) global.display.get_sound_player().play_from_file(T.fopen(this[K.SNDS]), _('Color picked'), null);
+        if(this[K.SND]) global.display.get_sound_player().play_from_theme(this[K.SNDS], _('Color picked'), null);
         if(!this[K.NTF]) return;
         let gicon = Gio.BytesIcon.new(T.encode(`<svg width="64" height="64" fill="${color.toHEX()}" viewBox="0 0 1 1">
     <rect width=".75" height=".75" x=".125" y=".125" rx=".15"/></svg>`));

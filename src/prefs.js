@@ -190,7 +190,7 @@ class PresetRow extends Adw.ActionRow {
 class PrefsFormat extends UI.Page {
     static {
         T.enrol(this);
-        UI.laze(this.prototype, 'dlg', x => x.$genDialog());
+        UI.DialogButtonBase.dialog.call(this);
     }
 
     $buildWidgets(gset) {

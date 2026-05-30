@@ -40,12 +40,13 @@ export const vmap = (o, f) => omap(o, ([k, v]) => [[k, f(v)]]);
 export const lot = x => x[Math.floor(Math.random() * x.length)];
 export const esc = (x, i = -1) => GLib.markup_escape_text(x, i);
 export const unit = (x, f = y => [y]) => Array.isArray(x) ? x : f(x);
+export const steal = (o, k) => { let v = o[k]; delete o[k]; return v; };
 export const array = (n, f = id) => Array.from({length: n}, (_x, i) => f(i));
 export const omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
 export const essay = (f, g = nop) => { try { return f(); } catch(e) { return g(e); } }; // NOTE: https://github.com/arthurfiorette/proposal-try-operator
 export const inject = (o, ...xs) => chunk(xs).forEach(([k, f]) => { o[k] = f(o, o[k]); });
 export const upcase = (s, f = x => x.toLowerCase()) => s.charAt(0).toUpperCase() + f(s.slice(1));
-export const type = x => Object.prototype.toString.call(x).replace(/\[object (\w+)\]/, (_m, p) => p.toLowerCase());
+export const kindof = x => Object.prototype.toString.call(x).replace(/\[object (\w+)\]/, (_m, p) => p.toLowerCase());
 export const glyphs = (x, f) => Iterator.from(new Intl.Segmenter(undefined, {granularity: 'grapheme'}).segment(x)).reduce(f, 0);
 export const format = (x, f) => x.replace(/\{\{(\w+)\}\}|\{(\w+)\}/g, (m, a, b) => b ? f(b) ?? m : f(a) === undefined ? m : `{${a}}`);
 
@@ -68,9 +69,9 @@ export function* chunk(list, step = 2, from = 0, to = list.length) {
 }
 
 export function search(needle, haystack) { // non unicode safe: https://github.com/bevacqua/fuzzysearch/issues/18
-    let i = 0, j = -1, k, n = needle.length;
-    out: for(let m = haystack.length; i < n; i++) {
-        let char = needle[i];
+    let i = 0, j = -1, n = needle.length, k;
+    out: for(let char, m = haystack.length; i < n; i++) {
+        char = needle[i];
         while(++j < m) if(haystack[j] === char) { k ??= j; continue out; }
         return;
     }
@@ -88,7 +89,7 @@ export function enrol(klass, pspec, param) {
                 case 'function': return spec(key, 'object', value);
                 default: return spec(key, kind, value);
                 }
-            })(type(value))), ...param,
+            })(kindof(value))), ...param,
         }, klass);
     } else {
         return param ? GObject.registerClass(param, klass) : GObject.registerClass(klass);
@@ -98,7 +99,7 @@ export function enrol(klass, pspec, param) {
 export function homolog(cat, dog, keys, cmp = (x, y, _k) => x === y) { // cat, dog: JSON-compatible object, NOTE: https://github.com/tc39/proposal-composites
     let list = (f, x, y) => x.length === y.length && f(x),
         dict = keys ? f => f(keys) : (f, x, y) => list(f, Object.keys(x), Object.keys(y)),
-        kind = (x, y) => (t => t === type(y) ? t : NaN)(type(x));
+        kind = (x, y) => (t => t === kindof(y) ? t : NaN)(kindof(x));
     return Y(f => (a, b, k) => {
         switch(kind(a, b)) {
         case 'array': return list(() => a.every((x, i) => f(x, b[i])), a, b);
@@ -110,7 +111,7 @@ export function homolog(cat, dog, keys, cmp = (x, y, _k) => x === y) { // cat, d
 
 export function pickle(value, signature = null) { // json-glib compatible https://gnome.pages.gitlab.gnome.org/json-glib/json-gvariant.html
     return signature ? new GLib.Variant(signature, value) : Y(f => v => {
-        switch(type(v)) {
+        switch(kindof(v)) {
         case 'array': return new GLib.Variant('av', v.map(f));
         case 'object': return new GLib.Variant('a{sv}', vmap(v, f));
         case 'string': return GLib.Variant.new_string(v);

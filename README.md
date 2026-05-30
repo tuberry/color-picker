@@ -71,7 +71,7 @@ Feel free to open an issue in the repo for any questions or ideas, **particularl
 To initialize or update the po file from sources:
 
 ```bash
-bash ./cli/update-po.sh (your_lang_code) # like zh_CN, default to $LANG
+bash ./cli/update-po.sh (your_lang_code) # like `./cli/update-po.sh zh_CN`, default to $LANG
 ```
 
 ### Developments

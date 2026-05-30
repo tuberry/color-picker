@@ -25,8 +25,7 @@ export const me = () => Extension.lookupByURL(import.meta.url); // NOTE: https:/
 // export const debug = (...xs) => me().getLogger().debug(...xs); // FIXME: see https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/491
 export const theme = () => St.ThemeContext.get_for_stage(global.stage);
 export const marks = (x, m) => x.clutterText.set_markup(`\u{200b}${m}`); // HACK: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-export const yank = (o, k) => { let v = o[k]; delete o[k]; return v; };
-export const erase = (o, ks) => T.unit(ks ?? Object.keys(o)).forEach(k => ruin(yank(o, k)));
+export const erase = (o, ks) => T.unit(ks ?? Object.keys(o)).forEach(k => ruin(T.steal(o, k)));
 export const view = (v, ...ws) => ws.forEach(w => w && !T.xnor(v, w.visible) && (v ? w.show() : w.hide())); // NOTE: https://github.com/tc39/proposal-optional-chaining-assignment
 export const open = uri => Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
 export const copy = (text, primary) => St.Clipboard.get_default().set_text(primary ? St.ClipboardType.PRIMARY : St.ClipboardType.CLIPBOARD, text);
@@ -75,7 +74,7 @@ export class Source {
     static newDBus(host, name, path, ...args) {
         return new Source(() => new Source(x => Gio.DBusExportedObject.wrapJSObject(FileUtils.loadInterfaceXML(name), host)[$].export(x, path),
             x => x.unexport())[$_](it => it[$].$id(Gio.DBus.own_name(Gio.BusType.SESSION, name, Gio.BusNameOwnerFlags.NONE, x => it.summon(x), null, null))),
-        x => { ruin(x); Gio.bus_unown_name(yank(x, '$id')); }, ...args);
+        x => { ruin(x); Gio.bus_unown_name(T.steal(x, '$id')); }, ...args);
     }
 
     static newDBusProxy(name, path, init, hooks, signals, iface, bus, enable) {
@@ -137,7 +136,7 @@ export class Source {
 
     constructor(summon, dispel, enable, ...args) {
         this[$].summon(((...xs) => { this[hub] = summon(...xs); })[$$].apply(enable && [[null, args]]))[$]
-            .dispel(() => { if(this.active) dispel(yank(this, hub)); });
+            .dispel(() => { if(this.active) dispel(T.steal(this, hub)); });
     }
 
     revive(...xs) { this[$].dispel().summon(...xs); }

@@ -29,7 +29,7 @@ export const setv = Symbol('Set Binding Value');
 export const dflt = Symbol('Default Binding Value');
 
 export const once = (f, o, s = `notify::${o[esse]}`) => { let id = o.connect(s, () => { o.disconnect(id); f(); }); };
-export const ptype = (o, p) => T.Y(f => c => c && (c[GObject.properties]?.[p]?.value_type || f(Object.getPrototypeOf(c))))(o.constructor);
+export const genre = (o, p) => T.Y(f => c => c && (c[GObject.properties]?.[p]?.value_type ?? f(Object.getPrototypeOf(c))))(o.constructor);
 
 export function enrol(klass, value = null, key = getv, pspec, ...args) {
     let proto = klass.prototype;
@@ -70,7 +70,7 @@ export class Page extends Adw.PreferencesPage {
 
     #tie(gset, key, gobj, prop = gobj[esse]) {
         gobj[dflt] = gset.get_default_value(key).recursiveUnpack();
-        if(ptype(gobj, prop) !== GObject.TYPE_JSOBJECT) {
+        if(genre(gobj, prop) !== GObject.TYPE_JSOBJECT) {
             gset.bind(key, gobj, prop, Gio.SettingsBindFlags.DEFAULT);
         } else { // HACK: workaround for https://gitlab.gnome.org/GNOME/gjs/-/issues/397
             gobj[prop] = gset.get_value(key).recursiveUnpack();
@@ -197,7 +197,7 @@ export class Help extends Gtk.MenuButton {
     setup(build, param, error) {
         this.set_icon_name(error ? 'dialog-error-symbolic' : 'help-about-symbolic');
         once(() => {
-            switch(T.type(build)) {
+            switch(T.kindof(build)) {
             case 'function': build = Help.typeset(build, param); break;
             case 'string': build = new Gtk.Label({label: build, ...param}); break;
             }
@@ -273,7 +273,7 @@ export class Dialog extends Adw.Window { // HACK: revert from Adw.Dialog since h
 export class DialogButtonBase extends Box {
     static {
         enrol(this, '');
-        laze(this.prototype, 'dlg', x => x.$genDialog(x.$opt));
+        this.dialog = function () { laze(this.prototype, 'dlg', x => T.steal(x, '$genDialog').call(x, x.$opt)); }[$].call(this);
     }
 
     constructor(opt, child, reset, param) {
@@ -282,7 +282,7 @@ export class DialogButtonBase extends Box {
             .append(reset && [[new Gtk.Button({iconName: 'edit-undo-symbolic', tooltipText: _G('Reset')})[$_](it => this.bind_property_full(getv, it,
                 'visible', T.SYNC, (_b, v) => [true, v !== this[dflt]], null))[$].connect('clicked', () => this[setv]())]])[$]
             .connect('mnemonic-activate', () => this.$btn.emit('clicked'))
-            .$buildDND(ptype(this, 'gvalue'));
+            .$buildDND(genre(this, 'gvalue'));
     }
 
     $onClick() {
