@@ -14,8 +14,6 @@ elif target == 'local'
   custom_target(
     depend_files: _deps,
     output: 'gschemas.compiled',
-    build_by_default: true,
-    build_always_stale: true,
     command: [
       find_program('glib-compile-schemas'),
       '--strict',

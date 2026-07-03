@@ -41,16 +41,11 @@ const HSV = { // Ref: https://en.wikipedia.org/wiki/HSL_and_HSV
     },
     set: ({Hu: h, Sv: s, Va: v}) => {
         h = h / 60 % 6;
-        let k = Math.floor(h),
-            f = h - k,
-            p = v * (1 - s),
-            q = v * (1 - f * s),
-            t = v * (1 - (1 - f) * s);
-        return {
-            r: [v, q, p, p, t, v][k],
-            g: [t, v, v, q, p, p][k],
-            b: [p, p, t, v, v, q][k],
-        };
+        let i = Math.trunc(h),
+            u = v * (1 - s),
+            w = v * (h - i) * s,
+            c = [u, u, u + w, v, v, v - w];
+        return {r: c.at(i - 2), g: c.at(i - 4), b: c.at(i)};
     },
 };
 
@@ -91,8 +86,8 @@ const OKLAB = { // Ref: https://bottosson.github.io/posts/oklab/
 };
 
 const OKLCH = {
-    get: ({Lo, Ao, Bo}) => ({Lo, Co: Math.hypot(Ao, Bo), Ho: 180 * (Math.atan2(Bo, Ao) / Math.PI + 2) % 360}),
-    set: ({Lo, Co, Ho}) => OKLAB.set({Lo, Ao: Co * Math.cos(Math.PI * Ho / 180), Bo: Co * Math.sin(Math.PI * Ho / 180)}),
+    get: ({Lo, Ao, Bo}) => ({Lo, Co: Math.hypot(Ao, Bo), Ho: (Math.atan2(Bo, Ao) / Math.PI + 2) % 2 * 180}), // NOTE: https://github.com/tc39/proposal-integer-and-modulus-math
+    set: ({Lo, Co, Ho}) => { let t = Math.PI * Ho / 180; return OKLAB.set({Lo, Ao: Co * Math.cos(t), Bo: Co * Math.sin(t)}); },
 };
 
 const CMYK = { // Ref: http://www.easyrgb.com/en/math.php
@@ -168,7 +163,7 @@ export default class Color {
         this.#fmt[hub] = pixels.slice(start, start + 3);
     }
 
-    toRaw() { // 0x0FRRGGBB
+    toRaw() { // -> 0x0FRRGGBB
         return [this.format, ...this.#fmt[hub]].reduce((p, x) => p << 8 | x);
     }
 
@@ -219,10 +214,5 @@ export default class Color {
 
     toRGB() {
         return RGB.tuple(this.#fmt);
-    }
-
-    toComplement() {
-        let {Hu, Sl, Lo} = this.#fmt;
-        return RGB.tuple(HSL.set(Sl < 0.1 ? {Hu: 0, Sl: 0, Ll: Lo < Grey ? 1 : 0} : {Hu: (Hu + 180) % 360, Sl: 1, Ll: 0.5}));
     }
 }

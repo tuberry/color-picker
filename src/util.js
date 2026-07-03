@@ -14,17 +14,17 @@ Gio._promisify(Gio.File.prototype, 'replace_contents_async');
 Gio._promisify(Gio.File.prototype, 'enumerate_children_async');
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
-export const hub = Symbol('Handy Utility Binder');
+export const hub = Symbol('Handy Utility Broker');
 export const SYNC = GObject.BindingFlags.SYNC_CREATE;
 export const BIND = GObject.BindingFlags.BIDIRECTIONAL | SYNC;
 export const ROOT = GLib.path_get_dirname(import.meta.url.slice(7));
 export const PIPE = Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE;
 
-export const $ = Symbol('Chain Call');
-export const $$ = Symbol('Chain Calls');
-export const $_ = Symbol('Chain Seq Call');
-Object.defineProperties(Object.prototype, { // NOTE: https://github.com/RedHatter/proposal-cascade-operator & https://en.wikipedia.org/wiki/Method_cascading
-    [$]:  {get() { return new Proxy(this, {get: (t, k) => (...xs) => (t[k] instanceof Function ? t[k](...xs) : ([t[k]] = xs), t)}); }},
+export const $ = Symbol.for('tuberry.chain.call');
+export const $$ = Symbol.for('tuberry.chain.calls');
+export const $_ = Symbol.for('tuberry.chain.call_'); // NOTE: https://github.com/RedHatter/proposal-cascade-operator & https://en.wikipedia.org/wiki/Method_cascading
+$ in Object.prototype || Object.defineProperties(Object.prototype, {
+    [$]:  {get() { return new Proxy(this, {get: (t, k) => (...xs) => (typeof t[k] === 'function' ? t[k](...xs) : ([t[k]] = xs), t)}); }},
     [$$]: {get() { return new Proxy(this, {get: (t, k) => xs => (xs && (p => xs.forEach(x => Array.isArray(x) ? p[k](...x) : p[k](x)))(t[$]), t)}); }},
     [$_]: {value(f) { f(this); return this; }}, // like `also` in Kotlin
 });
@@ -44,11 +44,11 @@ export const steal = (o, k) => { let v = o[k]; delete o[k]; return v; };
 export const array = (n, f = id) => Array.from({length: n}, (_x, i) => f(i));
 export const omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
 export const essay = (f, g = nop) => { try { return f(); } catch(e) { return g(e); } }; // NOTE: https://github.com/arthurfiorette/proposal-try-operator
+export const kindof = x => x === null ? 'null' : Array.isArray(x) ? 'array' : typeof x;
 export const inject = (o, ...xs) => chunk(xs).forEach(([k, f]) => { o[k] = f(o, o[k]); });
 export const upcase = (s, f = x => x.toLowerCase()) => s.charAt(0).toUpperCase() + f(s.slice(1));
-export const kindof = x => Object.prototype.toString.call(x).replace(/\[object (\w+)\]/, (_m, p) => p.toLowerCase());
-export const glyphs = (x, f) => Iterator.from(new Intl.Segmenter(undefined, {granularity: 'grapheme'}).segment(x)).reduce(f, 0);
-export const format = (x, f) => x.replace(/\{\{(\w+)\}\}|\{(\w+)\}/g, (m, a, b) => b ? f(b) ?? m : f(a) === undefined ? m : `{${a}}`);
+export const format = (x, f) => x.replace(/\{\{|\{(.*?)\}/g, (m, a) => a !== undefined ? f(a) ?? m : m[0]);
+export const glyphs = (x, f = p => p + 1) => Iterator.from(new Intl.Segmenter(undefined).segment(x)).reduce(f, 0);
 
 export const fquery = (x, ...ys) => fopen(x).query_info_async(ys.join(','), Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 export const fwrite = (x, y, c = null) => fopen(x).replace_contents_async(encode(y), null, false, Gio.FileCreateFlags.NONE, c);
@@ -64,7 +64,7 @@ export async function readdir(dir, func, attr = Gio.FILE_ATTRIBUTE_STANDARD_NAME
 }
 
 export function* chunk(list, step = 2, from = 0, to = list.length) {
-    let next = step instanceof Function ? i => { while(++i < to && !step(list[i], i)); return i; } : i => i + step;
+    let next = typeof step === 'function' ? i => { while(++i < to && !step(list[i], i)); return i; } : i => i + step;
     while(from < to) yield list.slice(from, from = next(from));
 }
 
@@ -79,21 +79,20 @@ export function search(needle, haystack) { // non unicode safe: https://github.c
 }
 
 export function enrol(klass, pspec, param) {
-    if(pspec) {
-        let spec = (k, t, ...vs) => [[k, GObject.ParamSpec[t](k, null, null, GObject.ParamFlags.READWRITE, ...vs)]];
-        return GObject.registerClass({
-            Properties: omap(pspec, ([key, value]) => (kind => {
-                switch(kind) {
-                case 'array': return spec(key, ...value);
-                case 'null': return spec(key, 'jsobject');
-                case 'function': return spec(key, 'object', value);
-                default: return spec(key, kind, value);
-                }
-            })(kindof(value))), ...param,
-        }, klass);
-    } else {
-        return param ? GObject.registerClass(param, klass) : GObject.registerClass(klass);
-    }
+    let spec = pspec ? (k, t, ...vs) => [[k, GObject.ParamSpec[t](k, null, null, GObject.ParamFlags.READWRITE, ...vs)]] : null;
+    let meta = [klass.name.length < 3 ? {GTypeName: `Gjs_${GLib.uuid_string_random()}`} : null, spec && {
+        Properties: omap(pspec, ([key, value]) => {
+            switch(kindof(value)) {
+            case 'array': return spec(key, ...value);
+            case 'null': return spec(key, 'jsobject');
+            case 'string': return spec(key, 'string', value);
+            case 'boolean': return spec(key, 'boolean', value);
+            case 'number': return spec(key, Number.isInteger(value) ? 'int64' : 'double', Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, value);
+            default: return spec(key, GObject.type_fundamental(value) === GObject.TYPE_BOXED ? 'boxed' : 'object', value);
+            }
+        }),
+    }, param].filter(id);
+    return meta.length ? GObject.registerClass(Object.assign(...meta), klass) : GObject.registerClass(klass);
 }
 
 export function homolog(cat, dog, keys, cmp = (x, y, _k) => x === y) { // cat, dog: JSON-compatible object, NOTE: https://github.com/tc39/proposal-composites

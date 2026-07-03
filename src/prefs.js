@@ -28,10 +28,10 @@ class Key extends UI.DialogButtonBase {
 
     $genDialog() {
         return new UI.Dialog(UI.Keys.help)[$].set({
-            $onKeyPress(_w, keyval, keycode, state) {
-                let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
-                if(!mask && keyval === Gdk.KEY_Escape) return this.close();
-                this.$emitChosen(keyval === Gdk.KEY_BackSpace ? '' : Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask));
+            $onKeyPress(eck, _v, keycode, state) {
+                if(eck.get_current_event().is_modifier()) return;
+                let [keyval] = UI.Keys.normalize(eck, keycode, state);
+                this.$emitChosen(keyval === Gdk.KEY_BackSpace ? '' : Gtk.accelerator_name(keyval, 0));
             },
         });
     }
@@ -57,7 +57,7 @@ class PrefsBasic extends UI.Page {
             [K.SND,  new UI.Check()],
             [K.STRY, new UI.Check()],
             [K.NTFS, new UI.Drop([_('MSG'), _('OSD')])],
-            [K.PVWS, new UI.Drop([_('Lens'), _('Label')])],
+            [K.PVWS, new UI.Drop([_('Loupe'), _('Label')])],
             [K.TICN, new UI.Icon(null, {tooltipText: _('Systray icon')})],
             [K.MNSZ, new UI.Spin(0, 16, 1, '', _('History and collection size'))],
             [K.SNDS, new UI.Drop([_('Screenshot'), _('Complete')], _('Sound effect'))],
@@ -69,20 +69,24 @@ class PrefsBasic extends UI.Page {
             [K.COPY, [_('_Automatically copy'), _('Copy the color to clipboard after picking')]],
             [K.STRY, [_('_Enable systray'), _('Secondary click to open menu')], new UI.Help(({h, k}) => [h(_('Menu shortcuts')), [
                 [_('toggle history/collection'), k('Shift_R')],
-                [_('trigger the toolbar button'), k('<alt>1...9')],
+                [_('trigger toolbar button'), k('<alt>1...9')],
             ], h(_('Menu item shortcuts')), [
-                [_('copy the color'), k('space Return'), _('primary click')],
-                [_('remove the color'), k('BackSpace Delete'), _('middle click')],
-                [_('trigger the tail button'), k('Control_L'), _('secondary click')],
+                [_('copy color'), k('space Return'), _('primary click')],
+                [_('remove color'), k('BackSpace Delete'), _('middle click')],
+                [_('trigger tail button'), k('Control_L'), _('secondary click')],
             ]]), K.TICN, K.MNSZ],
             [K.KEY,  [_('E_nable shortcut'), _('Primary click or press Enter / Space key to pick')], K.KEYS],
             [K.MENU, [_('F_ormat menu'), _('Middle click or press Menu key to open')], K.MKEY],
             [K.PRST, [_('_Persistent mode'), _('Secondary click or press Esc key to quit')], K.QKEY],
             [K.PVW,  [_('P_review style'), _('Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to accelerate')],
-                new UI.Help(({h, k}) => [h(_('Shortcuts')), [[_('toggle when picking'), k('<shift>'), _('scroll')]]]), K.PVWS],
+                new UI.Help(({h, k}) => [h(_('Shortcuts')), [
+                    [_('toggle loupe'), k('<shift>'), _('scroll')],
+                    [_('zoom loupe'), k('minus equal'), _('scroll')],
+                    [_('resize loupe'), k('bracketleft bracketright')],
+                ]]), K.PVWS],
             [K.NTF,  [_('No_tification style'), _('Notify the color after picking')], K.NTFS],
             [K.SND,  [_('Not_ification sound'), _('Play the sound after picking')], K.SNDS],
-            [K.DBUS, [_('Enable _DBus'), _('Invoke programmatically')], new Gtk.LinkButton({
+            [K.DBUS, [_('_DBus service'), _('Invoke programmatically')], new Gtk.LinkButton({
                 label: 'Github', uri: 'https://github.com/tuberry/color-picker?tab=readme-ov-file#dbus',
             })],
         ];
@@ -113,7 +117,7 @@ class FormatRow extends Adw.ActionRow {
 
     constructor(item) {
         super();
-        let handle = new Gtk.Image({iconName: 'list-drag-handle-symbolic', cssClasses: ['dimmed']}),
+        let handle = new Gtk.Image({iconName: 'list-drag-handle-symbolic'})[$].add_css_class('dimmed'),
             toggle = new Gtk.CheckButton({active: item.enable})[$].connect('toggled', () => this.emit('toggled', this.get_index())),
             change = new Gtk.Button({iconName: 'document-edit-symbolic', hasFrame: false, valign: Gtk.Align.CENTER})[$]
                 .connect('clicked', () => this.emit('changed', this.get_index())),
@@ -131,7 +135,7 @@ class FormatRow extends Adw.ActionRow {
                 ['prepare', (_s, ...xs) => Gdk.ContentProvider.new_for_value(this[$].$spot(xs))],
                 ['drag-begin', (_s, drag) => {
                     let row = new FormatRow(item);
-                    Gtk.DragIcon.get_for_drag(drag).set_child(new Gtk.ListBox({cssClasses: ['boxed-list'], opacity: 0.8})[$]
+                    Gtk.DragIcon.get_for_drag(drag).set_child(new Gtk.ListBox({opacity: 0.8})[$].add_css_class('boxed-list')[$]
                         .set_size_request(this.get_width(), this.get_height())[$].append(row)[$].drag_highlight_row(row));
                     drag.set_hotspot(...this.$spot);
                 }],
@@ -161,7 +165,7 @@ class FormatList extends Adw.PreferencesGroup {
             trash = x => this.get_root().add_toast(new Adw.Toast({title: _('Removed <i>%s</i> format').format(x.name ?? ''), buttonLabel: _G('_Undo')})[$]
             .connect('button-clicked', () => save(y => y.append(new FormatItem(x)))));
         UI.once(() => fmt.splice(0, 0, this[getv].map(x => new FormatItem(x))), this);
-        this.add(new Gtk.ListBox({selectionMode: Gtk.SelectionMode.NONE, cssClasses: ['boxed-list']})[$]
+        this.add(new Gtk.ListBox({selectionMode: Gtk.SelectionMode.NONE})[$].add_css_class('boxed-list')[$]
             .bind_model(list, obj => obj instanceof FormatItem ? new FormatRow(obj)[$$].connect([
                 ['toggled', (_w, p) => save(x => x.get_item(p).toggle())],
                 ['dropped', (_w, p, q) => save(x => x.insert(q, x.get_item(p)[$_](() => x.remove(p))))],
@@ -216,7 +220,8 @@ class PrefsFormat extends UI.Page {
                 note = ({desc, info}) => info ? `${_(desc)} (${info.replace(/_(.)/, '<span overline="single" weight="bold">$1</span>')})` : _(desc),
                 name = new Gtk.Entry({hexpand: true, placeholderText: 'HEX'})[$].connect('activate', () => dlg.$emitChosen())[$]
                     .bind_property_full('text', title, 'title', GObject.BindingFlags.DEFAULT, (_b, v) => [true, v || _('Edit Color Format')], null),
-                format = new Gtk.Entry({hexpand: true, placeholderText: HEX, cssClasses: ['monospace']})[$].connect('activate', () => dlg.$emitChosen())[$]
+                format = new Gtk.Entry({hexpand: true, placeholderText: HEX})[$]
+                    .add_css_class('monospace')[$].connect('activate', () => dlg.$emitChosen())[$]
                     .bind_property_full('text', title, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, v) => [true, Color.sample(v)], null);
             dlg.initChosen = x => { name.set({text: x?.name ?? '', sensitive: !x?.preset}); format[$].set_text(x?.format ?? '').grab_focus(); };
             dlg.getChosen = () => ({name: name.get_text(), format: format.get_text()});

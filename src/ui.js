@@ -12,7 +12,6 @@ import GObject from 'gi://GObject';
 import GioUnix from 'gi://GioUnix';
 import Graphene from 'gi://Graphene';
 
-import * as Gettext from 'gettext';
 import * as Extensions from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import * as T from './util.js';
@@ -20,7 +19,7 @@ import * as T from './util.js';
 const {hub, $, $$, $_} = T;
 
 export const _ = Extensions.gettext;
-export const _G = (x, y = 'gtk40') => Gettext.domain(y).gettext(x);
+export const _G = (x, y = 'gtk40') => _(String()) ? GLib.dgettext(y, x) : x; // HACK: avoid partial translations
 export const me = () => Extensions.ExtensionPreferences.lookupByURL(import.meta.url);
 
 export const getv = 'value'; // Fallback Binding Key
@@ -93,7 +92,7 @@ export class Page extends Adw.PreferencesPage {
                     .add(actions.map(action => action instanceof Gtk.Widget ? action : T.str(action) ? this[hub][action]
                         : new Adw.ActionRow({useUnderline: true})[$_](act => {
                             let [pfx, [title_, subtitle = ''], ...sfx] = action.map(x => T.str(x) ? this[hub][x] : x)[$$].unshift(Array.isArray(action[0]) && [[null]]);
-                            sfx = sfx.flatMap(x => x instanceof Spin && x[hub] ? [x, new Gtk.Label({label: x[hub], cssClasses: ['dimmed']})] : [x]);
+                            sfx = sfx.flatMap(x => x instanceof Spin && x[hub] ? [x, new Gtk.Label({label: x[hub]})[$].add_css_class('dimmed')] : [x]);
                             act[$].set({title: title_, subtitle})[$$].add_prefix(pfx && [[pfx]])[$$]
                                 .add_suffix(sfx[$$].forEach(pfx instanceof Check && [[x => Page.sensitize(pfx, x)]]))[$]
                                 .set_activatable_widget(pfx instanceof Check ? pfx : sfx.find(x => !(x instanceof Help)) ?? null);
@@ -181,13 +180,12 @@ export class Help extends Gtk.MenuButton {
 
     static typeset(build, param) {
         let keys = x => new Adw.ShortcutLabel({accelerator: x}),
-            mark = (x, y, z) => new Gtk.Label({label: x, cssClasses: y ? T.unit(y) : [], useMarkup: true, halign: Gtk.Align.START, ...z}),
+            mark = (x, y, z) => new Gtk.Label({label: x, useMarkup: true, halign: Gtk.Align.START, ...z})[$$].add_css_class(y && T.unit(y)),
             dict = (a, n) => T.chunk(a, n).map(xs => xs.map((x, i) => i % 2 ? x : mark(`<b><tt>${x}</tt></b>`, null, {selectable: true}))).toArray(),
-            head = (x, z) => mark(`<big>${x}</big>`, null, z)[$][hub](true),
-            wrap = x => x instanceof Gtk.Widget ? x : mark(x);
+            head = (x, z) => mark(`<big>${x}</big>`, null, z)[$][hub](true);
         return Box.newV(build({k: keys, m: mark, d: dict, h: head}).flatMap(x => x[hub] ? [x, new Gtk.Separator()]
             : [new Gtk.Grid({vexpand: true, rowSpacing: 6, columnSpacing: 12, ...param})[$_](it => T.unit(x).forEach((y, i) => T.unit(y)
-                .forEach((z, j) => z && it.attach(wrap(z), j, i, 1, 1))))]), false)[$].set({valign: Gtk.Align.START, spacing: 6});
+                .forEach((z, j) => z && it.attach(z instanceof Gtk.Widget ? z : mark(z), j, i, 1, 1))))]), false)[$].set({valign: Gtk.Align.START, spacing: 6});
     }
 
     constructor(build, param) {
@@ -197,7 +195,7 @@ export class Help extends Gtk.MenuButton {
     setup(build, param, error) {
         this.set_icon_name(error ? 'dialog-error-symbolic' : 'help-about-symbolic');
         once(() => {
-            switch(T.kindof(build)) {
+            switch(typeof build) {
             case 'function': build = Help.typeset(build, param); break;
             case 'string': build = new Gtk.Label({label: build, ...param}); break;
             }
@@ -230,9 +228,10 @@ export class Dialog extends Adw.Window { // HACK: revert from Adw.Dialog since h
 
     constructor(build) {
         super({widthRequest: 360, heightRequest: 320, modal: true, hideOnClose: true})[$]
-            .add_controller(new Gtk.EventControllerKey()[$].connect('key-pressed', (...xs) => this.$onKeyPress(...xs)))[$$]
+            .add_controller(new Gtk.EventControllerKey()[$].connect('key-pressed', (...xs) =>
+                xs[3] & Gtk.accelerator_get_default_mod_mask() || xs[1] !== Gdk.KEY_Escape ? this.$onKeyPress(...xs) : this.close()))[$$]
             .connect([['chosen', (_d, value) => this.$chosen?.resolve(value)], ['close-request', () => this.$chosen?.reject(Error('cancelled'))]])[$]
-            .set_content(build instanceof Function ? this.$buildWidgets(build) : new Adw.ToolbarView({content: build})[$].add_top_bar(new Adw.HeaderBar({showTitle: false})));
+            .set_content(typeof build === 'function' ? this.$buildWidgets(build) : new Adw.ToolbarView({content: build})[$].add_top_bar(new Adw.HeaderBar({showTitle: false})));
     }
 
     $buildWidgets(build) {
@@ -250,13 +249,9 @@ export class Dialog extends Adw.Window { // HACK: revert from Adw.Dialog since h
         return Box.newV([header, search, new Gtk.ScrolledWindow({child: content})], false);
     }
 
-    $onKeyPress(_w, key) {
-        switch(key) {
-        case Gdk.KEY_Escape: this.close(); break;
-        case Gdk.KEY_Return:
-        case Gdk.KEY_KP_Enter:
-        case Gdk.KEY_ISO_Enter: this.$emitChosen(); break;
-        }
+    $onKeyPress(_w, key) { // FIXME: https://docs.gtk.org/gdk4/func.keyval_get_aliases.html
+        if(Gdk.keyval_get_aliases?.(Gdk.KEY_Return).includes(key)) this.$emitChosen();
+        else if(Gdk.keyval_get_aliases?.(Gdk.KEY_Delete).includes(key)) this.$emitChosen(null);
     }
 
     $emitChosen(chosen = this.getChosen?.()) {
@@ -307,6 +302,7 @@ export class DialogButtonBase extends Box {
 export class App extends DialogButtonBase {
     static {
         T.enrol(this, {gvalue: GioUnix.DesktopAppInfo});
+        this.filter  = x => x ? (s => y => s.has(y.get_id()))(new Set(GioUnix.DesktopAppInfo.search(x).flat())) : null;
     }
 
     constructor(opt, param) {
@@ -323,8 +319,8 @@ export class App extends DialogButtonBase {
         return new Dialog(dlg => {
             let factory = new Gtk.SignalListItemFactory()[$$].connect([['setup', (_f, x) => x.set_child(new Sign('application-x-executable-symbolic')[$].marginStart(6))],
                     ['bind', (_f, x) => x.get_child().setup(...(y => [y.get_icon() || '', y.get_display_name()])(x.get_item()))]]),
-                filter = Gtk.CustomFilter.new(null)[$].set({set_search: s => filter.set_filter_func(s ? (a => x => a.has(x.get_id()))(new Set(GioUnix.DesktopAppInfo.search(s).flat())) : null)}),
-                list = new Gio.ListStore()[$].splice(0, 0, opt?.noDisplay ? Gio.AppInfo.get_all() : Gio.AppInfo.get_all().filter(x => x.should_show())),
+                filter = Gtk.CustomFilter.new(null)[$].set({set_search: s => filter.set_filter_func(App.filter(s))}),
+                list = new Gio.ListStore()[$].splice(0, 0, opt?.type ? Gio.AppInfo.get_all_for_type(opt.type) : Gio.AppInfo.get_all()),
                 select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model: list, filter})}),
                 content = new Gtk.ListView({model: select, factory, vexpand: true})[$].connect('activate', () => dlg.$emitChosen());
             dlg.getChosen = () => select.get_selected_item();
@@ -424,7 +420,7 @@ export class Icon extends DialogButtonBase {
                     }, null),
                 model = Gtk.StringList.new(Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).get_icon_names()),
                 select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model, filter})}),
-                content = new Gtk.GridView({model: select, factory, vexpand: true})[$].connect('activate', () => dlg.$emitChosen());
+                content = new Gtk.GridView({model: select, factory, vexpand: true, marginStart: 6, marginEnd: 6})[$].connect('activate', () => dlg.$emitChosen());
             dlg.getChosen = () => select.get_selected_item().get_string();
             return {content, title, filter: filter.get_item(1)};
         });
@@ -433,19 +429,30 @@ export class Icon extends DialogButtonBase {
 
 export class Keys extends DialogButtonBase {
     static {
-        enrol(this, ['boxed', GLib.strv_get_type()]);
+        enrol(this, GLib.strv_get_type());
     }
 
     static get help() {
         return new Adw.StatusPage({
             iconName: 'preferences-desktop-keyboard-shortcuts-symbolic', title: _G('Enter the new shortcut', 'gnome-control-center-2.0'),
-            description: _G('Press Esc to cancel or Backspace to disable the keyboard shortcut', 'gnome-control-center-2.0'),
+            description: _G('Press <b>Esc</b> to cancel. Press <b>Backspace</b> to disable the keyboard shortcut for this action.', 'gnome-control-center-2.0'),
         });
     }
 
-    static validate(mask, keyval, keycode) { // from: https://gitlab.gnome.org/GNOME/gnome-control-center/-/blob/main/panels/keyboard/keyboard-shortcuts.c
+    static normalize(eck, keycode, state) { // from: https://gitlab.gnome.org/GNOME/gnome-control-center/-/blob/main/panels/keyboard/keyboard-shortcuts.c
+        let mods = Gtk.accelerator_get_default_mod_mask(), // needn't | SHIFT & ~LOCK, see https://docs.gtk.org/gtk4/func.accelerator_get_default_mod_mask.html
+            keyval = Gdk.Display.get_default().translate_key(keycode, state & ~mods, eck.get_group()).at(1),
+            unshift = Gdk.Display.get_default().translate_key(keycode, Gdk.ModifierType.SHIFT_MASK | (state & ~mods), eck.get_group()).at(1),
+            mask = state & mods;
+        if(unshift >= Gdk.KEY_0 && unshift <= Gdk.KEY_9) keyval = unshift;
+        else if(keyval === Gdk.KEY_ISO_Left_Tab) keyval = Gdk.KEY_Tab;
+        else if(keyval === Gdk.KEY_Sys_Req && (mask & Gdk.ModifierType.ALT_MASK) !== 0) keyval = Gdk.KEY_Print;
+        return [keyval, mask];
+    }
+
+    static validate(mask, keyval, keycode) { // from: ditto
         return (Gtk.accelerator_valid(keyval, mask) || (keyval === Gdk.KEY_Tab && mask !== 0)) &&
-            !(mask === 0 || mask === Gdk.SHIFT_MASK && keycode !== 0 &&
+            !((mask === 0 || mask === Gdk.ModifierType.SHIFT_MASK) && keycode !== 0 &&
                 ((keyval >= Gdk.KEY_a && keyval <= Gdk.KEY_z) ||
                     (keyval >= Gdk.KEY_A && keyval <= Gdk.KEY_Z) ||
                     (keyval >= Gdk.KEY_0 && keyval <= Gdk.KEY_9) ||
@@ -467,11 +474,10 @@ export class Keys extends DialogButtonBase {
 
     $genDialog() {
         return new Dialog(Keys.help)[$].set({
-            $onKeyPress(_w, keyval, keycode, state) {
-                let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
-                if(!mask && keyval === Gdk.KEY_Escape) return void this.close();
-                if(keyval === Gdk.KEY_BackSpace) return void this.$emitChosen([]);
-                if(Keys.validate(mask, keyval, keycode)) this.$emitChosen([Gtk.accelerator_name_with_keycode(null, keyval, keycode, mask)]);
+            $onKeyPress(eck, _v, keycode, state) {
+                let [keyval, mask] = Keys.normalize(eck, keycode, state);
+                if(!mask && keyval === Gdk.KEY_BackSpace) return void this.$emitChosen([]);
+                if(Keys.validate(mask, keyval, keycode)) this.$emitChosen([Gtk.accelerator_name(keyval, mask)]);
             },
         });
     }
@@ -486,17 +492,16 @@ export class Color extends DialogButtonBase {
     static get accent() { return Adw.StyleManager.get_default().get_accent_color_rgba(); }
 
     constructor(tooltipText = '', alpha = true, reset = true, param) {
-        super(null, null, reset, {cssClasses: alpha ? ['accent'] : [], tooltipText})[$]
-            .prepend(this.$color = new Gtk.ColorDialogButton({dialog: new Gtk.ColorDialog({title: tooltipText}), tooltipText, ...param}))[$$]
+        super(null, null, reset, {tooltipText})[$_](it => alpha && it.$btn.add_css_class('accent'))[$]
+            .prepend(this.$cdb = new Gtk.ColorDialogButton({dialog: new Gtk.ColorDialog({title: tooltipText}), tooltipText, ...param}))[$$]
             .bind_property_full([
-                [getv, this.$color, 'visible', T.SYNC, (_b, v) => [true, this.test(v)], null],
-                [getv, this.$color, 'rgba', GObject.BindingFlags.BIDIRECTIONAL | T.SYNC,
-                    (_b, v) => (x => [x.parse(v), x])(new Gdk.RGBA()), (_b, v) => [this.test(), v.to_string()]],
-                [getv, this.$btn, 'label', T.SYNC, (_b, v) => [true, isNaN(parseInt(v)) ? _G('(None)') : v], null],
+                [getv, this.$cdb, 'visible', T.SYNC, (_b, v) => [true, this.test(v)], null],
                 [getv, this.$btn, 'visible', T.SYNC, (_b, v) => [true, !this.test(v)], null],
-            ])[$$].insert_child_after(alpha && [[this.$alpha = new Gtk.Button({label: '\u{03b1}'})[$_](it => this.bind_property_full(getv, it,
-                'css-classes', T.SYNC, (_b, v) => (x => [x ^ (it.cssClasses.length < 2), ['image-button'].concat(x ? [] : ['accent'])])(this.test(v)), null))[$]
-                .connect('clicked', () => this[setv]((x => x !== this.test(this[dflt]) ? null : x ? '' : Color.accent.to_string())(this.test()))), this.$btn]]);
+                [getv, this.$btn, 'label', T.SYNC, (_b, v) => [true, isNaN(parseInt(v)) ? _G('(None)') : v], null],
+                [getv, this.$cdb, 'rgba', T.BIND, (_b, v) => (x => [x.parse(v), x])(new Gdk.RGBA()), (_b, v) => [this.test(), v.to_string()]],
+            ])[$$].insert_child_after(alpha && [[this.$alpha = new Gtk.Button({iconName: 'font-color-symbolic'})[$].connect('clicked', () =>
+                this[setv]((x => x !== this.test(this[dflt]) ? null : x ? '' : Color.accent.to_string())(this.test())))[$_](it =>
+                Adw.bind_property_to_css_class_full(this, getv, it, 'accent', T.SYNC, (_b, v) => !this.test(v), null)), this.$btn]]);
     }
 
     test(text = this[getv], rgba = new Gdk.RGBA()) {
@@ -504,7 +509,7 @@ export class Color extends DialogButtonBase {
     }
 
     $onClick() {
-        return this.$alpha && !this.test() ? super.$onClick() : this.$color.dialog.choose_rgba(this.get_root(), this.$color.rgba, null).then(x => [x.to_string()]);
+        return this.$alpha && !this.test() ? super.$onClick() : this.$cdb.dialog.choose_rgba(this.get_root(), this.$cdb.rgba, null).then(x => [x.to_string()]);
     }
 
     $genDialog() {
@@ -556,8 +561,8 @@ export class Entry extends Gtk.Stack {
                 .connect(mime && [['icon-press', w => new Gtk.FileDialog({modal: true, defaultFilter: new Gtk.FileFilter({mimeTypes: mime})})
                     .open(this.get_root(), null).then(x => w.set_text(x.get_path())).catch(T.nop)]])[$].connect('activate', w => apply(w)),
             edit = new Gtk.Button({iconName: 'document-edit-symbolic', tooltipText: tip})[$].connect('clicked', () => apply(label, entry)),
-            done = new Gtk.Button({cssClasses: ['suggested-action'], iconName: 'object-select-symbolic', tooltipText: _('Click or press ENTER to apply changes')})[$]
-                .connect('clicked', () => apply(entry));
+            done = new Gtk.Button({iconName: 'object-select-symbolic', tooltipText: _('Click or press ENTER to apply changes')})[$]
+                .connect('clicked', () => apply(entry))[$].add_css_class('suggested-action');
         this[$].add_controller(new Gtk.EventControllerFocus()[$].connect('leave', () => { if(this.get_visible_child() === done.parent) apply(label); }))[$]
             .connect('mnemonic-activate', () => this.get_visible_child() === edit.parent ? edit.activate() : done.activate())[$$]
             .add_child([[label, edit], [entry, done]].map(x => new Box(x)[$].set({hexpand: true})))

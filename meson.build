@@ -4,7 +4,7 @@
 project(
   'gnome-shell-extension-color-picker',
   license: 'GPL-3.0-or-later',
-  version: '50.2',
+  version: '51.0',
   meson_version: '>= 1.10.0',
 )
 
@@ -35,9 +35,11 @@ if target == 'system'
   locale_dir = get_option('localedir')
   schema_dir = get_option('datadir') / 'glib-2.0' / 'schemas'
   target_dir = get_option('datadir') / 'gnome-shell' / 'extensions' / me['uuid']
-elif target == 'local' # https://docs.gtk.org/glib/func.get_user_data_dir.html
-  me += {'version': get_option('version') ? '\n  "version": @0@,'.format(run_command('cli/get-version.py', me['uuid'], me['shell'], check: true).stdout().strip()) : ''}
-  target_dir = run_command('sh', '-c', 'echo ${XDG_DATA_HOME:-$HOME/.local/share}', check: false).stdout().strip() / 'gnome-shell' / 'extensions' / me['uuid']
+elif target == 'local'
+  dependency('pygobject-3.0', native: true)
+  _local = run_command('cli/local-target.py', me['uuid'], (get_option('version') ? me['shell'] : ''), check: true).stdout().splitlines()
+  me += {'version': (_local.length() == 2) ? '\n  "version": @0@,'.format(_local.get(1)) : ''}
+  target_dir = _local.get(0)
   locale_dir = target_dir / 'locale'
   schema_dir = target_dir / 'schemas'
 else
@@ -48,15 +50,36 @@ else
   target_dir = meson.project_build_root() / me['uuid']
   locale_dir = target_dir / 'locale'
   schema_dir = target_dir / 'schemas'
-  _zip_dir = get_option('desktop') ? fs.expanduser('~/Desktop') : meson.project_build_root()
+  # meson.add_install_script(find_program('7z'), 'a', meson.project_build_root() / '@0@.zip'.format(meson.project_name()), target_dir / '*')
   meson.add_install_script(
-    find_program('7z'),
-    'a',
-    _zip_dir / '@0@_v@1@.zip'.format(meson.project_name(), meson.project_version()),
-    target_dir / '*',
+    find_program('python3'),
+    '-c', # HACK: zip / py.zipfile won't strip_directory
+    'import shutil,sys; shutil.make_archive(sys.argv[1], "zip", sys.argv[2])',
+    meson.project_build_root() / meson.project_name(),
+    target_dir,
   )
 endif
 
 subdir('po')
 subdir('res')
-install_subdir('src', strip_directory: true, install_dir: target_dir)
+
+if not get_option('minify') or target == 'zip'
+  install_subdir('src', strip_directory: true, install_dir: target_dir)
+else
+  custom_target(
+    depend_files: run_command('sh', '-c', 'for x in src/*.js; do echo "$x"; done', check: false).stdout().strip().split('\n'), # HACK: https://mesonbuild.com/FAQ.html#why-cant-i-specify-target-files-with-a-wildcard
+    input: ['src/extension.js', 'src/prefs.js'],
+    output: ['extension.js', 'prefs.js'],
+    command: [
+      find_program('esbuild'),
+      '--bundle', '@INPUT@',
+      '--outdir=@OUTDIR@',
+      '--external:resource://*',
+      '--external:gi://*',
+      '--format=esm',
+      '--minify',
+    ],
+    install_dir: target_dir,
+    install: true,
+  )
+endif

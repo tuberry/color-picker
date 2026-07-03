@@ -23,8 +23,8 @@ export function upsert(table, insert, list, update, spread = x => x._getMenuItem
     spread(table).forEach((x, i, a) => update(list[i], x, i, a));
 }
 
-export function altNum(event, item, key = event.get_key_symbol()) { // Ref: https://gitlab.gnome.org/GNOME/mutter/-/blob/main/clutter/clutter/clutter-keysyms.h
-    return (event.get_state() & Clutter.ModifierType.MOD1_MASK && key >= Clutter.KEY_0 && key <= Clutter.KEY_9)[$_](it =>
+export function altNum(actor, item, key = actor.get_key()[1]) { // Ref: https://gitlab.gnome.org/GNOME/mutter/-/blob/main/clutter/clutter/clutter-keysyms.h
+    return (F.held(actor, Clutter.ModifierType.MOD1_MASK) && key >= Clutter.KEY_0 && key <= Clutter.KEY_9)[$_](it =>
         it && [...item].filter(x => x instanceof St.Button).at(key - Clutter.KEY_1)?.emit('clicked', Clutter.BUTTON_PRIMARY));
 }
 
@@ -87,16 +87,15 @@ export class Button extends St.Button {
 
     $buildSources() {
         this.$src = F.Source.tie(this, {
-            tip: F.Source.new(() => {
+            tip: new F.Source(() => {
                 let ret = new BoxPointer.BoxPointer(St.Side.TOP)[$].set({visible: false, styleClass: 'popup-menu-boxpointer'}),
-                    show = F.Source.newTimer(() => [() => {
-                        if(F.offstage(ret)) Main.layoutManager.addTopChrome(ret);
-                        ret[$].setPosition(this, 0.1).open(BoxPointer.PopupAnimation.FULL);
-                    }, 250], true, () => F.offstage(ret) || Main.layoutManager.removeChrome(ret[$].close(BoxPointer.PopupAnimation.FADE))),
-                    hover = F.Source.newHandler(this, 'notify::hover', x => show.toggle(x.hover));
+                    show = new F.Source.Timer(() => [() => ret[$_](it =>
+                        F.offstage(it) && Main.layoutManager.addTopChrome(it))[$].setPosition(this, 0.1).open(BoxPointer.PopupAnimation.FULL),
+                    250], true, () => F.offstage(ret) || Main.layoutManager.removeChrome(ret[$].close(BoxPointer.PopupAnimation.FADE))),
+                    hover = new F.Source.Handler(this, 'notify::hover', x => show.toggle(x.hover));
                 F.Source.tie(ret, show, hover);
                 ret.bin.set_child(new St.Label({styleClass: 'dash-label'}));
-                ret.update = () => ret.bin.child.set_text(this.$meta.tip);
+                ret.$update = () => ret.bin.child.set_text(this.$meta.tip);
                 return ret;
             }),
         });
@@ -111,13 +110,13 @@ export class Button extends St.Button {
     }
 
     setTip(tip) {
-        this.$src.tip[$].toggle(this.$meta.tip = tip).hub?.update();
+        this.$src.tip[$].toggle(this.$meta.tip = tip).hub?.$update();
     }
 
     toggleState(state = !this.$meta.state) {
         if(state === this.$meta.state) return;
         this.$meta.state = state;
-        this.$src.tip.hub?.update();
+        this.$src.tip.hub?.$update();
         this.$update();
     }
 
@@ -154,7 +153,7 @@ export class ToolItem extends PopupMenu.PopupBaseMenuItem {
     }
 
     setup([tool, styleClass]) {
-        if(this.$tool) F.erase(this, this.$tool);
+        if(this.$tool) F.free(this, this.$tool);
         this.$tool = T.unit(tool, Object.entries).flatMap(([k, v]) => {
             if(k in this) throw Error(`key conflict: ${k}`);
             else return v ? [(this.add_child(this[k] = new Button(...v)[$].set({xExpand: true, styleClass})), k)] : [];
@@ -197,24 +196,17 @@ export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
 
 export class DatumItemBase extends PopupMenu.PopupMenuItem {
     static {
-        T.enrol(this);
+        T.enrol(this).get_binding_pool().install_closure('tail', Clutter.KEY_Control_L, 0, x => { x.$activateTail(); return Clutter.EVENT_STOP; });
     }
 
     constructor(label, icon, func, datum) {
-        super('')[$].can_focus(false)[$]
-            .add_child(this.$btn = new Button(() => this.$onClick())[$].set({styleClass: icon}))[$$]
-            .$onActivate(func && [[func]])[$$].setup(datum && [[datum]])
-            .label[$].add_style_class_name(label)
-            .set({xExpand: true, canFocus: true});
+        super('')[$].can_focus(false)[$$].$onActivate(func && [[func]])[$$].setup(datum && [[datum]])[$]
+            .add_child(this.$btn = new Button(() => this.$onClick())[$].set({styleClass: icon}))
+            .label[$].add_style_class_name(label).set({xExpand: true, canFocus: true});
     }
 
     $activateTail() {
         if(this.$btn.visible) this.$btn.emit('clicked', Clutter.BUTTON_PRIMARY);
-    }
-
-    vfunc_key_press_event(event) {
-        if(event.get_key_symbol() === Clutter.KEY_Control_L) this.$activateTail();
-        return super.vfunc_key_press_event(event);
     }
 
     activate(event) {
