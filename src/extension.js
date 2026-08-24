@@ -445,7 +445,7 @@ class ColorItem extends M.DatumItemBase {
     setup(color) {
         let [star, raw, fmts] = color;
         color = new Color(raw, fmts);
-        F.marks(this.label, color.toMarkup());
+        F.marks(this.label, `${color.toMarkup()} — ${T.esc(_(color.toName()))}`);
         this.$meta = {raw, text: color.toText()};
         this.$btn.setIcon(star ? 'starred-symbolic' : 'non-starred-symbolic');
     }
@@ -592,7 +592,8 @@ class ColorPicker extends F.Mortal {
     }
 
     inform(color) {
-        let text = color.toText();
+        let text = color.toText(),
+            description = `${text} — ${_(color.toName())}`;
         this[K.COPY]?.push(text);
         this.$src.tray.hub?.addHistory(color.toRaw());
         if(this[K.SND]) global.display.get_sound_player().play_from_theme(this[K.SNDS], _('Color picked'), null);
@@ -602,10 +603,10 @@ class ColorPicker extends F.Mortal {
         if(this[K.NTFS] === ColorPicker.Notify.MSG) {
             let title = F.me().metadata.name,
                 source = MessageTray.getSystemSource(),
-                message = new MessageTray.Notification({gicon, source, isTransient: true, title, body: _('%s is picked.').format(text)});
+                message = new MessageTray.Notification({gicon, source, isTransient: true, title, body: _('%s is picked.').format(description)});
             source.addNotification(message);
         } else {
-            Main.osdWindowManager.showAll(gicon, text);
+            Main.osdWindowManager.showAll(gicon, description);
         }
     }
 
