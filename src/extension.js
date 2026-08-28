@@ -118,14 +118,14 @@ class ColorMenu extends PopupMenu.PopupMenu {
     }
 
     $genTitleItem() {
-        return new M.Item('', () => this.emit('color-selected', this.$color), {can_focus: false})[$$]
+        return new M.Item('', () => this.$emitSelected(), {can_focus: false})[$$]
             .add_child(Preset.map(x => new St.Button({canFocus: true, label: x, styleClass: 'color-picker-button button'})[$]
-                .connect('clicked', () => this[$].close().$emitSelected(Format[x]))));
+                .connect('clicked', () => this.$emitSelected(Format[x]))));
     }
 
-    $emitSelected(format) {
-        this.$color.format = format;
-        this.emit('color-selected', this.$color);
+    $emitSelected(format = -1) {
+        if(format >= 0) this.$color.format = format;
+        this[$].close({animate: false}).emit('color-selected', this.$color);
     }
 
     summon(geometry) {

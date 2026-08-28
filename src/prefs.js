@@ -185,7 +185,7 @@ class PresetRow extends Adw.ActionRow {
     constructor(page, name) {
         super({useUnderline: true, title: name.replace(/(.)/, '$&_')})[$]
             .set_activatable_widget(new Gtk.Button({iconName: 'document-edit-symbolic', hasFrame: false, valign: Gtk.Align.CENTER})[$].connect('clicked',
-                () => page.dlg.choose(this.get_root(), {name, preset: true, format: this[getv]}).then(([{format: x}]) => this[UI.setv](x)).catch(T.nop)))[$]
+                () => page.dlg.choose(this.get_root(), {name, preset: true, format: this[getv]}).then(([{format: x}]) => this[UI.setv](x || null)).catch(T.nop)))[$]
             .bind_property_full(getv, this, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, v) => [true, T.esc(Color.sample(v))], null)[$]
             .add_suffix(this.activatableWidget);
     }
