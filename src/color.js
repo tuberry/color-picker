@@ -13,6 +13,58 @@ const hex = x => numeric(x, 0, 16).padStart(2, '0');
 const denorm = (v, u) => u ? v * u : v;
 const norm = (v, u) => u ? v / u : v;
 
+/*
+ * Color naming is adapted from Microsoft PowerToys' ColorNameHelper.cs.
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * https://github.com/microsoft/PowerToys/blob/ddc536c69668837470439ecce68b7ce1b2094175/src/common/ManagedCommon/ColorNameHelper.cs
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+const HueLimits = [
+    [8, 0, 0, 44, 0, 0, 0, 63, 0, 0, 122, 0, 134, 0, 0, 0, 0, 166, 176, 241, 0, 256, 0],
+    [0, 10, 0, 32, 46, 0, 0, 0, 61, 0, 106, 0, 136, 144, 0, 0, 0, 158, 166, 241, 0, 0, 256],
+    [0, 8, 0, 0, 39, 46, 0, 0, 0, 71, 120, 0, 131, 144, 0, 0, 163, 0, 177, 211, 249, 0, 256],
+    [0, 11, 26, 0, 0, 38, 45, 0, 0, 56, 100, 121, 129, 0, 140, 0, 180, 0, 0, 224, 241, 0, 256],
+    [0, 13, 27, 0, 0, 36, 45, 0, 0, 59, 118, 0, 127, 136, 142, 0, 185, 0, 0, 216, 239, 0, 256],
+];
+const LumLimits = [
+    [130, 100, 115, 100, 100, 100, 110, 75, 100, 90, 100, 100, 100, 100, 80, 100, 100, 100, 100, 100, 100, 100, 100],
+    [170, 170, 170, 155, 170, 170, 170, 170, 170, 115, 170, 170, 170, 170, 170, 170, 170, 170, 150, 150, 170, 140, 165],
+];
+const ColorNames = [
+    [
+        _('Coral'), _('Rose'), _('Light orange'), _('Tan'), _('Tan'), _('Light yellow'), _('Light yellow'), _('Tan'),
+        _('Light green'), _('Lime'), _('Light green'), _('Light green'), _('Aqua'), _('Sky blue'), _('Light turquoise'),
+        _('Pale blue'), _('Light blue'), _('Ice blue'), _('Periwinkle'), _('Lavender'), _('Pink'), _('Tan'), _('Rose'),
+    ],
+    [
+        _('Coral'), _('Red'), _('Orange'), _('Brown'), _('Tan'), _('Gold'), _('Yellow'), _('Olive green'), _('Olive green'),
+        _('Green'), _('Green'), _('Bright green'), _('Teal'), _('Aqua'), _('Turquoise'), _('Pale blue'), _('Blue'),
+        _('Blue-gray'), _('Indigo'), _('Purple'), _('Pink'), _('Brown'), _('Red'),
+    ],
+    [
+        _('Brown'), _('Dark red'), _('Brown'), _('Brown'), _('Brown'), _('Dark yellow'), _('Dark yellow'), _('Brown'),
+        _('Dark green'), _('Dark green'), _('Dark green'), _('Dark green'), _('Dark teal'), _('Dark teal'), _('Dark teal'),
+        _('Dark blue'), _('Dark blue'), _('Blue-gray'), _('Indigo'), _('Dark purple'), _('Plum'), _('Brown'), _('Dark red'),
+    ],
+];
+
 const RGB = {
     get: ({Re, Gr, Bl}) => ({r: Re / 255, g: Gr / 255, b: Bl / 255}), set: T.id,
     tuple: ({r, g, b}) => [r, g, b],
@@ -202,6 +254,19 @@ export default class Color {
 
     toHEX() {
         return `#${this.#fmt[hub].map(hex).join('')}`;
+    }
+
+    toName() {
+        let {Hu: hue, Sl: saturation, Ll: luminosity} = this.#fmt;
+        [hue, saturation, luminosity] = [hue / 360, saturation, luminosity].map(x => x * 255);
+        if(luminosity > 240) return _('White');
+        if(luminosity < 20) return _('Black');
+        if(saturation <= 20) return luminosity > 170 ? _('Light gray') : luminosity > 100 ? _('Gray') : _('Dark gray');
+
+        let level = saturation <= 75 ? 0 : saturation <= 115 ? 1 : saturation <= 150 ? 2 : saturation <= 240 ? 3 : 4,
+            index = HueLimits[level].findIndex(x => hue < x),
+            shade = luminosity > LumLimits[1][index] ? 0 : luminosity < LumLimits[0][index] ? 2 : 1;
+        return ColorNames[shade][index];
     }
 
     toMarkup(format) {
