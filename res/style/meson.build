@@ -4,6 +4,7 @@
 sassc = find_program('sassc', required: true)
 foreach s: ['stylesheet-dark.css', 'stylesheet-light.css']
   custom_target(
+    depend_files: ['stylesheet.scss'],
     input: fs.replace_suffix(s, '.scss'),
     output: s,
     command: [sassc, '-t', 'expanded', '-a', '@INPUT@', '@OUTPUT@'],

@@ -41,6 +41,10 @@
             <default>true</default>
             <summary>enable format menu</summary>
         </key>
+        <key type="b" name="show-color-name">
+            <default>true</default>
+            <summary>show color name</summary>
+        </key>
         <key type="as" name="color-picker-shortcut">
             <default><![CDATA[['<Super>0']]]></default>
             <summary>shortcut to pick color</summary>

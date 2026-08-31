@@ -47,8 +47,8 @@ export const essay = (f, g = nop) => { try { return f(); } catch(e) { return g(e
 export const kindof = x => x === null ? 'null' : Array.isArray(x) ? 'array' : typeof x;
 export const inject = (o, ...xs) => chunk(xs).forEach(([k, f]) => { o[k] = f(o, o[k]); });
 export const upcase = (s, f = x => x.toLowerCase()) => s.charAt(0).toUpperCase() + f(s.slice(1));
+export const glyphs = (x, f = p => p + 1) => Iterator.from(new Intl.Segmenter().segment(x)).reduce(f, 0);
 export const format = (x, f) => x.replace(/\{\{|\{(.*?)\}/g, (m, a) => a !== undefined ? f(a) ?? m : m[0]);
-export const glyphs = (x, f = p => p + 1) => Iterator.from(new Intl.Segmenter(undefined).segment(x)).reduce(f, 0);
 
 export const fquery = (x, ...ys) => fopen(x).query_info_async(ys.join(','), Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
 export const fwrite = (x, y, c = null) => fopen(x).replace_contents_async(encode(y), null, false, Gio.FileCreateFlags.NONE, c);

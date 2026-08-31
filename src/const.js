@@ -29,6 +29,7 @@ export const Key = {
     PVWR:  'preview-radius',
     STRY:  'enable-systray',
     KEY:   'enable-shortcut',
+    NAME:  'show-color-name',
     OKLCH: 'oklch-formatter',
     PRST:  'persistent-mode',
     CLCT:  'color-collection',

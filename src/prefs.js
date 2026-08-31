@@ -201,17 +201,20 @@ class PrefsFormat extends UI.Page {
         let fmt = () => Preset.concat(gset.get_value(K.CFMT).recursiveUnpack().flatMap(x => x.enable ? [x.name] : []));
         this.$tie([
             [K.FMT,  new UI.Check()],
+            [K.NAME, new UI.Check()],
             [K.FMTS, new UI.Drop(fmt())],
-            ...Preset.map(x => [K[x], new PresetRow(this, x)]),
             [K.CFMT, new FormatList(this)],
+            ...Preset.map(x => [K[x], new PresetRow(this, x)]),
         ]);
         gset.connect(`changed::${K.CFMT}`, () => void this[hub][K.FMTS].selected[$_](x =>
             this[hub][K.FMTS][$].set_model(Gtk.StringList.new(fmt()))[$].selected(x)));
     }
 
     $buildUI() {
-        this.$add([null, [[K.FMT,  [_('_Default'), _('Also apply to the first Format menu item')], K.FMTS]]],
-            [[[_('Preset')]], Preset.map(x => K[x])], K.CFMT);
+        this.$add([null, [
+            [K.FMT, [_('_Default'), _('Also apply to the first Format menu item')], K.FMTS],
+            [K.NAME, [_('_Naming'), _('Show descriptive color name')]],
+        ]], K.CFMT, [[[_('Preset')]], Preset.map(x => K[x])]);
     }
 
     $genDialog() {

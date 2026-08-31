@@ -25,95 +25,263 @@ msgstr "文件类型不匹配"
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
-#: src/color.js:106
+#: src/color.js:120 src/color.js:124
+msgid "Coral"
+msgstr "珊瑚黄"
+
+#: src/color.js:120 src/color.js:122
+msgid "Rose"
+msgstr "玫瑰红"
+
+#: src/color.js:120
+msgid "Light orange"
+msgstr "浅橙"
+
+#: src/color.js:120 src/color.js:122 src/color.js:124
+msgid "Tan"
+msgstr "黄褐"
+
+#: src/color.js:120
+msgid "Light yellow"
+msgstr "浅黄"
+
+#: src/color.js:121
+msgid "Light green"
+msgstr "浅绿"
+
+#: src/color.js:121
+msgid "Lime"
+msgstr "柠檬绿"
+
+#: src/color.js:121 src/color.js:125
+msgid "Aqua"
+msgstr "水绿"
+
+#: src/color.js:121
+msgid "Sky blue"
+msgstr "天蓝"
+
+#: src/color.js:121
+msgid "Light turquoise"
+msgstr "浅绿蓝"
+
+#: src/color.js:122 src/color.js:125
+msgid "Pale blue"
+msgstr "淡蓝"
+
+#: src/color.js:122
+msgid "Light blue"
+msgstr "浅蓝"
+
+#: src/color.js:122
+msgid "Ice blue"
+msgstr "冰蓝"
+
+#: src/color.js:122
+msgid "Periwinkle"
+msgstr "蓝紫"
+
+#: src/color.js:122
+msgid "Lavender"
+msgstr "淡紫"
+
+#: src/color.js:122 src/color.js:126
+msgid "Pink"
+msgstr "粉"
+
+#: src/color.js:124 src/color.js:126
+msgid "Red"
+msgstr "红"
+
+#: src/color.js:124
+msgid "Orange"
+msgstr "橙"
+
+#: src/color.js:124 src/color.js:126 src/color.js:128 src/color.js:130
+msgid "Brown"
+msgstr "褐"
+
+#: src/color.js:124
+msgid "Gold"
+msgstr "金"
+
+#: src/color.js:124
+msgid "Yellow"
+msgstr "黄"
+
+#: src/color.js:124
+msgid "Olive green"
+msgstr "橄榄绿"
+
+#: src/color.js:125
+msgid "Green"
+msgstr "绿"
+
+#: src/color.js:125
+msgid "Bright green"
+msgstr "鲜绿"
+
+#: src/color.js:125
+msgid "Teal"
+msgstr "青"
+
+#: src/color.js:125
+msgid "Turquoise"
+msgstr "蓝绿"
+
+#: src/color.js:125
+msgid "Blue"
+msgstr "蓝"
+
+#: src/color.js:126 src/color.js:130
+msgid "Blue gray"
+msgstr "蓝灰"
+
+#: src/color.js:126 src/color.js:130
+msgid "Indigo"
+msgstr "靛蓝"
+
+#: src/color.js:126
+msgid "Purple"
+msgstr "紫"
+
+#: src/color.js:128 src/color.js:130
+msgid "Dark red"
+msgstr "深红"
+
+#: src/color.js:128
+msgid "Dark yellow"
+msgstr "深黄"
+
+#: src/color.js:129
+msgid "Dark green"
+msgstr "深绿"
+
+#: src/color.js:129
+msgid "Dark teal"
+msgstr "深青"
+
+#: src/color.js:130
+msgid "Dark blue"
+msgstr "深蓝"
+
+#: src/color.js:130
+msgid "Dark purple"
+msgstr "深紫"
+
+#: src/color.js:130
+msgid "Plum"
+msgstr "梅红"
+
+#: src/color.js:133
+msgid "White"
+msgstr "白"
+
+#: src/color.js:134
+msgid "Black"
+msgstr "黑"
+
+#: src/color.js:135
+msgid "Light gray"
+msgstr "浅灰"
+
+#: src/color.js:135
+msgid "Gray"
+msgstr "灰"
+
+#: src/color.js:135
+msgid "Dark gray"
+msgstr "深灰"
+
+#: src/color.js:145
 msgid "red"
 msgstr "红"
 
-#: src/color.js:107
+#: src/color.js:146
 msgid "green"
 msgstr "绿"
 
-#: src/color.js:108
+#: src/color.js:147
 msgid "blue"
 msgstr "蓝"
 
-#: src/color.js:109
+#: src/color.js:148
 msgid "alpha"
 msgstr "不透明度"
 
-#: src/color.js:113 src/color.js:120
+#: src/color.js:152 src/color.js:159
 msgid "hue"
 msgstr "色相"
 
-#: src/color.js:114 src/color.js:116
+#: src/color.js:153 src/color.js:155
 msgid "saturation"
 msgstr "饱和度"
 
-#: src/color.js:115 src/color.js:118
+#: src/color.js:154 src/color.js:157
 msgid "lightness"
 msgstr "亮度"
 
-#: src/color.js:117
+#: src/color.js:156
 msgid "value"
 msgstr "明度"
 
-#: src/color.js:119
+#: src/color.js:158
 msgid "chroma"
 msgstr "色度"
 
-#: src/color.js:121
+#: src/color.js:160
 msgid "chroma A"
 msgstr "色度A"
 
-#: src/color.js:122
+#: src/color.js:161
 msgid "chroma B"
 msgstr "色度B"
 
-#: src/color.js:123
+#: src/color.js:162
 msgid "cyan"
 msgstr "青"
 
-#: src/color.js:124
+#: src/color.js:163
 msgid "magenta"
 msgstr "洋红"
 
-#: src/color.js:125
+#: src/color.js:164
 msgid "yellow"
 msgstr "黄"
 
-#: src/color.js:126
+#: src/color.js:165
 msgid "black"
 msgstr "黑"
 
-#: src/color.js:130
+#: src/color.js:170
 msgid "hex lowercase 2 digits"
 msgstr "两位小写十六进制"
 
-#: src/color.js:131
+#: src/color.js:171
 msgid "hex uppercase 2 digits"
 msgstr "两位大写十六进制"
 
-#: src/color.js:132
+#: src/color.js:172
 msgid "hex lowercase 1 digit"
 msgstr "一位小写十六进制"
 
-#: src/color.js:133
+#: src/color.js:173
 msgid "hex uppercase 1 digit"
 msgstr "一位大写十六进制"
 
-#: src/color.js:134
+#: src/color.js:174
 msgid "float with leading zero"
 msgstr "带个位零的小数"
 
-#: src/color.js:135
+#: src/color.js:175
 msgid "float without leading zero"
 msgstr "不带个位零的小数"
 
-#: src/color.js:136
+#: src/color.js:176
 msgid "number value (original)"
 msgstr "(原始)数值"
 
-#: src/color.js:137
+#: src/color.js:177
 msgid "percent value"
 msgstr "百分数"
 
@@ -121,15 +289,15 @@ msgstr "百分数"
 msgid "Others"
 msgstr "其它"
 
-#: src/extension.js:524
+#: src/extension.js:532
 msgid "Default format"
 msgstr "默认格式"
 
-#: src/extension.js:549
+#: src/extension.js:557
 msgid "Color picked"
 msgstr "已拾取颜色"
 
-#: src/extension.js:556
+#: src/extension.js:564
 #, javascript-format
 msgid "%s is picked."
 msgstr "已拾取%s。"
@@ -321,49 +489,57 @@ msgstr "已移除 <i>%s</i> 格式 "
 msgid "_New Color Format"
 msgstr "新建颜色格式(_N)"
 
-#: src/prefs.js:213
+#: src/prefs.js:215
 msgid "_Default"
 msgstr "默认(_D)"
 
-#: src/prefs.js:213
+#: src/prefs.js:215
 msgid "Also apply to the first Format menu item"
 msgstr "也适用于格式菜单首项"
 
-#: src/prefs.js:214
+#: src/prefs.js:216
+msgid "_Naming"
+msgstr "命名(_N)"
+
+#: src/prefs.js:216
+msgid "Show descriptive color name"
+msgstr "显示描述性颜色名称"
+
+#: src/prefs.js:217
 msgid "Preset"
 msgstr "预设"
 
-#: src/prefs.js:219 src/prefs.js:222
+#: src/prefs.js:222 src/prefs.js:225
 msgid "Edit Color Format"
 msgstr "编辑颜色格式"
 
-#: src/prefs.js:230
+#: src/prefs.js:233
 msgid "Name"
 msgstr "名称"
 
-#: src/prefs.js:230
+#: src/prefs.js:233
 msgid "Format"
 msgstr "格式"
 
-#: src/prefs.js:231
+#: src/prefs.js:234
 msgid "The following parameters can be used:"
 msgstr "下列参数可用:"
 
-#: src/prefs.js:233
+#: src/prefs.js:236
 msgid "The color values can be formatted with (optional trailing precision):"
 msgstr "颜色值可格式化为(后可跟精度):"
 
-#: src/prefs.js:235
+#: src/prefs.js:238
 msgid ""
 "E.g., <tt>{Blf3}</tt> means the normalized blue value accurate to 3 decimal "
 "places."
 msgstr "例如，<tt>{Blf3}</tt> 表示精确到千分位的归一化蓝色值。"
 
-#: src/prefs.js:245
+#: src/prefs.js:248
 msgid "_Basic"
 msgstr "基本(_B)"
 
-#: src/prefs.js:246
+#: src/prefs.js:249
 msgid "_Format"
 msgstr "格式(_F)"
 

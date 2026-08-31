@@ -115,6 +115,11 @@ _prefs:
 _debug-install: (_setup "-Dversion=false") _install
 
 [private]
+bump version:
+    sed -i "0,/version[[:space:]]*:[[:space:]]*'[^']*'/s//version: '{{ version }}'/" meson.build
+    # meson rewrite kwargs set project / {{ version }} # https://mesonbuild.com/Rewriter.html#limitations
+
+[private]
 compile:
     meson compile -C "{{ _builddir }}"
 

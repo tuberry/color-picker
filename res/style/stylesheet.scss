@@ -15,14 +15,22 @@ $pfx: 'color-picker';
     @return if($variant==if($reverse, 'light', 'dark'), st-darken($color, $percent), st-lighten($color, $percent))
 }
 
-.#{$pfx}-label {
-    color: $fg_color;
+.#{$pfx}-view-box {
     padding: 0.3em;
-    min-width: 6em;
-    font-size: 1.4em;
+    spacing: 0.4em;
     border-radius: 0.4em;
     background-color: tone($bg_color);
     border: 0.05em solid transparentize($fg_color, 0.6); /* box-shadow leads afterimage when moving */
+}
+
+.#{$pfx}-view-label {
+    color: $fg_color;
+    min-width: 4.4em;
+    font-size: 1.4em;
+}
+
+.#{$pfx}-view-swatch {
+    // border-radius: 0.4em;
 }
 
 .#{$pfx}-button {

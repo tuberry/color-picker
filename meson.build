@@ -4,7 +4,7 @@
 project(
   'gnome-shell-extension-color-picker',
   license: 'GPL-3.0-or-later',
-  version: '51.0',
+  version: '51.1',
   meson_version: '>= 1.10.0',
 )
 
