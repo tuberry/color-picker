@@ -7,130 +7,298 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-color-picker\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-28 20:44-0300\n"
-"PO-Revision-Date: 2026-03-05 14:15-0300\n"
+"POT-Creation-Date: 2026-08-31 12:59-0300\n"
+"PO-Revision-Date: 2026-09-10 12:45-0300\n"
 "Last-Translator: Rafael Fontenelle <rafaelff@gnome.org>\n"
-"Language-Team: Brazilian Portuguese <https://br.gnome.org/traducao>\n"
+"Language-Team: Brazilian Portuguese <https://br.gnome.org/traducao/>\n"
 "Language: pt_BR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
-"X-Generator: Gtranslator 49.0\n"
+"X-Generator: Gtranslator 50.0\n"
 
-#: src/ui.js:366
+#: src/ui.js:375
 msgid "Mismatched filetype"
 msgstr "Tipo de arquivo incompatível"
 
-#: src/ui.js:488
+#: src/ui.js:564
 msgid "Click or press ENTER to apply changes"
 msgstr "Clique ou pressione ENTER para aplicar as alterações"
 
-#: src/color.js:106
+#: src/color.js:120 src/color.js:124
+msgid "Coral"
+msgstr "Coral"
+
+#: src/color.js:120 src/color.js:122
+msgid "Rose"
+msgstr "Rosé"
+
+#: src/color.js:120
+msgid "Light orange"
+msgstr "Laranja-claro"
+
+#: src/color.js:120 src/color.js:122 src/color.js:124
+msgid "Tan"
+msgstr "Bronzeado"
+
+#: src/color.js:120
+msgid "Light yellow"
+msgstr "Amarelo-claro"
+
+#: src/color.js:121
+msgid "Light green"
+msgstr "Verde-claro"
+
+#: src/color.js:121
+msgid "Lime"
+msgstr "Lima"
+
+#: src/color.js:121 src/color.js:125
+msgid "Aqua"
+msgstr "Azul-esverdeado"
+
+#: src/color.js:121
+msgid "Sky blue"
+msgstr "Azul-celeste"
+
+#: src/color.js:121
+msgid "Light turquoise"
+msgstr "Turquesa-claro"
+
+#: src/color.js:122 src/color.js:125
+msgid "Pale blue"
+msgstr "Azul-pálido"
+
+#: src/color.js:122
+msgid "Light blue"
+msgstr "Azul-claro"
+
+#: src/color.js:122
+msgid "Ice blue"
+msgstr "Azul-gelo"
+
+#: src/color.js:122
+msgid "Periwinkle"
+msgstr "Pervinca"
+
+#: src/color.js:122
+msgid "Lavender"
+msgstr "Lavanda"
+
+#: src/color.js:122 src/color.js:126
+msgid "Pink"
+msgstr "Rosa"
+
+#: src/color.js:124 src/color.js:126
+msgid "Red"
+msgstr "Vermelho"
+
+#: src/color.js:124
+msgid "Orange"
+msgstr "Laranja"
+
+#: src/color.js:124 src/color.js:126 src/color.js:128 src/color.js:130
+msgid "Brown"
+msgstr "Marrom"
+
+#: src/color.js:124
+msgid "Gold"
+msgstr "Dourado"
+
+#: src/color.js:124
+msgid "Yellow"
+msgstr "Amarelo"
+
+#: src/color.js:124
+msgid "Olive green"
+msgstr "Verde-oliva"
+
+#: src/color.js:125
+msgid "Green"
+msgstr "Verde"
+
+#: src/color.js:125
+msgid "Bright green"
+msgstr "Verde-claro"
+
+#: src/color.js:125
+msgid "Teal"
+msgstr "Verde-azulado"
+
+#: src/color.js:125
+msgid "Turquoise"
+msgstr "Turquesa"
+
+#: src/color.js:125
+msgid "Blue"
+msgstr "Azul"
+
+#: src/color.js:126 src/color.js:130
+msgid "Blue gray"
+msgstr "Azul-acinzentado"
+
+#: src/color.js:126 src/color.js:130
+msgid "Indigo"
+msgstr "Anil"
+
+#: src/color.js:126
+msgid "Purple"
+msgstr "Roxo"
+
+#: src/color.js:128 src/color.js:130
+msgid "Dark red"
+msgstr "Vermelho-escuro"
+
+#: src/color.js:128
+msgid "Dark yellow"
+msgstr "Amarelo-escuro"
+
+#: src/color.js:129
+msgid "Dark green"
+msgstr "Verde-escuro"
+
+#: src/color.js:129
+msgid "Dark teal"
+msgstr "Verde-azulado escuro"
+
+#: src/color.js:130
+msgid "Dark blue"
+msgstr "Azul-escuro"
+
+#: src/color.js:130
+msgid "Dark purple"
+msgstr "Roxo-escuro"
+
+#: src/color.js:130
+msgid "Plum"
+msgstr "Ameixa"
+
+#: src/color.js:133
+msgid "White"
+msgstr "Branco"
+
+#: src/color.js:134
+msgid "Black"
+msgstr "Preto"
+
+#: src/color.js:135
+msgid "Light gray"
+msgstr "Cinza-claro"
+
+#: src/color.js:135
+msgid "Gray"
+msgstr "Cinza"
+
+#: src/color.js:135
+msgid "Dark gray"
+msgstr "Cinza-escuro"
+
+#: src/color.js:145
 msgid "red"
 msgstr "vermelho"
 
-#: src/color.js:107
+#: src/color.js:146
 msgid "green"
 msgstr "verde"
 
-#: src/color.js:108
+#: src/color.js:147
 msgid "blue"
 msgstr "azul"
 
-#: src/color.js:109
+#: src/color.js:148
 msgid "alpha"
 msgstr "alfa"
 
-#: src/color.js:113 src/color.js:120
+#: src/color.js:152 src/color.js:159
 msgid "hue"
 msgstr "matiz"
 
-#: src/color.js:114 src/color.js:116
+#: src/color.js:153 src/color.js:155
 msgid "saturation"
 msgstr "saturação"
 
-#: src/color.js:115 src/color.js:118
+#: src/color.js:154 src/color.js:157
 msgid "lightness"
 msgstr "brilho"
 
-#: src/color.js:117
+#: src/color.js:156
 msgid "value"
 msgstr "valor"
 
-#: src/color.js:119
+#: src/color.js:158
 msgid "chroma"
 msgstr "croma"
 
-#: src/color.js:121
+#: src/color.js:160
 msgid "chroma A"
 msgstr "croma A"
 
-#: src/color.js:122
+#: src/color.js:161
 msgid "chroma B"
 msgstr "croma B"
 
-#: src/color.js:123
+#: src/color.js:162
 msgid "cyan"
 msgstr "ciano"
 
-#: src/color.js:124
+#: src/color.js:163
 msgid "magenta"
 msgstr "magenta"
 
-#: src/color.js:125
+#: src/color.js:164
 msgid "yellow"
 msgstr "amarelo"
 
-#: src/color.js:126
+#: src/color.js:165
 msgid "black"
 msgstr "preto"
 
-#: src/color.js:130
+#: src/color.js:170
 msgid "hex lowercase 2 digits"
 msgstr "hexadecimal minúsculo 2 dígitos"
 
-#: src/color.js:131
+#: src/color.js:171
 msgid "hex uppercase 2 digits"
 msgstr "hexadecimal maiúsculo 2 dígitos"
 
-#: src/color.js:132
+#: src/color.js:172
 msgid "hex lowercase 1 digit"
 msgstr "hexadecimal minúsculo 1 dígito"
 
-#: src/color.js:133
+#: src/color.js:173
 msgid "hex uppercase 1 digit"
 msgstr "hexadecimal maiúsculo 1 dígito"
 
-#: src/color.js:134
+#: src/color.js:174
 msgid "float with leading zero"
 msgstr "ponto flutuante com zero à esquerda"
 
-#: src/color.js:135
+#: src/color.js:175
 msgid "float without leading zero"
 msgstr "ponto flutuante sem zero à esquerda"
 
-#: src/color.js:136
+#: src/color.js:176
 msgid "number value (original)"
 msgstr "valor numérico (original)"
 
-#: src/color.js:137
+#: src/color.js:177
 msgid "percent value"
 msgstr "valor percentual"
 
-#: src/extension.js:132
+#: src/extension.js:117
 msgid "Others"
 msgstr "Outros"
 
-#: src/extension.js:586
+#: src/extension.js:532
 msgid "Default format"
 msgstr "Formato padrão"
 
-#: src/extension.js:611
+#: src/extension.js:557
 msgid "Color picked"
 msgstr "Cor escolhida"
 
-#: src/extension.js:618
+#: src/extension.js:564
 #, javascript-format
 msgid "%s is picked."
 msgstr "%s foi escolhido."
@@ -139,135 +307,127 @@ msgstr "%s foi escolhido."
 msgid "(Key)"
 msgstr "(Tecla)"
 
-#: src/prefs.js:61
+#: src/prefs.js:59
 msgid "MSG"
 msgstr "MSG"
 
-#: src/prefs.js:61
+#: src/prefs.js:59
 msgid "OSD"
 msgstr "OSD"
 
-#: src/prefs.js:62
-msgid "Lens"
-msgstr "Lente"
+#: src/prefs.js:60
+msgid "Loupe"
+msgstr "Lupa"
 
-#: src/prefs.js:62
+#: src/prefs.js:60
 msgid "Label"
 msgstr "Etiqueta"
 
-#: src/prefs.js:63
+#: src/prefs.js:61
 msgid "Systray icon"
 msgstr "Ícone da bandeja do sistema"
 
-#: src/prefs.js:64
+#: src/prefs.js:62
 msgid "History and collection size"
 msgstr "Tamanho do histórico e coleção"
 
-#: src/prefs.js:65
+#: src/prefs.js:63
 msgid "Screenshot"
 msgstr "Captura de tela"
 
-#: src/prefs.js:65
+#: src/prefs.js:63
 msgid "Complete"
 msgstr "Concluído"
 
-#: src/prefs.js:65
+#: src/prefs.js:63
 msgid "Sound effect"
 msgstr "Efeito de som"
 
-#: src/prefs.js:73
+#: src/prefs.js:69
 msgid "_Automatically copy"
 msgstr "_Copiar automaticamente"
 
-#: src/prefs.js:73
+#: src/prefs.js:69
 msgid "Copy the color to clipboard after picking"
 msgstr "Copia a cor para a área de transferência após escolher"
 
-#: src/prefs.js:74
-msgid "_Default format"
-msgstr "Formato pa_drão"
-
-#: src/prefs.js:74
-msgid "Also apply to the first Format menu item"
-msgstr "Também aplica ao primeiro item do menu de formatos"
-
-#: src/prefs.js:75
+#: src/prefs.js:70
 msgid "_Enable systray"
 msgstr "_Habilitar bandeja do sistema"
 
-#: src/prefs.js:75
+#: src/prefs.js:70
 msgid "Secondary click to open menu"
 msgstr "Clique secundário para abrir o menu"
 
-#: src/prefs.js:75
+#: src/prefs.js:70
 msgid "Menu shortcuts"
 msgstr "Atalhos de menu"
 
-#: src/prefs.js:76
+#: src/prefs.js:71
 msgid "toggle history/collection"
 msgstr "alternar histórico/coleção"
 
-#: src/prefs.js:77
-msgid "trigger the toolbar button"
-msgstr "acionar o botão da barra de ferramentas"
+#: src/prefs.js:72
+msgid "trigger toolbar button"
+msgstr "acionar botão da barra de ferramentas"
 
-#: src/prefs.js:78
+#: src/prefs.js:73
 msgid "Menu item shortcuts"
 msgstr "Atalhos de itens de menu"
 
-#: src/prefs.js:79
-msgid "copy the color"
-msgstr "copiar a cor"
+#: src/prefs.js:74
+msgid "copy color"
+msgstr "copiar cor"
 
-#: src/prefs.js:79
+#: src/prefs.js:74
 msgid "primary click"
 msgstr "clique do botão primário"
 
-#: src/prefs.js:80
-msgid "remove the color"
-msgstr "remover a cor"
+#: src/prefs.js:75
+msgid "remove color"
+msgstr "remover cor"
 
-#: src/prefs.js:80
+#: src/prefs.js:75
 msgid "middle click"
 msgstr "clique do botão do meio"
 
-#: src/prefs.js:81
-msgid "trigger the tail button"
-msgstr "aciona o último botão"
+#: src/prefs.js:76
+msgid "trigger tail button"
+msgstr "acionar último botão"
 
-#: src/prefs.js:81
+#: src/prefs.js:76
 msgid "secondary click"
 msgstr "clique do botão secundário"
 
-#: src/prefs.js:83
+#: src/prefs.js:78
 msgid "E_nable shortcut"
 msgstr "H_abilitar atalho"
 
-#: src/prefs.js:83
+#: src/prefs.js:78
 msgid "Primary click or press Enter / Space key to pick"
 msgstr "Clique no botão primário ou pressione Enter / Espaço para escolher"
 
-#: src/prefs.js:84
+#: src/prefs.js:79
 msgid "F_ormat menu"
 msgstr "Menu de f_ormatos"
 
-#: src/prefs.js:84
+#: src/prefs.js:79
 msgid "Middle click or press Menu key to open"
 msgstr "Clique no botão do meio ou pressione a tecla Menu para abrir"
 
-#: src/prefs.js:85
+#: src/prefs.js:80
 msgid "_Persistent mode"
 msgstr "_Modo persistente"
 
-#: src/prefs.js:85
+#: src/prefs.js:80
 msgid "Secondary click or press Esc key to quit"
 msgstr "Clique no botão secundário ou pressione a tecla Esc para sair"
 
-#: src/prefs.js:86
+#: src/prefs.js:81
 msgid "P_review style"
 msgstr "Estilo de p_ré-visualização"
 
-#: src/prefs.js:86
+#: src/prefs.js:81
 msgid ""
 "Press arrow keys / wasd / hjkl to move by pixel and hold Ctrl key to "
 "accelerate"
@@ -275,73 +435,105 @@ msgstr ""
 "Pressione as teclas de seta / wasd / hjkl para mover por pixel ou mantenha "
 "pressionada a tecla Ctrl para acelerar"
 
-#: src/prefs.js:87
+#: src/prefs.js:82
 msgid "Shortcuts"
 msgstr "Atalhos"
 
-#: src/prefs.js:87
-msgid "toggle when picking"
-msgstr "alternar ao escolher"
+#: src/prefs.js:83
+msgid "toggle loupe"
+msgstr "alternar lupa"
 
-#: src/prefs.js:87
+#: src/prefs.js:83 src/prefs.js:84
 msgid "scroll"
 msgstr "rolagem"
 
-#: src/prefs.js:88
+#: src/prefs.js:84
+msgid "zoom loupe"
+msgstr "ampliar ou reduzir lupa"
+
+#: src/prefs.js:85
+msgid "resize loupe"
+msgstr "redimensionar lupa"
+
+#: src/prefs.js:87
 msgid "No_tification style"
 msgstr "_Estilo de notificação"
 
-#: src/prefs.js:88
+#: src/prefs.js:87
 msgid "Notify the color after picking"
 msgstr "Notifica informando a cor após escolhê-la"
 
-#: src/prefs.js:89
+#: src/prefs.js:88
 msgid "Not_ification sound"
 msgstr "_Som da notificação"
 
-#: src/prefs.js:89
+#: src/prefs.js:88
 msgid "Play the sound after picking"
-msgstr "Reproduzo som após escolher a cor"
+msgstr "Reproduz o som após escolher a cor"
 
-#: src/prefs.js:155
+#: src/prefs.js:89
+msgid "_DBus service"
+msgstr "Serviço _DBus"
+
+#: src/prefs.js:89
+msgid "Invoke programmatically"
+msgstr "Invoca-o programaticamente"
+
+#: src/prefs.js:157
 msgid "Custom"
 msgstr "Personalizado"
 
-#: src/prefs.js:163
+#: src/prefs.js:165
 #, javascript-format
 msgid "Removed <i>%s</i> format"
 msgstr "Formato <i>%s</i> removido"
 
-#: src/prefs.js:172
+#: src/prefs.js:174
 msgid "_New Color Format"
 msgstr "_Novo formato de cor"
 
-#: src/prefs.js:202
+#: src/prefs.js:215
+msgid "_Default"
+msgstr "_Padrão"
+
+#: src/prefs.js:215
+msgid "Also apply to the first Format menu item"
+msgstr "Também aplica ao primeiro item do menu de formatos"
+
+#: src/prefs.js:216
+msgid "_Naming"
+msgstr "_Nomenclatura"
+
+#: src/prefs.js:216
+msgid "Show descriptive color name"
+msgstr "Mostrar nome descritivo da cor"
+
+#: src/prefs.js:217
 msgid "Preset"
 msgstr "Predefinição"
 
-#: src/prefs.js:207 src/prefs.js:210
+#: src/prefs.js:222 src/prefs.js:225
 msgid "Edit Color Format"
 msgstr "Editar formato de cor"
 
-#: src/prefs.js:217
+#: src/prefs.js:233
 msgid "Name"
 msgstr "Nome"
 
-#: src/prefs.js:217
+#: src/prefs.js:233
 msgid "Format"
 msgstr "Formato"
 
-#: src/prefs.js:218
+#: src/prefs.js:234
 msgid "The following parameters can be used:"
 msgstr "Os parâmetros a seguir podem ser usados:"
 
-#: src/prefs.js:220
+#: src/prefs.js:236
 msgid "The color values can be formatted with (optional trailing precision):"
 msgstr ""
 "Os valores de cores podem ser formatados com (precisão opcional ao final):"
 
-#: src/prefs.js:222
+#: src/prefs.js:238
 msgid ""
 "E.g., <tt>{Blf3}</tt> means the normalized blue value accurate to 3 decimal "
 "places."
@@ -349,10 +541,19 @@ msgstr ""
 "Por exemplo, <tt>{Blf3}</tt> significa o valor preciso de azul normalizado "
 "para 3 casa decimais."
 
-#: src/prefs.js:232
+#: src/prefs.js:248
 msgid "_Basic"
 msgstr "_Básico"
 
-#: src/prefs.js:233
+#: src/prefs.js:249
 msgid "_Format"
 msgstr "_Formato"
+
+#~ msgid "Lens"
+#~ msgstr "Lente"
+
+#~ msgid "toggle when picking"
+#~ msgstr "alternar ao escolher"
+
+#~ msgid "Enable _DBus"
+#~ msgstr "Ativar _DBus"
