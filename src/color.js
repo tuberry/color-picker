@@ -101,7 +101,10 @@ const CMYK = { // Ref: http://www.easyrgb.com/en/math.php
     },
 };
 
-// Copy from https://github.com/microsoft/PowerToys/blob/ddc536c69668837470439ecce68b7ce1b2094175/src/common/ManagedCommon/ColorNameHelper.cs
+// Copyright (c) Microsoft Corporation, MIT License
+// Adapted from https://github.com/microsoft/PowerToys/blob/ddc536c69668837470439ecce68b7ce1b2094175/src/common/ManagedCommon/ColorNameHelper.cs
+// TODO: evolve this into sth more general such as https://en.wikipedia.org/wiki/Color_Naming_System
+// or https://www.munsellcolorscienceforpainters.com/ColourSciencePapers/sRGBCentroidsForTheISCCNBSColourSystem.pdf
 const Name = {
     hues: [
         [8, 0, 0, 44, 0, 0, 0, 63, 0, 0, 122, 0, 134, 0, 0, 0, 0, 166, 176, 241, 0, 256, 0],
@@ -114,8 +117,6 @@ const Name = {
         [130, 100, 115, 100, 100, 100, 110, 75, 100, 90, 100, 100, 100, 100, 80, 100, 100, 100, 100, 100, 100, 100, 100],
         [170, 170, 170, 155, 170, 170, 170, 170, 170, 115, 170, 170, 170, 170, 170, 170, 170, 170, 150, 150, 170, 140, 165],
     ].map(x => x.map(y => y / 255)),
-    // TODO: The internal color names in WinUI aren't ideal. We need a modern version of CNS - https://en.wikipedia.org/wiki/Color_Naming_System
-    // or ISCC-NBS centroids - https://www.munsellcolorscienceforpainters.com/ColourSciencePapers/sRGBCentroidsForTheISCCNBSColourSystem.pdf
     chromas: [[
         _('Coral'), _('Rose'), _('Light orange'), _('Tan'), _('Tan'), _('Light yellow'), _('Light yellow'), _('Tan'),
         _('Light green'), _('Lime'), _('Light green'), _('Light green'), _('Aqua'), _('Sky blue'), _('Light turquoise'),
