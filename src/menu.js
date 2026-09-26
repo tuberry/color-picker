@@ -201,6 +201,7 @@ export class DatumItemBase extends PopupMenu.PopupMenuItem {
 
     constructor(label, icon, func, datum) {
         super('')[$].can_focus(false)[$$].$onActivate(func && [[func]])[$$].setup(datum && [[datum]])[$]
+            .connect('destroy', x => { if(x.active || x.label.has_key_focus() || x.$btn.has_key_focus()) x._getTopMenu()?.actor.grab_key_focus(); })[$]
             .add_child(this.$btn = new Button(() => this.$onClick())[$].set({styleClass: icon}))
             .label[$].add_style_class_name(label).set({xExpand: true, canFocus: true});
     }
@@ -216,12 +217,6 @@ export class DatumItemBase extends PopupMenu.PopupMenuItem {
         case Clutter.EventType.PAD_BUTTON_RELEASE: if(event.get_button() === Clutter.BUTTON_SECONDARY) return this.$activateTail();
         }
         this.$onActivate();
-    }
-
-    destroy() {
-        if(this.active || this.label.has_key_focus() || this.$btn.has_key_focus()) this._getTopMenu()?.actor.grab_key_focus();
-        if(this.active) Reflect.defineProperty(this, 'active', {set: T.nop}); // HACK: workaround for dangling ref & defocus on destroy & focus
-        super.destroy();
     }
 }
 

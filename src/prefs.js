@@ -31,7 +31,7 @@ class Key extends UI.DialogButtonBase {
             $onKeyPress(eck, _v, keycode, state) {
                 if(eck.get_current_event().is_modifier()) return;
                 let [keyval] = UI.Keys.normalize(eck, keycode, state);
-                this.$emitChosen(keyval === Gdk.KEY_BackSpace ? '' : Gtk.accelerator_name(keyval, 0));
+                this.$commit(keyval === Gdk.KEY_BackSpace ? '' : Gtk.accelerator_name(keyval, 0));
             },
         });
     }
@@ -185,7 +185,7 @@ class PresetRow extends Adw.ActionRow {
     constructor(page, name) {
         super({useUnderline: true, title: name.replace(/(.)/, '$&_')})[$]
             .set_activatable_widget(new Gtk.Button({iconName: 'document-edit-symbolic', hasFrame: false, valign: Gtk.Align.CENTER})[$].connect('clicked',
-                () => page.dlg.choose(this.get_root(), {name, preset: true, format: this[getv]}).then(([{format: x}]) => this[UI.setv](x || null)).catch(T.nop)))[$]
+                () => page.dlg.choose(this.get_root(), {name, preset: true, format: this[getv]}).then(([{format: x}]) => this[setv](x || null)).catch(T.nop)))[$]
             .bind_property_full(getv, this, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, v) => [true, T.esc(Color.sample(v))], null)[$]
             .add_suffix(this.activatableWidget);
     }
@@ -221,10 +221,10 @@ class PrefsFormat extends UI.Page {
         return new UI.Dialog(dlg => {
             let title = Adw.WindowTitle.new(_('Edit Color Format'), ''),
                 note = ({desc, info}) => info ? `${_(desc)} (${info.replace(/_(.)/, '<span overline="single" weight="bold">$1</span>')})` : _(desc),
-                name = new Gtk.Entry({hexpand: true, placeholderText: 'HEX'})[$].connect('activate', () => dlg.$emitChosen())[$]
+                name = new Gtk.Entry({hexpand: true, placeholderText: 'HEX'})[$].connect('activate', () => dlg.$commit())[$]
                     .bind_property_full('text', title, 'title', GObject.BindingFlags.DEFAULT, (_b, v) => [true, v || _('Edit Color Format')], null),
                 format = new Gtk.Entry({hexpand: true, placeholderText: HEX})[$]
-                    .add_css_class('monospace')[$].connect('activate', () => dlg.$emitChosen())[$]
+                    .add_css_class('monospace')[$].connect('activate', () => dlg.$commit())[$]
                     .bind_property_full('text', title, 'subtitle', GObject.BindingFlags.DEFAULT, (_b, v) => [true, Color.sample(v)], null);
             dlg.initChosen = x => { name.set({text: x?.name ?? '', sensitive: !x?.preset}); format[$].set_text(x?.format ?? '').grab_focus(); };
             dlg.getChosen = () => ({name: name.get_text(), format: format.get_text()});

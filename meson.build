@@ -36,8 +36,7 @@ if target == 'system'
   schema_dir = get_option('datadir') / 'glib-2.0' / 'schemas'
   target_dir = get_option('datadir') / 'gnome-shell' / 'extensions' / me['uuid']
 elif target == 'local'
-  dependency('pygobject-3.0', native: true)
-  _local = run_command('cli/local-target.py', me['uuid'], (get_option('version') ? me['shell'] : ''), check: true).stdout().splitlines()
+  _local = run_command(find_program('gjs'), '-m', 'cli/local.js', me['uuid'], (get_option('version') ? me['shell'] : ''), check: true).stdout().splitlines()
   me += {'version': (_local.length() == 2) ? '\n  "version": @0@,'.format(_local.get(1)) : ''}
   target_dir = _local.get(0)
   locale_dir = target_dir / 'locale'
@@ -64,10 +63,10 @@ subdir('po')
 subdir('res')
 
 if not get_option('minify') or target == 'zip'
-  install_subdir('src', strip_directory: true, install_dir: target_dir)
+  install_subdir('src', strip_directory: true, install_dir: target_dir, install_tag: 'src')
 else
   custom_target(
-    depend_files: run_command('sh', '-c', 'for x in src/*.js; do echo "$x"; done', check: false).stdout().strip().split('\n'), # HACK: https://mesonbuild.com/FAQ.html#why-cant-i-specify-target-files-with-a-wildcard
+    depend_files: run_command(find_program('sh'), '-c', 'for x in src/*.js; do echo "$x"; done', check: false).stdout().strip().split('\n'), # HACK: https://mesonbuild.com/FAQ.html#why-cant-i-specify-target-files-with-a-wildcard
     input: ['src/extension.js', 'src/prefs.js'],
     output: ['extension.js', 'prefs.js'],
     command: [
@@ -80,6 +79,7 @@ else
       '--minify',
     ],
     install_dir: target_dir,
+    install_tag: 'src',
     install: true,
   )
 endif

@@ -17,11 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:375
-msgid "Mismatched filetype"
-msgstr "文件类型不匹配"
-
-#: src/ui.js:564
+#: src/ui.js:567
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -271,11 +267,11 @@ msgstr "一位大写十六进制"
 
 #: src/color.js:174
 msgid "float with leading zero"
-msgstr "带个位零的小数"
+msgstr "有前导零的小数"
 
 #: src/color.js:175
 msgid "float without leading zero"
-msgstr "不带个位零的小数"
+msgstr "无前导零的小数"
 
 #: src/color.js:176
 msgid "number value (original)"
@@ -542,6 +538,10 @@ msgstr "基本(_B)"
 #: src/prefs.js:249
 msgid "_Format"
 msgstr "格式(_F)"
+
+#, javascript-format
+#~ msgid "Expected filetype: %s"
+#~ msgstr "预期文件类型: %s"
 
 #~ msgid "toggle when picking"
 #~ msgstr "取色时切换"

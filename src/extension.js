@@ -23,7 +23,7 @@ import {Key as K, Preset} from './const.js';
 import Color from './color.js';
 
 const {_} = F;
-const {$, $$, $_} = T;
+const {$, $$, $_, hub} = T;
 
 const Format = T.omap(Preset, ([k, v]) => [[v, k]]);
 
@@ -99,7 +99,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
             HSL: new M.Separator(), Hu, Sl, Ll,
             OKLCH: new M.Separator(), Lo, Co, Ho, // NOTE: irregular space differs from RGB/HSL, see also https://oklch.com/
             custom: this.$genCustomSection(),
-        }); // TODO: ? replace HSL and OKLCH with OKHSL, see https://github.com/w3c/csswg-drafts/issues/8659 and https://bottosson.github.io/posts/colorpicker/
+        }); // TODO: ? replace HSL and OKLCH with OKHSL, see https://github.com/w3c/csswg-drafts/issues/8659 & https://bottosson.github.io/posts/colorpicker/
         Main.layoutManager.addTopChrome(this.actor[$].hide()[$].add_style_class_name('color-picker-menu')[$]
             .add_action(new Clutter.KeyController()[$].connect('key-press', x => M.altNum(x, this.$menu.HEX))));
     }
@@ -125,7 +125,7 @@ class ColorMenu extends PopupMenu.PopupMenu {
 
     $select(format = -1) {
         if(format >= 0) this.$color.format = format;
-        this[$][T.hub](true).close();
+        this[$][hub](true).close({animate: false});
     }
 
     summon(geometry) {
@@ -165,7 +165,7 @@ class LoupeEffect extends Clutter.Effect {
                 float A = P[2].z; // u_anti_aliasing_scale
 
                 vec2 uv = cogl_tex_coord_in[1].st * S;
-                float r = distance(uv, T) ;
+                float r = distance(uv, T);
 
                 if(r > R + 4.5 * L) discard;
 
@@ -200,7 +200,7 @@ class LoupeEffect extends Clutter.Effect {
                 b = Math.max(y - n, 0),
                 c = Math.min(x, width - x, n) + n + 1, // 1px reticle
                 d = Math.min(y, height - y, n) + n + 1, // ditto
-                s = Math.round((zoom + 4) * this.$scale * 2),
+                s = Math.round((zoom + 4) * this.$scale) * 2,
                 w = s * c,
                 h = s * d,
                 u = s * (x - a + .5),
@@ -223,7 +223,7 @@ class ColorArea extends St.Widget {
         T.enrol(this, null, {
             Signals: {
                 'finish-pick': {param_types: [GObject.TYPE_BOOLEAN]},
-                'commit-pick': {param_types: [GObject.TYPE_JSOBJECT]},
+                'submit-pick': {param_types: [GObject.TYPE_JSOBJECT]},
             },
         });
         this.Preview = {LOUPE: 0, LABEL: 1};
@@ -268,7 +268,7 @@ class ColorArea extends St.Widget {
             editor = new F.Source(() => new ColorMenu(this.$color)[$$].connect([
                 ['color-changed', () => this.$src.viewer.hub?.bin.child.setup(this.$color)],
                 ['open-state-changed', (_x, open) => this.$src.cursor.toggle(!open)],
-                ['menu-closed', x =>  T.steal(x, T.hub) && this.$commit()], // commit after closing to avoid UAF in non persistent mode
+                ['menu-closed', x =>  T.steal(x, hub) && this.$submit()], // submit after closing to avoid UAF in non persistent mode
             ]), this[K.MENU]);
         this.$src = F.Source.tie(this, {viewer, cursor, editor});
     }
@@ -287,7 +287,7 @@ class ColorArea extends St.Widget {
                 Shell.Screenshot.composite_to_stream(texture, x, y, 1, 1, scale, null, 0, 0, 1, stream).then(pixbuf => {
                     this.$color.fromPixels(pixbuf.get_pixels());
                     this.$src.viewer.hub?.summon(this[K.PVWS] ? null : texture, x, y, width, height, scale);
-                }).catch(() => this.$finish()).finally(() => stream.close(null)); // get 1x1 once instead of caching all to avoid init latency (PNG encoder?)
+                }).catch(() => this.$finish()).finally(() => stream.close(null)); // async-fetch pixels on demand to avoid startup latency (PNG encoder?)
             }[$$].call(this.$coords && [[this, ...this.$coords]]),
         });
     }
@@ -322,14 +322,14 @@ class ColorArea extends St.Widget {
         this.$moveBy(0, 0, {get_state: () => new Int8Array(5)}); // HACK: workaround for stale cursor on scrolling since https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/4745
     }
 
-    get cursor() { return !this[K.PVW] || this[K.PVWS] ? Clutter.CursorType.CELL : Clutter.CursorType.NONE; }
+    get cursor() { return !this[K.PVW] || this[K.PVWS] ? Clutter.CursorType.CROSSHAIR : Clutter.CursorType.NONE; }
 
     $pick(x, y) {
         this.$coords = [x, y];
     }
 
-    $commit() {
-        this[$].emit('commit-pick', this.$color)[$$].$finish(this.$once && [false]);
+    $submit() {
+        this[$].emit('submit-pick', this.$color)[$$].$finish(this.$once && [false]);
     }
 
     $finish(aborted = true) {
@@ -362,7 +362,7 @@ class ColorArea extends St.Widget {
         case Clutter.KEY_space:
         case Clutter.KEY_Return:
         case Clutter.KEY_KP_Enter:
-        case Clutter.KEY_ISO_Enter: this.$commit(); break;
+        case Clutter.KEY_ISO_Enter: this.$submit(); break;
         case Clutter.KEY_Shift_L:
         case Clutter.KEY_Shift_R: this.$zoomPreview(); break;
         case Clutter.KEY_equal:
@@ -376,7 +376,7 @@ class ColorArea extends St.Widget {
 
     $onClick(gesture) {
         switch(gesture.get_button()) {
-        case Clutter.BUTTON_PRIMARY: this.$commit(); break;
+        case Clutter.BUTTON_PRIMARY: this.$submit(); break;
         case Clutter.BUTTON_MIDDLE: this.emit('popup-menu'); break;
         default: this.$finish(); break;
         }
@@ -521,7 +521,7 @@ class ColorPicker extends F.Mortal {
     }
 
     $onFormatsSet() {
-        this.$formats = [K.HEX, K.RGB, K.HSL, K.OKLCH].map(x => this[x])[$].push(...this[K.CFMT].map(x => x.format))[$].naming(this[K.NAME] ? _ : null);
+        this.$formats = [K.HEX, K.RGB, K.HSL, K.OKLCH].map(x => this[x])[$].push(...this[K.CFMT].map(x => x.format))[$][hub](this[K.NAME] ? _ : null);
     }
 
     $onEnableFormatSet(enable) {
@@ -539,7 +539,7 @@ class ColorPicker extends F.Mortal {
     summon() {
         if(this.$src.area.active) return;
         this.$src.tray.hub?.add_style_pseudo_class('state-busy'); // FIXME: not working on the first run
-        this.$src.area.summon([['finish-pick', () => this.dispel()], ['commit-pick', (_a, x) => this.inform(x)]],
+        this.$src.area.summon([['finish-pick', () => this.dispel()], ['submit-pick', (_a, x) => this.inform(x)]],
             this.$set, false, new Color((this[K.FMT] ? this[K.FMTS] : Format.HEX) << 24, this.$formats));
     }
 
@@ -572,7 +572,7 @@ class ColorPicker extends F.Mortal {
         return new Promise((resolve, reject) => {
             if(this.$src.area.active) throw Error('busy');
             this.$src.tray.hub?.add_style_pseudo_class('state-busy');
-            this.$src.area.summon([['commit-pick', (_a, color) => resolve(color.toRGB())],
+            this.$src.area.summon([['submit-pick', (_a, color) => resolve(color.toRGB())],
                 ['finish-pick', (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); }]], this.$set, true, new Color());
         });
     }
@@ -591,7 +591,7 @@ export default class extends F.Extension {
     $klass = ColorPicker;
     // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
     pickAsync() {
-        if(!this[T.hub]) throw Error('disabled');
-        return this[T.hub].pickAsync();
+        if(!this[hub]) throw Error('disabled');
+        return this[hub].pickAsync();
     }
 }

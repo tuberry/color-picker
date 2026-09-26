@@ -19,7 +19,7 @@ import * as T from './util.js';
 const {hub, $, $$, $_} = T;
 
 export const _ = Extensions.gettext;
-export const _G = (x, y = 'gtk40') => _(String()) ? GLib.dgettext(y, x) : x; // HACK: avoid partial translations
+export const _G = (x, d = 'gtk40') => _(String()) ? GLib.dgettext(d, x) : x; // HACK: avoid partial translations
 export const me = () => Extensions.ExtensionPreferences.lookupByURL(import.meta.url);
 
 export const getv = 'value'; // Fallback Binding Key
@@ -68,14 +68,16 @@ export class Page extends Adw.PreferencesPage {
     [hub] = {};
 
     #tie(gset, key, gobj, prop = gobj[esse]) {
-        gobj[dflt] = gset.get_default_value(key).recursiveUnpack();
+        this[hub][key] = gobj[$][dflt](gset.get_default_value(key).recursiveUnpack());
         if(genre(gobj, prop) !== GObject.TYPE_JSOBJECT) {
             gset.bind(key, gobj, prop, Gio.SettingsBindFlags.DEFAULT);
-        } else { // HACK: workaround for https://gitlab.gnome.org/GNOME/gjs/-/issues/397
+        } else {
             gobj[prop] = gset.get_value(key).recursiveUnpack();
             gobj.connect(`notify::${prop}`, () => gset.set_value(key, T.pickle(gobj[prop])));
         }
-        this[hub][key] = gobj;
+        // FIXME: by https://gitlab.gnome.org/GNOME/gjs/-/merge_requests/1100
+        // if(genre(gobj, prop) !== GObject.TYPE_JSOBJECT) gset.bind(key, gobj, prop, Gio.SettingsBindFlags.DEFAULT);
+        // else gset.bind_with_mapping(key, gobj, prop, Gio.SettingsBindFlags.DEFAULT, v => [true, v.recursiveUnpack()], v => T.pickle(v));
     }
 
     constructor(gset) {
@@ -235,10 +237,10 @@ export class Dialog extends Adw.Window { // HACK: revert from Adw.Dialog since h
     }
 
     $buildWidgets(build) {
-        let {content, filter, title} = build(this), search,
-            close = Gtk.Button.new_with_mnemonic(_G('_Cancel'))[$].connect('clicked', () => this.close()),
-            select = Gtk.Button.new_with_mnemonic(_G('_OK'))[$].connect('clicked', () => this.$emitChosen())[$].add_css_class('suggested-action'),
-            header = new Adw.HeaderBar({showEndTitleButtons: false, showStartTitleButtons: false, titleWidget: title || null})[$].pack_start(close)[$].pack_end(select);
+        let {content, filter, title, help} = build(this), search,
+            cancel = Gtk.Button.new_with_mnemonic(_G('_Cancel'))[$].connect('clicked', () => this.close()),
+            ensure = Gtk.Button.new_with_mnemonic(_G('_OK'))[$].connect('clicked', () => this.$commit())[$].add_css_class('suggested-action'),
+            header = new Adw.HeaderBar({showEndTitleButtons: false, showStartTitleButtons: false, titleWidget: title || null})[$].pack_start(cancel)[$].pack_end(ensure);
         if(filter) {
             let entry = new Gtk.SearchEntry({halign: Gtk.Align.CENTER})[$].connect('search-changed', x => filter.set_search(x.get_text()));
             search = new Gtk.SearchBar({showCloseButton: false, child: entry, keyCaptureWidget: this})[$].connect_entry(entry);
@@ -246,15 +248,15 @@ export class Dialog extends Adw.Window { // HACK: revert from Adw.Dialog since h
             this.connect('close-request', () => { button.set_active(false); content.scroll_to(0, Gtk.ListScrollFlags.FOCUS, null); });
             header.pack_end(button);
         }
-        return Box.newV([header, search, new Gtk.ScrolledWindow({child: content})], false);
+        return Box.newV([header[$$].pack_start(help && [help]), search, new Gtk.ScrolledWindow({child: content})], false);
     }
 
-    $onKeyPress(_w, key) { // FIXME: https://docs.gtk.org/gdk4/func.keyval_get_aliases.html
-        if(Gdk.keyval_get_aliases?.(Gdk.KEY_Return).includes(key)) this.$emitChosen();
-        else if(Gdk.keyval_get_aliases?.(Gdk.KEY_Delete).includes(key)) this.$emitChosen(null);
+    $onKeyPress(_w, key) {
+        if(Gdk.keyval_get_aliases(Gdk.KEY_Return).includes(key)) this.$commit();
+        else if(Gdk.keyval_get_aliases(Gdk.KEY_Delete).includes(key)) this.$commit(null);
     }
 
-    $emitChosen(chosen = this.getChosen?.()) {
+    $commit(chosen = this.getChosen?.()) {
         this[$$].emit(chosen !== undefined && [['chosen', [chosen]]]).close();
     }
 
@@ -285,24 +287,27 @@ export class DialogButtonBase extends Box {
     }
 
     $onSetv([value]) {
-        value.constructor === this[getv]?.constructor ? this[setv](value) : this.gvalue = value;
+        value === null || value.constructor === this[getv].constructor ? this[setv](value) : this.gvalue = value;
     }
 
     $buildDND(gtype) {
         if(!gtype) return;
-        this.$onDrop ??= (_t, v) => { this.gvalue = v; };
-        this.$onDrag ??= src => { let [x, y = this.gvalue] = T.unit(this.$genDrag()); src.set_icon(x, 8, 8); return Gdk.ContentProvider.new_for_value(y); };
-        this[$].$bindGValue((to, from) => this.bind_property_full(getv, this, 'gvalue', T.BIND, to, from))[$]
-            .connect('notify::gvalue', () => this.$onGValueSet?.(this.gvalue))
-            .$btn[$$].add_controller([Gtk.DropTarget.new(gtype, Gdk.DragAction.COPY)[$].connect('drop', (...xs) => this.$onDrop(...xs)),
-                new Gtk.DragSource({actions: Gdk.DragAction.COPY})[$].connect('prepare', (...xs) => this.$onDrag(...xs))]);
+        this[$].connect('notify::gvalue', () => this.$onGValueSet?.(this.gvalue))[$]
+            .$bindGValue((to, from) => this.bind_property_full(getv, this, 'gvalue', T.BIND, to, from))
+            .$btn[$$].add_controller([
+                this.$drop = Gtk.DropTarget.new(gtype, Gdk.DragAction.COPY)[$].connect('drop', (_t, v) => { this.gvalue = v; }),
+                this.$drag = new Gtk.DragSource({actions: Gdk.DragAction.COPY})[$].connect('prepare', src => {
+                    let [icon, value] = T.unit(this.$genDrag()); src.set_icon(icon, 8, 8);
+                    return Gdk.ContentProvider.new_for_value(value ?? this.gvalue);
+                }),
+            ]);
     }
 }
 
 export class App extends DialogButtonBase {
     static {
         T.enrol(this, {gvalue: GioUnix.DesktopAppInfo});
-        this.filter  = x => x ? (s => y => s.has(y.get_id()))(new Set(GioUnix.DesktopAppInfo.search(x).flat())) : null;
+        this.filter = x => x ? (s => y => s.has(y.get_id()))(new Set(GioUnix.DesktopAppInfo.search(x).flat())) : null;
     }
 
     constructor(opt, param) {
@@ -322,7 +327,7 @@ export class App extends DialogButtonBase {
                 filter = Gtk.CustomFilter.new(null)[$].set({set_search: s => filter.set_filter_func(App.filter(s))}),
                 list = new Gio.ListStore()[$].splice(0, 0, opt?.type ? Gio.AppInfo.get_all_for_type(opt.type) : Gio.AppInfo.get_all()),
                 select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model: list, filter})}),
-                content = new Gtk.ListView({model: select, factory, vexpand: true})[$].connect('activate', () => dlg.$emitChosen());
+                content = new Gtk.ListView({model: select, factory, vexpand: true})[$].connect('activate', () => dlg.$commit());
             dlg.getChosen = () => select.get_selected_item();
             return {content, filter};
         })[$].set({title: _G('Select Application')});
@@ -337,7 +342,7 @@ export class File extends DialogButtonBase {
     }
 
     constructor(opt = {}, param, icon = 'document-open-symbolic') {
-        if(opt.folder) opt.filter = {mimeTypes: ['inode/directory']};
+        if(opt.folder) opt.filter ??= {mimeTypes: ['inode/directory']}; // for DND
         super(opt, new Sign(icon), true, param)[$$]
             .$filter(opt.filter && [[new Gtk.FileFilter(opt.filter)]])[$$]
             .insert_child_after(opt.open && [[new Gtk.Button({iconName: 'document-open-symbolic'})[$]
@@ -365,16 +370,11 @@ export class File extends DialogButtonBase {
         return [Icon.paintable(this.$btn.child.$icon.gicon), Gdk.FileList.new_from_list([this.gvalue])];
     }
 
-    $onDrop(_t, file) {
-        if(!this.$filter) {
-            this.gvalue = file;
-        } else {
-            T.fquery(file, Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE).then(y => {
-                if(this.$filter.match(y)) this.gvalue = file; else throw Error();
-            }).catch(() => {
-                this.get_root().add_toast(new Adw.Toast({title: _('Mismatched filetype'), timeout: 7}));
-            });
-        }
+    $buildDND(...args) {
+        super.$buildDND(...args);
+        if(!this.$opt.filter) return;
+        this.$drop[$].set_preload(true).connect('notify::value', async x => x.value &&
+            !this.$filter.match(await T.fquery(x.value, Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)) && x.reject());
     }
 
     setup(icon, text) {
@@ -390,7 +390,8 @@ export class Icon extends DialogButtonBase {
     static {
         T.enrol(this, {gvalue: Gio.ThemedIcon});
         this.Type = {ALL: 0, NORMAL: 1, SYMBOLIC: 2};
-        this.paintable = (icon, size = 64) => icon && Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).lookup_by_gicon(icon, size, 1, Gtk.TextDirection.NONE, Gtk.IconLookupFlags.FORCE_SVG);
+        this.paintable = (icon, size = 64) => icon && Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+            .lookup_by_gicon(icon, size, 1, Gtk.TextDirection.NONE, Gtk.IconLookupFlags.FORCE_SVG);
     }
 
     constructor(opt, param) {
@@ -418,11 +419,13 @@ export class Icon extends DialogButtonBase {
                         case Icon.Type.SYMBOLIC: return [true, new Gtk.ClosureExpression(GObject.TYPE_BOOLEAN, x => x.string.endsWith('-symbolic'), null)];
                         }
                     }, null),
+                help = new Gtk.Button({iconName: 'system-help-symbolic', hasFrame: false})[$].connect('clicked', () =>
+                    Gio.AppInfo.launch_default_for_uri('https://wiki.archlinux.org/title/Icons#Icons_and_emblems', null)),
                 model = Gtk.StringList.new(Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).get_icon_names()),
                 select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model, filter})}),
-                content = new Gtk.GridView({model: select, factory, vexpand: true, marginStart: 6, marginEnd: 6})[$].connect('activate', () => dlg.$emitChosen());
-            dlg.getChosen = () => select.get_selected_item().get_string();
-            return {content, title, filter: filter.get_item(1)};
+                content = new Gtk.GridView({model: select, factory, vexpand: true, marginStart: 6, marginEnd: 6})[$].connect('activate', () => dlg.$commit());
+            dlg.getChosen = () => select.get_selected_item()?.get_string();
+            return {content, title, filter: filter.get_item(1), help};
         });
     }
 }
@@ -476,8 +479,8 @@ export class Keys extends DialogButtonBase {
         return new Dialog(Keys.help)[$].set({
             $onKeyPress(eck, _v, keycode, state) {
                 let [keyval, mask] = Keys.normalize(eck, keycode, state);
-                if(!mask && keyval === Gdk.KEY_BackSpace) return void this.$emitChosen([]);
-                if(Keys.validate(mask, keyval, keycode)) this.$emitChosen([Gtk.accelerator_name(keyval, mask)]);
+                if(!mask && keyval === Gdk.KEY_BackSpace) return void this.$commit([]);
+                if(Keys.validate(mask, keyval, keycode)) this.$commit([Gtk.accelerator_name(keyval, mask)]);
             },
         });
     }
@@ -515,7 +518,7 @@ export class Color extends DialogButtonBase {
     $genDialog() {
         return new Dialog(dlg => {
             let scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)[$].set({drawValue: true, valuePos: Gtk.PositionType.TOP})[$]
-                    .set_format_value_func((_a, x) => `${x}%`)[$$].add_mark(T.array(11, i => (x => [x, Gtk.PositionType.BOTTOM, String(x)])(i * 10)));
+                .set_format_value_func((_a, x) => `${x}%`)[$$].add_mark(T.array(11, i => (x => [x, Gtk.PositionType.BOTTOM, String(x)])(i * 10)));
             let canvas = new Canvas({heightRequest: 196, widthRequest: dlg.widthRequest - 20})[$].connect('snapshot', (_a, ss, rect) => {
                 let {accent} = Color,
                     pb = new Gsk.PathBuilder(),

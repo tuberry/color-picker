@@ -64,7 +64,7 @@ Name=Color Picker
 
 ## Contributions
 
-Feel free to open an issue in the repo for any questions or ideas, **particularly before making significant changes or introducing new features**.
+Feel free to open issues/discussions in the repo for any questions or ideas, **particularly before making significant changes or introducing new features**.
 
 Also, _just_ so you know:
 

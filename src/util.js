@@ -11,6 +11,7 @@ Gio._promisify(Gio.File.prototype, 'delete_async');
 Gio._promisify(Gio.File.prototype, 'query_info_async');
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
 Gio._promisify(Gio.File.prototype, 'replace_contents_async');
+Gio._promisify(Soup.Session.prototype, 'send_and_read_async');
 Gio._promisify(Gio.File.prototype, 'enumerate_children_async');
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
@@ -32,6 +33,7 @@ $ in Object.prototype || Object.defineProperties(Object.prototype, {
 export const id = x => x;
 export const nop = () => {};
 export const xnor = (x, y) => !x === !y;
+export const mod = (x, y) => ((x % y) + y) % y; // NOTE: https://github.com/tc39/proposal-integer-and-modulus-math
 export const Y = f => (...xs) => f(Y(f))(...xs); // Y combinator
 export const str = x => x?.constructor === String;
 export const decode = x => new TextDecoder().decode(x);
@@ -63,7 +65,7 @@ export async function readdir(dir, func, attr = Gio.FILE_ATTRIBUTE_STANDARD_NAME
     return Array.fromAsync(await fopen(dir).enumerate_children_async(attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, cancel), func);
 }
 
-export function* chunk(list, step = 2, from = 0, to = list.length) {
+export function* chunk(list, step = 2, from = 0, to = list.length) { // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator/chunks
     let next = typeof step === 'function' ? i => { while(++i < to && !step(list[i], i)); return i; } : i => i + step;
     while(from < to) yield list.slice(from, from = next(from));
 }
@@ -122,7 +124,7 @@ export function pickle(value, signature = null) { // json-glib compatible https:
     })(value);
 }
 
-export async function request(method, url, param, cancel = null, header = null, session = new Soup.Session()) {
+export async function request(url, cancel = null, param, {session = new Soup.Session(), method = 'GET', header} = {}) {
     let msg = param ? Soup.Message.new_from_encoded_form(method, url, Soup.form_encode_hash(param)) : Soup.Message.new(method, url);
     if(header) msg.request_headers[$$].append(Object.entries(header));
     let ans = await session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, cancel);
@@ -130,7 +132,7 @@ export async function request(method, url, param, cancel = null, header = null, 
     return decode(ans.get_data());
 }
 
-export async function execute(cmd, env, cancel = null, tty = new Gio.SubprocessLauncher({flags: PIPE})) {
+export async function execute(cmd, cancel = null, env, tty = new Gio.SubprocessLauncher({flags: PIPE})) {
     for(let k in env) tty.setenv(k, env[k], true);
     let proc = tty.spawnv([tty.getenv('SHELL'), '-c', cmd]),
         [stdout, stderr] = await proc.communicate_utf8_async(null, cancel),

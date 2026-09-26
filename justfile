@@ -19,6 +19,7 @@ uninstall:
 
 alias t := translate
 # initialize or update the po file from sources
+[group('upsert')]
 [script]
 translate po=`echo "${LANG%%.*}"`: (_setup '-Dversion=false -Dminify=false')
     out="po/{{ po }}.po"
@@ -27,16 +28,16 @@ translate po=`echo "${LANG%%.*}"`: (_setup '-Dversion=false -Dminify=false')
     meson compile "${pot}-pot" -C "{{ _builddir }}"
     grep -Fqx "{{ po }}" po/LINGUAS || (echo "{{ po }}" >>po/LINGUAS && sort -o po/LINGUAS po/LINGUAS)
 
-    [ -f "$out" ] && msgmerge --backup=off -q -U "$out" "po/${pot}.pot" ||
+    msgmerge --backup=off -q -U "$out" "po/${pot}.pot" 2>/dev/null ||
         msginit --no-translator -l "{{ po }}.UTF-8" -i "po/${pot}.pot" -o "$out" 2>/dev/null
 
     stt=$(msgfmt "$out" --statistics -o /dev/null 2>&1)
-    printf "\n\e[1;3%sm%s:\e[0m %s\n" "$([ $(echo "$stt" | grep -oE '[0-9]+' | wc -l) -gt 1 ] && echo "3" || echo "2")" "$out" "$stt"
+    printf "\n\e[1;3%sm%s:\e[0m %s\n" "$([ "$(echo "$stt" | grep -oE '[0-9]+' | wc -l)" -gt 1 ] && echo "3" || echo "2")" "$out" "$stt"
 
 # run the linters to format sources
 lint:
     {{ env('_GSED_JS_PACKAGE_MANAGER', 'npx') }} eslint --fix src
-    just --fmt
+    # just --fmt
 
 # run the static analyzer for EGO review guidelines
 [group('debug')]
@@ -77,11 +78,26 @@ devdep:
 [script]
 toolbox: && _toolbox-update-gnome-shell
     podman pull "{{ _toolimg }}"
-    if [ "$(podman inspect "{{ _toolbox }}" -f '{{{{.Image}}' 2>/dev/null)" != "$(podman inspect "{{ _toolimg }}" -f '{{{{.Id}}')" ]; then
-        podman container exists "{{ _toolbox }}" && podman stop {{ _toolbox }} && toolbox rm -f {{ _toolbox }}
-        toolbox create "{{ _toolbox }}" --image "{{ _toolimg }}"
-        toolbox run -c "{{ _toolbox }}" su -c "dnf install -y --skip-unavailable glibc-langpack-${LANG%%[_.]*} {{ _toolpkg }}"
+    [ "$(podman inspect "{{ _toolbox }}" -f '{{{{.Image}}' 2>/dev/null)" = "$(podman inspect "{{ _toolimg }}" -f '{{{{.Id}}')" ] && exit 0
+
+    if podman container exists "{{ _toolbox }}"; then
+        cid=$(podman inspect "{{ _toolbox }}" -f '{{{{.Id}}') # HACK: workaround for https://gitlab.gnome.org/chergert/ptyxis/-/work_items/56
+        podman stop "{{ _toolbox }}" && toolbox rm -f "{{ _toolbox }}"
     fi
+
+    toolbox create "{{ _toolbox }}" --image "{{ _toolimg }}"
+
+    if [ -n "${cid:-}" ] && pids=$(flatpak run --command=gsettings app.devsuite.Ptyxis get org.gnome.Ptyxis profile-uuids 2>/dev/null); then
+        for pid in $(echo "$pids" | tr -d "],'["); do
+            pid="org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/${pid}/"
+            if [ "$cid" = "$(flatpak run --command=gsettings app.devsuite.Ptyxis get "$pid" default-container 2>/dev/null | tr -d "'")" ]; then
+                flatpak run --command=gsettings app.devsuite.Ptyxis set "$pid" default-container "$(podman inspect "{{ _toolbox }}" -f '{{{{.Id}}')"
+            fi
+        done
+    fi
+
+    toolbox run -c "{{ _toolbox }}" su -c "dnf install -y --skip-unavailable glibc-langpack-${LANG%%[_.]*} {{ env('_GSED_TOOLBOX_EXTRA_PACKAGES') }}"
+    toolbox run -c "{{ _toolbox }}" sh -c 'cat $(which update-mutter) | sed "\$c\  https://github.com/ptomato/jasmine-gjs.git master" | sh' # gnome shell build dep
 
 # remove development dependencies and buliddir
 [group('clean')]
@@ -108,16 +124,16 @@ default:
 zip: (_setup '-Dtarget=zip -Dminify=false') _install
 
 [private]
+bump ver:
+    sed -i "0,/version[[:space:]]*:[[:space:]]*'[^']*'/s//version: '{{ ver }}'/" meson.build
+    # meson rewrite kwargs set project / version {{ ver }} # HACK: workaround for https://mesonbuild.com/Rewriter.html#limitations
+
+[private]
 _prefs:
     @gnome-extensions prefs $({{ _uuid() }})
 
 [private]
 _debug-install: (_setup "-Dversion=false") _install
-
-[private]
-bump version:
-    sed -i "0,/version[[:space:]]*:[[:space:]]*'[^']*'/s//version: '{{ version }}'/" meson.build
-    # meson rewrite kwargs set project / {{ version }} # https://mesonbuild.com/Rewriter.html#limitations
 
 [private]
 compile:
@@ -141,8 +157,6 @@ uuid:
 
 [private]
 _builddir := 'build'
-[private]
-_toolpkg := env('_GSED_TOOLBOX_EXTRA_PACKAGES') # additional pkgs installed when initializing the toolbox
 [private]
 _toolbox := env('_GSED_TOOLBOX_CONTAINER_NAME', 'gnome-shell-devel') # the same name as the upstream to reuse some scripts easier
 [private]

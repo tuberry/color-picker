@@ -6,6 +6,7 @@ _deps = [] + configure_file(
   output: '@0@.gschema.xml'.format(me['rdnn']),
   configuration: me,
   install_dir: schema_dir,
+  install_tag: fs.name(meson.current_source_dir()),
 )
 
 if target == 'system'
@@ -22,5 +23,6 @@ elif target == 'local'
     ],
     install: true,
     install_dir: schema_dir,
+    install_tag: fs.name(meson.current_source_dir()),
   )
 endif

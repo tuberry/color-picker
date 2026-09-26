@@ -1,14 +1,13 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {HEX} from './const.js';
 import * as T from './util.js';
+import {HEX} from './const.js';
 
 const {$, hub} = T;
-const Grey = 0.5693; // L in OKLab <=> 18% grey #777 // Ref: https://en.wikipedia.org/wiki/Middle_gray
 
-const _ = T.id; // HACK: workaround for gettext
-const numeric = (x, n = -1, r) => n < 0 || !Number.isFinite(x)  ? String(x) : Number(x.toFixed(n)).toString(r);
+const _ = T.id; // HACK: workaround for xgettext
+const numeric = (x, n = -1, r) => !Number.isFinite(x) || n < 0 ? String(x) : Number(x.toFixed(n)).toString(r);
 const hex = x => numeric(x, 0, 16).padStart(2, '0');
 const denorm = (v, u) => u ? v * u : v;
 const norm = (v, u) => u ? v / u : v;
@@ -86,7 +85,7 @@ const OKLAB = { // Ref: https://github.com/Evercoder/culori/tree/main/src/oklab 
 };
 
 const OKLCH = {
-    get: ({Lo, Ao, Bo}) => { let t = Math.hypot(Ao, Bo); return {Lo, Co: t, Ho: t > 4e-6 ? (Math.atan2(Bo, Ao) / Math.PI + 2) % 2 * 180 : 0}; }, // NOTE: https://github.com/tc39/proposal-integer-and-modulus-math
+    get: ({Lo, Ao, Bo}) => { let t = Math.hypot(Ao, Bo); return {Lo, Co: t, Ho: t > 4e-6 ? T.mod(Math.atan2(Bo, Ao) / Math.PI, 2) * 180 : 0}; },
     set: ({Lo, Co, Ho}) => { let t = Math.PI * Ho / 180; return OKLAB.set({Lo, Ao: Co * Math.cos(t), Bo: Co * Math.sin(t)}); },
 };
 
@@ -105,7 +104,7 @@ const CMYK = { // Ref: http://www.easyrgb.com/en/math.php
 // Adapted from https://github.com/microsoft/PowerToys/blob/ddc536c69668837470439ecce68b7ce1b2094175/src/common/ManagedCommon/ColorNameHelper.cs
 // TODO: evolve this into sth more general such as https://en.wikipedia.org/wiki/Color_Naming_System
 // or https://www.munsellcolorscienceforpainters.com/ColourSciencePapers/sRGBCentroidsForTheISCCNBSColourSystem.pdf
-const Name = {
+const NAME = {
     hues: [
         [8, 0, 0, 44, 0, 0, 0, 63, 0, 0, 122, 0, 134, 0, 0, 0, 0, 166, 176, 241, 0, 256, 0],
         [0, 10, 0, 32, 46, 0, 0, 0, 61, 0, 106, 0, 136, 144, 0, 0, 0, 158, 166, 241, 0, 0, 256],
@@ -135,9 +134,9 @@ const Name = {
         else if(Ll < 20 / 255) return {Na: _('Black')};
         else if(Sl <= 20 / 255) return {Na: Ll > 170 / 255 ? _('Light gray') : Ll > 100 / 255 ? _('Gray') : _('Dark gray')};
         let level = Sl <= 75 / 255 ? 0 : Sl <= 115 / 255 ? 1 : Sl <= 150 / 255 ? 2 : Sl <= 240 / 255 ? 3 : 4,
-            index = Name.hues[level].findIndex(x => Hu < x),
-            shade = Ll > Name.lumens[1][index] ? 0 : Ll < Name.lumens[0][index] ? 2 : 1;
-        return {Na: Name.chromas[shade][index]};
+            index = NAME.hues[level].findIndex(x => Hu < x),
+            shade = Ll > NAME.lumens[1][index] ? 0 : Ll < NAME.lumens[0][index] ? 2 : 1;
+        return {Na: NAME.chromas[shade][index]};
     },
 };
 
@@ -164,7 +163,7 @@ export default class Color {
         Ma: {meta: CMYK, info: 'C_MYK', desc: _('magenta')},
         Ye: {meta: CMYK, info: 'CM_YK', desc: _('yellow')},
         Bk: {meta: CMYK, info: 'CMY_K', desc: _('black')},
-        Na: {meta: Name},
+        Na: {meta: NAME},
     };
 
     static Type = new Proxy({
@@ -238,12 +237,12 @@ export default class Color {
     }
 
     toName(plain, prefix = '', suffix = '') {
-        let name = this.formats.naming?.(this.#fmt.Na);
-        return name ? `${prefix}${plain ? name : `<span alpha="75%">${T.esc(name)}</span>`}${suffix}` : '';
+        let name = this.formats[hub]?.(this.#fmt.Na);
+        return name ? `${prefix}${plain ? name : `<span alpha="80%">${T.esc(name)}</span>`}${suffix}` : '';
     }
 
     toMarkup(format) {
-        let style = `fgcolor="${this.#fmt.Lo > Grey ? 'black' : 'white'}" bgcolor="${this.toHEX()}"`;
+        let style = `fgcolor="${this.#fmt.Lo > 0.5653 ? 'black' : 'white'}" bgcolor="${this.toHEX()}"`; // 0.5653 - 18% grey #777, see https://en.wikipedia.org/wiki/Middle_gray
         return `<span ${style}>${T.esc(this.toText(format))}</span>${this.toName(false, ' ')}`;
     }
 

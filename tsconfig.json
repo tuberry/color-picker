@@ -9,6 +9,8 @@
         "strict": true,
         "module": "ESNext",
         "moduleResolution": "Bundler",
+        "erasableSyntaxOnly": true,
+        "verbatimModuleSyntax": true,
         "types": [
             "@girs/gjs",
             "@girs/gnome-shell/ambient"

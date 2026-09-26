@@ -26,7 +26,7 @@ export const me = () => Extension.lookupByURL(import.meta.url); // NOTE: https:/
 // export const debug = (...xs) => me().getLogger().debug(...xs); // FIXME: see https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/491
 export const theme = () => St.ThemeContext.get_for_stage(global.stage);
 export const marks = (x, m) => x.clutterText.set_markup(`\u{200b}${m}`); // HACK: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
-export const held = (x, m) => Iterator.from(x.get_state()).drop(1).some(y => y & m); // https://mutter.gnome.org/clutter/method.KeyController.get_state.html
+export const held = (x, m) => x.get_state().values().drop(1).some(y => y & m); // https://mutter.gnome.org/clutter/method.KeyController.get_state.html
 export const free = (o, ks) => T.unit(ks ?? Object.keys(o)).forEach(k => ruin(T.steal(o, k)));
 export const view = (v, ...ws) => ws.forEach(w => w && !T.xnor(v, w.visible) && (v ? w.show() : w.hide())); // NOTE: https://github.com/tc39/proposal-optional-chaining-assignment
 export const open = uri => Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
@@ -39,14 +39,14 @@ export const paste = primary => new Promise((resolve, reject) => St.Clipboard.ge
 export function* apps() {
     let appDisplay = Main.overview._overview._controls._appDisplay;
     yield* Object.values(appDisplay._appFavorites.getFavoriteMap());
-    for(let item of appDisplay.getAllItems()) item.view ? yield* Iterator.from(item.view.getAllItems()).map(x => x.app) : yield item.app;
+    for(let item of appDisplay.getAllItems()) item.view ? yield* item.view.getAllItems().values().map(x => x.app) : yield item.app;
 }
 
-export function cursor([x, y] = global.get_pointer(), scale = 7 / 8) {
+export function cursor([x, y] = global.get_pointer()) {
     let tracker = global.backend.get_cursor_tracker(),
         sprite = tracker.get_sprite(),
         [u, v] = tracker.get_hot();
-    return [x - u, y - v, Math.round(sprite.get_width() * scale), Math.round(sprite.get_height() * scale)];
+    return [x - u, y - v, sprite.get_width(), sprite.get_height()];
 }
 
 export class Mortal extends Signals.EventEmitter {
@@ -82,7 +82,7 @@ export class Extension extends Extensions.Extension {
 export class Source {
     /** @template T * @param {T} doom * @return {T} */ // NOTE: https://github.com/tc39/proposal-type-annotations & https://github.com/jsdoc/jsdoc/issues/1986
     static tie(host, doom, ...args) {
-        if(!((host instanceof Signals.EventEmitter && host.destroy) || GObject.signal_lookup('destroy', host))) throw TypeError('undestroyable');
+        if(!(host.destroy && (host instanceof Signals.EventEmitter || GObject.signal_lookup('destroy', host)))) throw TypeError('undestroyable');
         host.connect('destroy', () => { free(args); doom.destroy ? ruin(doom) : free(doom); });
         return doom;
     }
@@ -106,7 +106,7 @@ export class Source {
         constructor(host, name, path, ...args) {
             super(() => new Source(x => Gio.DBusExportedObject.wrapJSObject(FileUtils.loadInterfaceXML(name), host)[$].export(x, path),
                 x => x.unexport())[$_](it => it[$].$id(Gio.DBus.own_name(Gio.BusType.SESSION, name, Gio.BusNameOwnerFlags.NONE, x => it.summon(x),
-                null, null))), x => { ruin(x); Gio.bus_unown_name(T.steal(x, '$id')); }, ...args);
+                null, null))), x => { ruin(x); Gio.bus_unown_name(x.$id); }, ...args);
         }
     };
 
@@ -141,8 +141,9 @@ export class Source {
 
     static Handler = class extends this {
         constructor(...args) { // enable by default
-            super(() => T.chunk(args, x => x.connectObject).map(([o, ...xs]) => [o, ...T.chunk(xs, T.str).map(([s, f, a]) =>
-                o[a === GObject.ConnectFlags.AFTER ? o instanceof GObject.Object ? 'connect_after' : 'connectAfter' : 'connect'](s, f))]).toArray(),
+            super(() => T.chunk(args, x => x.connectObject).map(([o, ...xs]) => [o, ...T.chunk(xs, (_x, i) => typeof xs[i - 1] === 'function')
+                .flatMap(ys => T.chunk(ys, T.str, 0, ys.length - 1).map(([s, a]) => o[a === GObject.ConnectFlags.AFTER ? o instanceof GObject.Object
+                    ? 'connect_after' : 'connectAfter' : 'connect'](s, ys.at(-1))).toArray())]).toArray(),
             x => x.forEach(([o, ...is]) => is.forEach(i => o.disconnect(i))), args.at(-1) !== false);
         }
     };
@@ -188,13 +189,10 @@ export class Source {
     };
 
     constructor(summon, ...args) {
-        let dispel, enable;
-        if(typeof args[0] === 'function') [dispel, enable, ...args] = args;
-        else dispel = ruin, [enable, ...args] = args;
-
         this.summon = (...xs) => { this[hub] = summon(...xs); };
+        let dispel = typeof args[0] === 'function' ? args.shift() : ruin;
         this.dispel = () => { if(this.active) dispel(T.steal(this, hub)); };
-        if(enable) this.summon(...args);
+        if(args.shift()) this.summon(...args);
     }
 
     revive(...xs) { this[$].dispel().summon(...xs); }

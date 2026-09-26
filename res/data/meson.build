@@ -6,6 +6,7 @@ configure_file(
   output: 'metadata.json',
   configuration: me,
   install_dir: target_dir,
+  install_tag: fs.name(meson.current_source_dir()),
 )
 
 _deps = [] + configure_file(

@@ -2,5 +2,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 option('target', type: 'combo', choices: ['zip', 'local', 'system'], value: 'local', description: 'build target')
-option('version', type: 'boolean', value: true, description: 'sync with the E.G.O version or not (for local target)')
-option('minify', type: 'boolean', value: false, description: 'install minified JavaScript files (for local/system target)')
+option('minify', type: 'boolean', value: false, description: 'minify JavaScript files (for local/system target)')
+option('version', type: 'boolean', value: true, description: 'sync metadata.json version with E.G.O or not (for local target)')
