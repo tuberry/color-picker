@@ -536,11 +536,35 @@ class ColorPicker extends F.Mortal {
         return new ColorTray(this.$set, this.$formats, () => this.summon(), this[K.FMT] ? this.$genFormatItem() : null);
     }
 
+    pick(inform) {
+        return new Promise((resolve, reject) => {
+            if(this.$src.area.active) throw Error('busy');
+            this.$src.tray.hub?.add_style_pseudo_class('state-busy');
+            this.$src.area.summon([
+                ['submit-pick', (_a, color) => (inform ?? resolve)(color)],
+                ['finish-pick', (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); else if(inform) resolve(); }],
+            ], this.$set, !inform, new Color((this[K.FMT] ? this[K.FMTS] : Format.HEX) << 24, this.$formats));
+        });
+    }
+
     summon() {
-        if(this.$src.area.active) return;
-        this.$src.tray.hub?.add_style_pseudo_class('state-busy'); // FIXME: not working on the first run
-        this.$src.area.summon([['finish-pick', () => this.dispel()], ['submit-pick', (_a, x) => this.inform(x)]],
-            this.$set, false, new Color((this[K.FMT] ? this[K.FMTS] : Format.HEX) << 24, this.$formats));
+        this.pick(color => {
+            let text = color.toText();
+            this[K.COPY]?.push(text);
+            this.$src.tray.hub?.addHistory(color.toRaw());
+            if(this[K.SND]) global.display.get_sound_player().play_from_file(T.fopen(this[K.SNDS]), _('Color picked'), null);
+            if(!this[K.NTF]) return;
+            let gicon = Gio.BytesIcon.new(T.encode(`<svg width="64" height="64" fill="${color.toHEX()}" viewBox="0 0 1 1">
+    <rect width=".75" height=".75" x=".125" y=".125" rx=".15"/></svg>`));
+            if(this[K.NTFS] === ColorPicker.Notify.MSG) {
+                let title = F.me().metadata.name,
+                    source = MessageTray.getSystemSource(),
+                    body = _('%s is picked.').format(color.toView(text, '\u{3014}', '\u{3015}'));
+                source.addNotification(new MessageTray.Notification({gicon, source, title, body, isTransient: true}));
+            } else {
+                Main.osdWindowManager.showAll(gicon, color.toView(text));
+            }
+        }).catch(T.nop);
     }
 
     dispel() {
@@ -550,35 +574,8 @@ class ColorPicker extends F.Mortal {
         this.$src.area.dispel();
     }
 
-    inform(color) {
-        let text = color.toText();
-        this[K.COPY]?.push(text);
-        this.$src.tray.hub?.addHistory(color.toRaw());
-        if(this[K.SND]) global.display.get_sound_player().play_from_file(T.fopen(this[K.SNDS]), _('Color picked'), null);
-        if(!this[K.NTF]) return;
-        let gicon = Gio.BytesIcon.new(T.encode(`<svg width="64" height="64" fill="${color.toHEX()}" viewBox="0 0 1 1">
-    <rect width=".75" height=".75" x=".125" y=".125" rx=".15"/></svg>`));
-        if(this[K.NTFS] === ColorPicker.Notify.MSG) {
-            let title = F.me().metadata.name,
-                source = MessageTray.getSystemSource(),
-                body = _('%s is picked.').format(color.toView(text, '\u{3014}', '\u{3015}'));
-            source.addNotification(new MessageTray.Notification({gicon, source, title, body, isTransient: true}));
-        } else {
-            Main.osdWindowManager.showAll(gicon, color.toView(text));
-        }
-    }
-
-    pickAsync() {
-        return new Promise((resolve, reject) => {
-            if(this.$src.area.active) throw Error('busy');
-            this.$src.tray.hub?.add_style_pseudo_class('state-busy');
-            this.$src.area.summon([['submit-pick', (_a, color) => resolve(color.toRGB())],
-                ['finish-pick', (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); }]], this.$set, true, new Color());
-        });
-    }
-
     PickAsync(_p, invocation) {
-        F.Source.DBus.respond(invocation, () => this.pickAsync().then(v => T.pickle([{color: T.pickle(v, '(ddd)')}], '(a{sv})'))
+        F.Source.DBus.respond(invocation, () => this.pick().then(x => T.pickle([{color: T.pickle(x.toRGB(), '(ddd)')}], '(a{sv})'))
             .catch(() => { throw new Gio.IOErrorEnum({code: Gio.IOErrorEnum.CANCELLED, message: 'Operation cancelled'}); }));
     }
 
@@ -589,9 +586,8 @@ class ColorPicker extends F.Mortal {
 
 export default class extends F.Extension {
     $klass = ColorPicker;
-    // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
+    // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(logError)
     pickAsync() {
-        if(!this[hub]) throw Error('disabled');
-        return this[hub].pickAsync();
+        return Promise.try(() => this[hub].pick()).then(x => Cogl.Color.from_string(x.toHEX())[1]);
     }
 }
