@@ -572,13 +572,13 @@ class ColorPicker extends F.Mortal {
         return new Promise((resolve, reject) => {
             if(this.$src.area.active) throw Error('busy');
             this.$src.tray.hub?.add_style_pseudo_class('state-busy');
-            this.$src.area.summon([['submit-pick', (_a, color) => resolve(color.toRGB())],
-                ['finish-pick', (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); }]], this.$set, true, new Color());
+            this.$src.area.summon([['finish-pick', (_a, aborted) => { this.dispel(); if(aborted) reject(Error('aborted')); }],
+                ['submit-pick', (_a, color) => resolve(color)]], this.$set, true, new Color());
         });
     }
 
     PickAsync(_p, invocation) {
-        F.Source.DBus.respond(invocation, () => this.pickAsync().then(v => T.pickle([{color: T.pickle(v, '(ddd)')}], '(a{sv})'))
+        F.Source.DBus.respond(invocation, () => this.pickAsync().then(x => T.pickle([{color: T.pickle(x.toRGB(), '(ddd)')}], '(a{sv})'))
             .catch(() => { throw new Gio.IOErrorEnum({code: Gio.IOErrorEnum.CANCELLED, message: 'Operation cancelled'}); }));
     }
 
@@ -591,7 +591,6 @@ export default class extends F.Extension {
     $klass = ColorPicker;
     // API: Main.extensionManager.lookup('color-picker@tuberry').stateObj.pickAsync().then(log).catch(log)
     pickAsync() {
-        if(!this[hub]) throw Error('disabled');
-        return this[hub].pickAsync();
+        return Promise.try(() => this[hub].pickAsync()).then(x => Cogl.Color.from_string(x.toHEX())[1]);
     }
 }
