@@ -44,7 +44,7 @@ export function* apps() {
 
 export function cursor([x, y] = global.get_pointer()) {
     let tracker = global.backend.get_cursor_tracker(),
-        sprite = tracker.get_sprite(),
+        sprite = tracker.get_sprite() ?? new Proxy({}, {get: () => () => Meta.prefs_get_cursor_size()}),
         [u, v] = tracker.get_hot();
     return [x - u, y - v, sprite.get_width(), sprite.get_height()];
 }
